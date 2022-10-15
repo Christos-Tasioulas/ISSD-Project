@@ -1,6 +1,5 @@
 #ifndef _TUPLE_H_
 #define _TUPLE_H_
-// #include <cstdio>
 
 class Tuple {
 
