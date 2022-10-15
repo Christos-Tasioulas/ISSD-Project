@@ -9,7 +9,7 @@ SOURCEDIR := $(PROJDIR)/source
 BUILDDIR := $(PROJDIR)/build
 
 # Name of the final executable
-TARGET=partitionedHashJoin
+TARGET=phj
 
 # Decide whether the commands will be shown or not
 VERBOSE=FALSE
