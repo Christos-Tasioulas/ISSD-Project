@@ -179,7 +179,7 @@ unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
  * Executes the Partitioned Hash Join Algorithm *
  ************************************************/
 
-RowIdPair *PartitionedHashJoin::executeJoin()
+RowIdRelation *PartitionedHashJoin::executeJoin()
 {
     std::cout << "Relations in the beginning\n" << std::endl;
     std::cout << "            R" << std::endl;
@@ -258,5 +258,32 @@ RowIdPair *PartitionedHashJoin::executeJoin()
         std::cout << "S_histogram[" << i << "] = " << S_histogram[i] << std::endl;
     }
 
-	return NULL;
+    RowIdPair *a = new RowIdPair[2];
+    a[0].setLeftRowId(1);
+    a[0].setRightRowId(1);
+    a[1].setLeftRowId(2);
+    a[1].setRightRowId(3);
+
+    RowIdRelation *result = new RowIdRelation(a, 2);
+
+	return result;
+}
+
+/***************************************************************
+ * Displays in the screen the result returned by 'executeJoin' *
+ ***************************************************************/
+
+void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
+{
+    resultOfExecuteJoin->print(printUnsignedPair, lineContext);
+}
+
+/*******************************************************
+ * Frees the result that was returned by 'executeJoin' *
+ *******************************************************/
+
+void PartitionedHashJoin::freeJoinResult(RowIdRelation *resultOfExecuteJoin)
+{
+    delete[] resultOfExecuteJoin->getRowIdPairs();
+    delete resultOfExecuteJoin;
 }

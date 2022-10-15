@@ -14,7 +14,7 @@ private:
 public:
 
 /* Constructor */
-	RowIdPair(unsigned int leftRowId, unsigned int rightRowId);
+	RowIdPair(unsigned int leftRowId = 0, unsigned int rightRowId = 0);
 
 /* Destructor */
 	~RowIdPair();
@@ -24,6 +24,12 @@ public:
 
 /* Getter - Returns the ID of the right row */
 	unsigned int getRightRowId() const;
+
+/* Setter - Updates the ID of the left row */
+	void setLeftRowId(unsigned int newLeftRowId);
+
+/* Setter - Updates the ID of the right row */
+	void setRightRowId(unsigned int newRightRowId);
 
 /* Prints the pair of row IDs that have been stored */
 	void print(void (*visit)(unsigned int, unsigned int)) const;

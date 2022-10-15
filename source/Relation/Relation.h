@@ -12,10 +12,10 @@ class Relation {
 
 private:
 
-	/* The array of tuples (always in the heap) */
+/* The array of tuples (always in the heap) */
 	Tuple *tuples;
 
-	/* The amount of tuples in the array */
+/* The amount of tuples in the array */
 	unsigned int numOfTuples;
 
 public:

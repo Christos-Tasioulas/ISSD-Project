@@ -3,7 +3,7 @@
 
 #include "HashTable.h"
 #include "Relation.h"
-#include "RowIdPair.h"
+#include "RowIdRelation.h"
 
 class PartitionedHashJoin {
 
@@ -41,7 +41,13 @@ public:
     unsigned int getBitsNumForHashing() const;
 
 /* Executes the Partitioned Hash Join Algorithm */
-    RowIdPair *executeJoin();
+    RowIdRelation *executeJoin();
+
+/* Displays in the screen the result returned by 'executeJoin' */
+    static void printJoinResult(RowIdRelation *resultOfExecuteJoin);
+
+/* Frees the result that was returned by 'executeJoin' */
+    static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);
 
 };
 

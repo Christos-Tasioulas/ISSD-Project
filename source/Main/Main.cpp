@@ -9,5 +9,11 @@ int main(int argc, char const *argv[])
 	PartitionedHashJoin phj = PartitionedHashJoin(NULL, NULL);
 
 	/* We use the initialized object to perform the join */
-	phj.executeJoin();
+	RowIdRelation *result = phj.executeJoin();
+
+	/* We display the result returned by the operation */
+	phj.printJoinResult(result);
+
+	/* We terminate the result returned by the operation */
+	phj.freeJoinResult(result);
 }
