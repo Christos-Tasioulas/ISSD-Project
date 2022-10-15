@@ -23,6 +23,9 @@ private:
  */
     unsigned int bitReductionHash(int integer) const;
 
+/* Displays in the screen the contents of the initial relations */
+    void displayInitialRelations() const;
+
 public:
 
 /* Constructor */

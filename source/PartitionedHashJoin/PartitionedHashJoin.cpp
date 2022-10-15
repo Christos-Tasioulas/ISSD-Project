@@ -70,7 +70,7 @@ PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
     tuples_array_1[1] = Tuple(new int(5), 2);
     tuples_array_1[2] = Tuple(new int(8), 3);
 
-    tuples_array_2[0] = Tuple(new int(4), 1);
+    tuples_array_2[0] = Tuple(new int(1), 1);
     tuples_array_2[1] = Tuple(new int(9), 2);
     tuples_array_2[2] = Tuple(new int(5), 3);
 
@@ -127,6 +127,26 @@ unsigned int PartitionedHashJoin::getBitsNumForHashing() const
     return bitsNumForHashing;
 }
 
+/****************************************************************
+ * Displays in the screen the contents of the initial relations *
+ ****************************************************************/
+
+void PartitionedHashJoin::displayInitialRelations() const
+{
+    /* We print an informative message about the initial relations */
+    std::cout << "\nRelations in the beginning\n" << std::endl;
+
+    /* We print the contents of the relational array 'relR' */
+    std::cout << "\t    R" << std::endl;
+    relR->print(printTuple, lineContext);
+    std::cout << std::endl;
+
+    /* We print the contents of the relational array 'relS' */
+    std::cout << "\t    S" << std::endl;
+    relS->print(printTuple, lineContext);
+    std::cout << std::endl;
+}
+
 /************************************************
  * Hashes a given integer into the value of its *
  *      rightmost 'bitsNumForHashing' bits      *
@@ -181,83 +201,134 @@ unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
 
 RowIdRelation *PartitionedHashJoin::executeJoin()
 {
-    std::cout << "Relations in the beginning\n" << std::endl;
-    std::cout << "            R" << std::endl;
-    relR->print(printTuple, lineContext);
-    std::cout << std::endl;
-    std::cout << "            S" << std::endl;
-    relS->print(printTuple, lineContext);
-    std::cout << std::endl;
+    /* We print the contents of the initial relations */
+    displayInitialRelations();
 
+    /* We retrieve the size of the level-2 cache */
     long lvl2CacheSize = get_Lvl2_Cache_Size();
 
-    if(lvl2CacheSize != -1)
-    {
-        std::cout << "LVL2 Cache Size: " << lvl2CacheSize << std::endl;
-    }
+    /* If the cache size could not be retrieved,
+     * we cancel the join operation and return 'NULL'
+     */
+    if(lvl2CacheSize == -1)
+        return NULL;
 
-    /* This is the size (in bytes) of relation 'R' */
+    /* This is the size (in bytes) of relation 'relR' */
     unsigned int relR_size = relR->getSize(sizeof(int));
 
-    /* This is the size (in bytes) of relation 'S' */
+    /* This is the size (in bytes) of relation 'relS' */
     unsigned int relS_size = relS->getSize(sizeof(int));
 
+    /* Variables we will need later in the algorithm */
     unsigned int i, R_numOfTuples, S_numOfTuples;
+
+    /* This is the number of tuples of the relation 'relR' */
     R_numOfTuples = relR->getNumOfTuples();
+
+    /* This is the number of tuples of the relation 'relS' */
     S_numOfTuples = relS->getNumOfTuples();
+
+    /* This is the array itself of the relation 'relR' */
     Tuple *R_table = relR->getTuples();
+
+    /* This is the array itself of the relation 'relS' */
     Tuple *S_table = relS->getTuples();
 
+    /* We will build the histogram of the relation 'relR'
+     *
+     * First we initialize the histogram size to 1
+     */
     unsigned int R_histogramSize = 1;
+
+    /* Then we shift the size as many position to the left
+     * as the amount of bits that were used to hash the
+     * elements of the relation, which is 'bitsNumForHashing'
+     *
+     * This will produce the power (2 ^ 'bitsNumForHashing'),
+     * which is the desired size for the histogram of 'relR'
+     */
     R_histogramSize <<= bitsNumForHashing;
+
+    /* We define the histogram of 'relR' */
     unsigned int R_histogram[R_histogramSize];
 
-    for(i = 0; i < R_histogramSize; i++)
-    {
-        R_histogram[i] = 0;
-    }
+    /* We initialize every element of the histogram to zero */
 
+    for(i = 0; i < R_histogramSize; i++)
+        R_histogram[i] = 0;
+
+    /* Then we fill the histogram with the desired content
+     *
+     * The value of the element of index 'i' in the histogram
+     * indicates the amount of elements of the relational
+     * array 'relR' that were hashed to the bucket 'i'
+     *
+     * For each element of the array we do the following
+     */
     for(i = 0; i < R_numOfTuples; i++)
     {
+        /* We retrieve the value of the current element */
         int currentItem = *((int *) R_table[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
         unsigned int hash_value = bitReductionHash(currentItem);
+
+        /* The value of the histogram's element of the index
+         * that matches the hash value is now increased by 1,
+         * since one more element of the relational array was
+         * hashed to this value
+         */
         R_histogram[hash_value]++;
-        std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
     }
 
+    /* We will build the histogram of the relation 'relS'
+     *
+     * First we initialize the histogram size to 1
+     */
     unsigned int S_histogramSize = 1;
+
+    /* Then we shift the size as many position to the left
+     * as the amount of bits that were used to hash the
+     * elements of the relation, which is 'bitsNumForHashing'
+     *
+     * This will produce the power (2 ^ 'bitsNumForHashing'),
+     * which is the desired size for the histogram of 'relS'
+     */
     S_histogramSize <<= bitsNumForHashing;
+
+    /* We define the histogram of 'relS' */
     unsigned int S_histogram[S_histogramSize];
 
+    /* We initialize every element of the histogram to zero */
+
     for(i = 0; i < S_histogramSize; i++)
-    {
         S_histogram[i] = 0;
-    }
 
-    std::cout << "-----------------------------" << std::endl;
-
+    /* Then we fill the histogram with the desired content
+     *
+     * The value of the element of index 'i' in the histogram
+     * indicates the amount of elements of the relational
+     * array 'relS' that were hashed to the bucket 'i'
+     *
+     * For each element of the array we do the following
+     */
     for(i = 0; i < S_numOfTuples; i++)
     {
+        /* We retrieve the value of the current element */
         int currentItem = *((int *) S_table[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
         unsigned int hash_value = bitReductionHash(currentItem);
+
+        /* The value of the histogram's element of the index
+         * that matches the hash value is now increased by 1,
+         * since one more element of the relational array was
+         * hashed to this value
+         */
         S_histogram[hash_value]++;
-        std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
     }
 
-    std::cout << "-----------------------------" << std::endl;
-
-    for(i = 0; i < R_histogramSize; i++)
-    {
-        std::cout << "R_histogram[" << i << "] = " << R_histogram[i] << std::endl;
-    }
-
-    std::cout << "-----------------------------" << std::endl;
-
-    for(i = 0; i < S_histogramSize; i++)
-    {
-        std::cout << "S_histogram[" << i << "] = " << S_histogram[i] << std::endl;
-    }
-
+    /* Hardcoded result just to check the output */
     RowIdPair *a = new RowIdPair[2];
     a[0].setLeftRowId(1);
     a[0].setRightRowId(1);
@@ -275,7 +346,22 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
 void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
 {
-    resultOfExecuteJoin->print(printUnsignedPair, lineContext);
+    /* Case the result is valid */
+
+    if(resultOfExecuteJoin != NULL)
+    {
+        std::cout << "Result of Join Operation\n\n\tR |>-<| S" << std::endl;
+        resultOfExecuteJoin->print(printUnsignedPair, lineContext);
+        std::cout << std::endl;
+    }
+
+    /* Case the result is invalid because of an unexpected error */
+
+    else
+    {
+        std::cout << "Due to an unexpected problem, no valid result was produced"
+            << std::endl;
+    }
 }
 
 /*******************************************************
@@ -284,6 +370,9 @@ void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
 
 void PartitionedHashJoin::freeJoinResult(RowIdRelation *resultOfExecuteJoin)
 {
-    delete[] resultOfExecuteJoin->getRowIdPairs();
-    delete resultOfExecuteJoin;
+    if(resultOfExecuteJoin != NULL)
+    {
+        delete[] resultOfExecuteJoin->getRowIdPairs();
+        delete resultOfExecuteJoin;
+    }
 }
