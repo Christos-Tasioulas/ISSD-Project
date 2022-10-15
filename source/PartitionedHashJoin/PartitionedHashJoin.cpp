@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include "PartitionedHashJoin.h"
 
+static unsigned int n = 3;
+
 /*****************************************
  * Used to print the contents of a tuple *
  *****************************************/
@@ -57,13 +59,46 @@ static long get_Lvl2_Cache_Size()
     return lvl_2_cache_size;
 }
 
+/**********
+ * Hash 1 *
+ **********/
+
+unsigned int hash_1(int integer)
+{
+    unsigned int result = 0;
+    unsigned int i = 0;
+    int mask = 1;
+
+    for(i = 0; i < n; i++)
+    {
+        if((integer & mask) == mask)
+            result += mask;
+
+        mask <<= 1;
+    }
+
+    return result;
+}
+
 /*************************************
  * Reads the input relational arrays *
  *************************************/
 
 static void readInput(Relation **relR, Relation **relS)
 {
+    Tuple *tuples_array_1 = new Tuple[3];
+    Tuple *tuples_array_2 = new Tuple[3];
 
+    tuples_array_1[0] = Tuple(new int(1), 1);
+    tuples_array_1[1] = Tuple(new int(5), 2);
+    tuples_array_1[2] = Tuple(new int(8), 3);
+
+    tuples_array_2[0] = Tuple(new int(4), 1);
+    tuples_array_2[1] = Tuple(new int(9), 2);
+    tuples_array_2[2] = Tuple(new int(5), 3);
+
+    (*relR) = new Relation(tuples_array_1, 3);
+    (*relS) = new Relation(tuples_array_2, 3);
 }
 
 /************************************************
@@ -77,6 +112,68 @@ static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
     if(lvl2CacheSize != -1)
     {
         std::cout << "LVL2 Cache Size: " << lvl2CacheSize << std::endl;
+    }
+
+    /* This is the size (in bytes) of relation 'R' */
+    unsigned int relR_size = relR->getSize(sizeof(int));
+
+    /* This is the size (in bytes) of relation 'S' */
+    unsigned int relS_size = relS->getSize(sizeof(int));
+
+    unsigned int i, R_numOfTuples, S_numOfTuples;
+    R_numOfTuples = relR->getNumOfTuples();
+    S_numOfTuples = relS->getNumOfTuples();
+    Tuple *R_table = relR->getTuples();
+    Tuple *S_table = relS->getTuples();
+
+    unsigned int R_histogramSize = 1;
+    R_histogramSize <<= n;
+    unsigned int R_histogram[R_histogramSize];
+
+    for(i = 0; i < R_histogramSize; i++)
+    {
+        R_histogram[i] = 0;
+    }
+
+    for(i = 0; i < R_numOfTuples; i++)
+    {
+        int currentItem = *((int *) R_table[i].getItem());
+        unsigned int hash_value = hash_1(currentItem);
+        R_histogram[hash_value]++;
+        std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
+    }
+
+    unsigned int S_histogramSize = 1;
+    S_histogramSize <<= n;
+    unsigned int S_histogram[S_histogramSize];
+
+    for(i = 0; i < S_histogramSize; i++)
+    {
+        S_histogram[i] = 0;
+    }
+
+    std::cout << "-----------------------------" << std::endl;
+
+    for(i = 0; i < S_numOfTuples; i++)
+    {
+        int currentItem = *((int *) S_table[i].getItem());
+        unsigned int hash_value = hash_1(currentItem);
+        S_histogram[hash_value]++;
+        std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
+    }
+
+    std::cout << "-----------------------------" << std::endl;
+
+    for(i = 0; i < R_histogramSize; i++)
+    {
+        std::cout << "R_histogram[" << i << "] = " << R_histogram[i] << std::endl;
+    }
+
+    std::cout << "-----------------------------" << std::endl;
+
+    for(i = 0; i < S_histogramSize; i++)
+    {
+        std::cout << "S_histogram[" << i << "] = " << S_histogram[i] << std::endl;
     }
 
 	return NULL;
@@ -93,5 +190,37 @@ void execute_PHJ()
     Relation *relR = NULL, *relS = NULL;
     readInput(&relR, &relS);
 
+
+    std::cout << "Relations in the beginning\n" << std::endl;
+    std::cout << "            R" << std::endl;
+    relR->print(printTuple, lineContext);
+    std::cout << std::endl;
+    std::cout << "            S" << std::endl;
+    relS->print(printTuple, lineContext);
+    std::cout << std::endl;
+
+
+
+
+
+
 	RowIdPair *result = partitionedHashJoin(relR, relS);
+
+
+
+
+
+
+    delete ((int *) (relR->getTuples()[0]).getItem());
+    delete ((int *) (relR->getTuples()[1]).getItem());
+    delete ((int *) (relR->getTuples()[2]).getItem());
+    delete ((int *) (relS->getTuples()[0]).getItem());
+    delete ((int *) (relS->getTuples()[1]).getItem());
+    delete ((int *) (relS->getTuples()[2]).getItem());
+
+    delete[] relR->getTuples();
+    delete[] relS->getTuples();
+
+    delete relR;
+    delete relS;
 }

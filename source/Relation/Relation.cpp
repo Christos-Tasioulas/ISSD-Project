@@ -31,6 +31,15 @@ unsigned int Relation::getNumOfTuples() const
 	return numOfTuples;
 }
 
+/*********************************************
+ * Returns the size in bytes of the relation *
+ *********************************************/
+
+unsigned int Relation::getSize(unsigned int itemSize) const
+{
+    return numOfTuples * (4 + itemSize);
+}
+
 /*****************************************
  * Prints all the tuples of the relation *
  *****************************************/

@@ -28,6 +28,9 @@ public:
 	Tuple *getTuples() const;
 	unsigned int getNumOfTuples() const;
 
+/* Returns the size in bytes of the relation */
+	unsigned int getSize(unsigned int itemSize) const;
+
 /* Prints all the tuples of the relation */
 	void print(void (*visitTuple)(void *, unsigned int),
 		void (*contextBetweenTuples)() = NULL) const;
