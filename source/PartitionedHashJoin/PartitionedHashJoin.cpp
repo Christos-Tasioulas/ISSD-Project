@@ -94,4 +94,7 @@ void execute_PHJ()
     readInput(&relR, &relS);
 
 	RowIdPair *result = partitionedHashJoin(relR, relS);
+
+    if(result != NULL)
+        result->print(printUnsignedPair);
 }
