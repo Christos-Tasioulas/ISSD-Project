@@ -3,8 +3,6 @@
 #include <unistd.h>
 #include "PartitionedHashJoin.h"
 
-static unsigned int n = 3;
-
 /*****************************************
  * Used to print the contents of a tuple *
  *****************************************/
@@ -59,32 +57,11 @@ static long get_Lvl2_Cache_Size()
     return lvl_2_cache_size;
 }
 
-/**********
- * Hash 1 *
- **********/
+/***************
+ * Constructor *
+ ***************/
 
-unsigned int hash_1(int integer)
-{
-    unsigned int result = 0;
-    unsigned int i = 0;
-    int mask = 1;
-
-    for(i = 0; i < n; i++)
-    {
-        if((integer & mask) == mask)
-            result += mask;
-
-        mask <<= 1;
-    }
-
-    return result;
-}
-
-/*************************************
- * Reads the input relational arrays *
- *************************************/
-
-static void readInput(Relation **relR, Relation **relS)
+PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
 {
     Tuple *tuples_array_1 = new Tuple[3];
     Tuple *tuples_array_2 = new Tuple[3];
@@ -97,16 +74,121 @@ static void readInput(Relation **relR, Relation **relS)
     tuples_array_2[1] = Tuple(new int(9), 2);
     tuples_array_2[2] = Tuple(new int(5), 3);
 
-    (*relR) = new Relation(tuples_array_1, 3);
-    (*relS) = new Relation(tuples_array_2, 3);
+    relR = new Relation(tuples_array_1, 3);
+    relS = new Relation(tuples_array_2, 3);
+
+    bitsNumForHashing = 3;
+}
+
+/**************
+ * Destructor *
+ **************/
+
+PartitionedHashJoin::~PartitionedHashJoin()
+{
+    delete ((int *) (relR->getTuples()[0]).getItem());
+    delete ((int *) (relR->getTuples()[1]).getItem());
+    delete ((int *) (relR->getTuples()[2]).getItem());
+    delete ((int *) (relS->getTuples()[0]).getItem());
+    delete ((int *) (relS->getTuples()[1]).getItem());
+    delete ((int *) (relS->getTuples()[2]).getItem());
+
+    delete[] relR->getTuples();
+    delete[] relS->getTuples();
+
+    delete relR;
+    delete relS;
+}
+
+/************************************************
+ * Getter - Returns the relational array 'relR' *
+ ************************************************/
+
+Relation *PartitionedHashJoin::getRelR() const
+{
+    return relR;
+}
+
+/************************************************
+ * Getter - Returns the relational array 'relS' *
+ ************************************************/
+
+Relation *PartitionedHashJoin::getRelS() const
+{
+    return relS;
+}
+
+/************************************************************
+ * Getter - Returns the number of included bits for hashing *
+ ************************************************************/
+
+unsigned int PartitionedHashJoin::getBitsNumForHashing() const
+{
+    return bitsNumForHashing;
+}
+
+/************************************************
+ * Hashes a given integer into the value of its *
+ *      rightmost 'bitsNumForHashing' bits      *
+ ************************************************/
+
+unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
+{
+    /* This is the final result of hashing */
+    unsigned int result = 0;
+
+    /* Helper variable used for counting */
+    unsigned int i = 0;
+
+    /* A mask that will help detecting whether a specific
+     * bit of the given integer has value 1 or 0
+     */
+    int mask = 1;
+
+    /* Starting from the rightmost bit of the given
+     * integer, we will examine whether the bit under
+     * examination has the value 1 or 0. We will do
+     * this for the rightmost 'bitsNumForHashing' bits.
+     */
+    for(i = 0; i < bitsNumForHashing; i++)
+    {
+        /* If the result of the bitwise 'AND' between
+         * the integer and the mask is the mask itself,
+         * then the value of the current bit is 1.
+         *
+         * If the value of the bit is 1, we have to add
+         * the value of the mask to the result so as to
+         * turn that bit of the result to 1.
+         */
+        if((integer & mask) == mask)
+            result += mask;
+
+        /* We multiply the mask by 2, so as to turn the
+         * next bit of the mask from 0 to 1 and set the
+         * current one to 0. We will use this new value
+         * of the mask to check the value of the next bit.
+         */
+        mask <<= 1;
+    }
+
+    /* We return the hashing result */
+    return result;
 }
 
 /************************************************
  * Executes the Partitioned Hash Join Algorithm *
  ************************************************/
 
-static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
+RowIdPair *PartitionedHashJoin::executeJoin()
 {
+    std::cout << "Relations in the beginning\n" << std::endl;
+    std::cout << "            R" << std::endl;
+    relR->print(printTuple, lineContext);
+    std::cout << std::endl;
+    std::cout << "            S" << std::endl;
+    relS->print(printTuple, lineContext);
+    std::cout << std::endl;
+
     long lvl2CacheSize = get_Lvl2_Cache_Size();
 
     if(lvl2CacheSize != -1)
@@ -127,7 +209,7 @@ static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
     Tuple *S_table = relS->getTuples();
 
     unsigned int R_histogramSize = 1;
-    R_histogramSize <<= n;
+    R_histogramSize <<= bitsNumForHashing;
     unsigned int R_histogram[R_histogramSize];
 
     for(i = 0; i < R_histogramSize; i++)
@@ -138,13 +220,13 @@ static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
     for(i = 0; i < R_numOfTuples; i++)
     {
         int currentItem = *((int *) R_table[i].getItem());
-        unsigned int hash_value = hash_1(currentItem);
+        unsigned int hash_value = bitReductionHash(currentItem);
         R_histogram[hash_value]++;
         std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
     }
 
     unsigned int S_histogramSize = 1;
-    S_histogramSize <<= n;
+    S_histogramSize <<= bitsNumForHashing;
     unsigned int S_histogram[S_histogramSize];
 
     for(i = 0; i < S_histogramSize; i++)
@@ -157,7 +239,7 @@ static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
     for(i = 0; i < S_numOfTuples; i++)
     {
         int currentItem = *((int *) S_table[i].getItem());
-        unsigned int hash_value = hash_1(currentItem);
+        unsigned int hash_value = bitReductionHash(currentItem);
         S_histogram[hash_value]++;
         std::cout << "Hash value of " << currentItem << ": " << hash_value << std::endl;
     }
@@ -177,50 +259,4 @@ static RowIdPair *partitionedHashJoin(Relation *relR, Relation *relS)
     }
 
 	return NULL;
-}
-
-/**************************************************
- * Reads the input relational arrays and executes *
- * the Partitioned Hash Join Algorithm to perform *
- *        the Join operation between them         *
- **************************************************/
-
-void execute_PHJ()
-{
-    Relation *relR = NULL, *relS = NULL;
-    readInput(&relR, &relS);
-
-
-    std::cout << "Relations in the beginning\n" << std::endl;
-    std::cout << "            R" << std::endl;
-    relR->print(printTuple, lineContext);
-    std::cout << std::endl;
-    std::cout << "            S" << std::endl;
-    relS->print(printTuple, lineContext);
-    std::cout << std::endl;
-
-
-
-
-
-
-	RowIdPair *result = partitionedHashJoin(relR, relS);
-
-
-
-
-
-
-    delete ((int *) (relR->getTuples()[0]).getItem());
-    delete ((int *) (relR->getTuples()[1]).getItem());
-    delete ((int *) (relR->getTuples()[2]).getItem());
-    delete ((int *) (relS->getTuples()[0]).getItem());
-    delete ((int *) (relS->getTuples()[1]).getItem());
-    delete ((int *) (relS->getTuples()[2]).getItem());
-
-    delete[] relR->getTuples();
-    delete[] relS->getTuples();
-
-    delete relR;
-    delete relS;
 }
