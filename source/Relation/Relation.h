@@ -28,6 +28,10 @@ public:
 	Tuple *getTuples() const;
 	unsigned int getNumOfTuples() const;
 
+/* Setters */
+	void setTuples(Tuple *newTuples);
+	void setNumOfTuples(unsigned int newNumOfTuples);
+
 /* Returns the size in bytes of the relation */
 	unsigned int getSize(unsigned int itemSize) const;
 

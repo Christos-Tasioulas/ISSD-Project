@@ -31,6 +31,24 @@ unsigned int Relation::getNumOfTuples() const
 	return numOfTuples;
 }
 
+/****************************************
+ * Setter - Updates the array of tuples *
+ ****************************************/
+
+void Relation::setTuples(Tuple *newTuples)
+{
+    tuples = newTuples;
+}
+
+/******************************************************
+ * Setter - Updates the amount of tuples in the array *
+ ******************************************************/
+
+void Relation::setNumOfTuples(unsigned int newNumOfTuples)
+{
+    numOfTuples = newNumOfTuples;
+}
+
 /*********************************************
  * Returns the size in bytes of the relation *
  *********************************************/

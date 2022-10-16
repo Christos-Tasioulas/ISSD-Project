@@ -16,6 +16,19 @@ Tuple::Tuple(void *item, unsigned int rowId)
 
 Tuple::~Tuple() {}
 
+/********************
+ * Copy Constructor *
+ ********************/
+
+Tuple::Tuple(const Tuple& other)
+{
+	/* We copy the item of the other tuple to this one */
+	item = other.item;
+
+	/* We copy the row ID of the other tuple to this one */
+	rowId = other.rowId;
+}
+
 /*************************************************************
  * Getter - Returns the user data that is saved in the tuple *
  *************************************************************/
@@ -32,6 +45,24 @@ void *Tuple::getItem() const
 unsigned int Tuple::getRowId() const
 {
 	return rowId;
+}
+
+/*************************************************************
+ * Setter - Updates the user data that is saved in the tuple *
+ *************************************************************/
+
+void Tuple::setItem(void *newItem)
+{
+	item = newItem;
+}
+
+/************************************************************************
+ * Setter - Updates the index of the row where the user data is located *
+ ************************************************************************/
+
+void Tuple::setRowId(unsigned int newRowId)
+{
+	rowId = newRowId;
 }
 
 /***********************************************

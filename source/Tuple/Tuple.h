@@ -17,9 +17,16 @@ public:
 	Tuple(void *item = NULL, unsigned int rowId = 0);
 	~Tuple();
 
+/* Copy Constructor */
+	Tuple(const Tuple&);
+
 /* Getters */
 	void *getItem() const;
 	unsigned int getRowId() const;
+
+/* Setters */
+	void setItem(void *newItem);
+	void setRowId(unsigned int newRowId);
 
 /* Examines if two tuples have equal user data */
 	bool equals(Tuple *other, int (*compare)(void *, void *)) const;

@@ -77,7 +77,7 @@ PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
     relR = new Relation(tuples_array_1, 3);
     relS = new Relation(tuples_array_2, 3);
 
-    bitsNumForHashing = 3;
+    bitsNumForHashing = 1;
 }
 
 /**************
@@ -250,7 +250,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     R_histogramSize <<= bitsNumForHashing;
 
     /* We define the histogram of 'relR' */
-    unsigned int R_histogram[R_histogramSize];
+    unsigned int *R_histogram = new unsigned int[R_histogramSize];
 
     /* We initialize every element of the histogram to zero */
 
@@ -297,7 +297,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     S_histogramSize <<= bitsNumForHashing;
 
     /* We define the histogram of 'relS' */
-    unsigned int S_histogram[S_histogramSize];
+    unsigned int *S_histogram = new unsigned int[S_histogramSize];
 
     /* We initialize every element of the histogram to zero */
 
@@ -328,7 +328,136 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         S_histogram[hash_value]++;
     }
 
-    /* Hardcoded result just to check the output */
+    /* Now we are going to build the prefix sum arrays
+     *
+     * We initialize the prefix sum to zero
+     */
+    unsigned int prefixSum = 0;
+
+    /* This is the prefix sum array of the relation 'relR'
+     * It has the same size as the histogram of 'relR'
+     */
+    unsigned int *prefixSum_R = new unsigned int[R_histogramSize];
+
+    /* We build the prefix sum of 'relR' */
+
+    for(i = 0; i < R_histogramSize; i++)
+    {
+        /* We store the current prefix sum to index 'i' */
+        prefixSum_R[i] = prefixSum;
+
+        /* We retrieve the value of the current element */
+        unsigned int currentItem = R_histogram[i];
+     
+        /* We add the next element of the
+         * histogram to the prefix sum
+         */
+        prefixSum += currentItem;
+    }
+
+    /* We reset the prefix sum to do the same with 'relS' */
+    prefixSum = 0;
+
+    /* This is the prefix sum array of the relation 'relS'
+     * It has the same size as the histogram of 'relS'
+     */
+    unsigned int *prefixSum_S = new unsigned int[S_histogramSize];
+
+    /* We build the prefix sum of 'relS' */
+
+    for(i = 0; i < S_histogramSize; i++)
+    {
+        /* We store the current prefix sum to index 'i' */
+        prefixSum_S[i] = prefixSum;
+
+        /* We retrieve the value of the current element */
+        unsigned int currentItem = S_histogram[i];
+     
+        /* We add the next element of the
+         * histogram to the prefix sum
+         */
+        prefixSum += currentItem;
+    }
+
+    std::cout << "+------------+------------+------------+------------+" << std::endl;
+    std::cout << "|   R Hist   |   R Psum   |   S Hist   |   S Psum   |" << std::endl;
+    std::cout << "+------------+------------+------------+------------+" << std::endl;
+
+    for(i = 0; i < S_histogramSize; i++)
+    {
+        printf("|%12u|%12u|%12u|%12u|\n", R_histogram[i],
+            prefixSum_R[i], S_histogram[i], prefixSum_S[i]);
+
+        std::cout << "+------------+------------+------------+------------+" << std::endl;
+    }
+
+    std::cout << std::endl;
+
+    Tuple *reordered_R = new Tuple[R_numOfTuples];
+    Tuple *reordered_S = new Tuple[S_numOfTuples];
+    unsigned int *elementsCounter = new unsigned int[R_histogramSize];
+
+    for(i = 0; i < R_histogramSize; i++)
+        elementsCounter[i] = 0;
+
+    for(i = 0; i < R_numOfTuples; i++)
+    {
+        /* We retrieve the value of the current tuple */
+        int currentItem = *((int *) R_table[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
+        unsigned int hash_value = bitReductionHash(currentItem);
+
+        reordered_R[prefixSum_R[hash_value] + elementsCounter[hash_value]] = R_table[i];
+        elementsCounter[hash_value]++;
+    }
+
+    relR->setTuples(reordered_R);
+    delete[] R_table;
+
+    for(i = 0; i < R_histogramSize; i++)
+        elementsCounter[i] = 0;
+
+    for(i = 0; i < S_numOfTuples; i++)
+    {
+        /* We retrieve the value of the current tuple */
+        int currentItem = *((int *) S_table[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
+        unsigned int hash_value = bitReductionHash(currentItem);
+
+        reordered_S[prefixSum_S[hash_value] + elementsCounter[hash_value]] = S_table[i];
+        elementsCounter[hash_value]++;
+    }
+
+    relS->setTuples(reordered_S);
+    delete[] S_table;
+
+    displayInitialRelations();
+
+    delete[] elementsCounter;
+    delete[] R_histogram;
+    delete[] S_histogram;
+    delete[] prefixSum_R;
+    delete[] prefixSum_S;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* Hardcoded result just to check the output printing */
     RowIdPair *a = new RowIdPair[2];
     a[0].setLeftRowId(1);
     a[0].setRightRowId(1);
