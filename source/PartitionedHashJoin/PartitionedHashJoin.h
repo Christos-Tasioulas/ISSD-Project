@@ -24,7 +24,12 @@ private:
     unsigned int bitReductionHash(int integer) const;
 
 /* Displays in the screen the contents of the initial relations */
-    void displayInitialRelations() const;
+    void displayInitialRelations(const char *message) const;
+
+/* Displays in the screen the contents of the auxiliary arrays */
+    void displayAuxiliaryArrays(unsigned int size,
+        unsigned int *R_hist, unsigned int *S_hist,
+        unsigned int *R_psum, unsigned int *S_psum) const;
 
 public:
 

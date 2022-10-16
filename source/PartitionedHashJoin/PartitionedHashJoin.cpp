@@ -131,10 +131,10 @@ unsigned int PartitionedHashJoin::getBitsNumForHashing() const
  * Displays in the screen the contents of the initial relations *
  ****************************************************************/
 
-void PartitionedHashJoin::displayInitialRelations() const
+void PartitionedHashJoin::displayInitialRelations(const char *message) const
 {
     /* We print an informative message about the initial relations */
-    std::cout << "\nRelations in the beginning\n" << std::endl;
+    std::cout << "\n" << message << "\n" << std::endl;
 
     /* We print the contents of the relational array 'relR' */
     std::cout << "\t    R" << std::endl;
@@ -144,6 +144,31 @@ void PartitionedHashJoin::displayInitialRelations() const
     /* We print the contents of the relational array 'relS' */
     std::cout << "\t    S" << std::endl;
     relS->print(printTuple, lineContext);
+    std::cout << std::endl;
+}
+
+/***************************************************************
+ * Displays in the screen the contents of the auxiliary arrays *
+ ***************************************************************/
+
+void PartitionedHashJoin::displayAuxiliaryArrays(unsigned int size,
+    unsigned int *R_hist, unsigned int *S_hist,
+    unsigned int *R_psum, unsigned int *S_psum) const
+{
+    std::cout << "\nContents of Auxiliary Arrays\n" << std::endl;
+
+    std::cout << "+------------+------------+------------+------------+" << std::endl;
+    std::cout << "|   R Hist   |   R Psum   |   S Hist   |   S Psum   |" << std::endl;
+    std::cout << "+------------+------------+------------+------------+" << std::endl;
+
+    unsigned int i;
+
+    for(i = 0; i < size; i++)
+    {
+        printf("|%12u|%12u|%12u|%12u|\n", R_hist[i], R_psum[i], S_hist[i], S_psum[i]);
+        std::cout << "+------------+------------+------------+------------+" << std::endl;
+    }
+
     std::cout << std::endl;
 }
 
@@ -202,7 +227,7 @@ unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
 RowIdRelation *PartitionedHashJoin::executeJoin()
 {
     /* We print the contents of the initial relations */
-    displayInitialRelations();
+    displayInitialRelations("Relations in the beginning");
 
     /* We retrieve the size of the level-2 cache */
     long lvl2CacheSize = get_Lvl2_Cache_Size();
@@ -379,26 +404,40 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         prefixSum += currentItem;
     }
 
-    std::cout << "+------------+------------+------------+------------+" << std::endl;
-    std::cout << "|   R Hist   |   R Psum   |   S Hist   |   S Psum   |" << std::endl;
-    std::cout << "+------------+------------+------------+------------+" << std::endl;
+    /* We display both histograms and prefix sums in the screen */
+    displayAuxiliaryArrays(S_histogramSize, R_histogram,
+        S_histogram, prefixSum_R, prefixSum_S);
 
-    for(i = 0; i < S_histogramSize; i++)
-    {
-        printf("|%12u|%12u|%12u|%12u|\n", R_histogram[i],
-            prefixSum_R[i], S_histogram[i], prefixSum_S[i]);
-
-        std::cout << "+------------+------------+------------+------------+" << std::endl;
-    }
-
-    std::cout << std::endl;
-
+    /* Now we have everything we need to reorder the contents
+     * of the relational arrays 'relR' and 'relS'.
+     *
+     * First, we will allocate two new arrays with the same
+     * size as the relational arrays in the heap.
+     */
     Tuple *reordered_R = new Tuple[R_numOfTuples];
     Tuple *reordered_S = new Tuple[S_numOfTuples];
+
+    /* When an item is hashed to a bucket (with the help of the prefix
+     * sum auxiliary array), then another item that will be hashed
+     * to the same bucket cannot take the position of the first one.
+     * It has to be inserted in the next index of the first item.
+     *
+     * We will use the 'elementsCounter' array to decide properly to
+     * which position in the new array an item must be inserted, given
+     * that other items may have been hashed to the same bucket in the
+     * past. We keep track of how many items have been inserted to
+     * every bucket with the 'elementsCounter' auxiliary array.
+     */
     unsigned int *elementsCounter = new unsigned int[R_histogramSize];
 
+    /* Initially, there are no elements in any bucket.
+     *
+     * We initialize all the contents of 'elementsCounter' to zero.
+     */
     for(i = 0; i < R_histogramSize; i++)
         elementsCounter[i] = 0;
+
+    /* We start reordering the relational array 'relR' */
 
     for(i = 0; i < R_numOfTuples; i++)
     {
@@ -408,15 +447,27 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         /* We hash that value with bit reduction hashing */
         unsigned int hash_value = bitReductionHash(currentItem);
 
+        /* According to its hash value and the amount of previous
+         * items that have been hashed to the same bucket, we
+         * insert the current item to the reordered array of 'relR'
+         */
         reordered_R[prefixSum_R[hash_value] + elementsCounter[hash_value]] = R_table[i];
+
+        /* We increase the amount of inserted items in this bucket by 1 */
         elementsCounter[hash_value]++;
     }
 
+    /* We assign the reordered array to 'relR' and discard the previous array */
     relR->setTuples(reordered_R);
     delete[] R_table;
 
+    /* We reset the contents of 'elementCounter' to zero,
+     * because we want to repeat the process for 'relS'
+     */
     for(i = 0; i < R_histogramSize; i++)
         elementsCounter[i] = 0;
+
+    /* We start reordering the relational array 'relS' */
 
     for(i = 0; i < S_numOfTuples; i++)
     {
@@ -426,15 +477,24 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         /* We hash that value with bit reduction hashing */
         unsigned int hash_value = bitReductionHash(currentItem);
 
+        /* According to its hash value and the amount of previous
+         * items that have been hashed to the same bucket, we
+         * insert the current item to the reordered array of 'relS'
+         */
         reordered_S[prefixSum_S[hash_value] + elementsCounter[hash_value]] = S_table[i];
+
+        /* We increase the amount of inserted items in this bucket by 1 */
         elementsCounter[hash_value]++;
     }
 
+    /* We assign the reordered array to 'relS' and discard the previous array */
     relS->setTuples(reordered_S);
     delete[] S_table;
 
-    displayInitialRelations();
+    /* We print the reordered arrays of the initial relations */
+    displayInitialRelations("Relations with reordered contents");
 
+    /* We free the allocated memory for the auxiliary arrays */
     delete[] elementsCounter;
     delete[] R_histogram;
     delete[] S_histogram;
