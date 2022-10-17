@@ -301,12 +301,6 @@ void PartitionedHashJoin::probeRelations(
     unsigned int S_end_index,
     List *result) const
 {
-    printf("Probing R -> [%u,%u) and S -> [%u,%u)\n",
-        R_start_index,
-        R_end_index,
-        S_start_index,
-        S_end_index);
-
     /* If one of the two buckets is empty, the join
      * operation produces no result for these buckets
      */
@@ -316,35 +310,65 @@ void PartitionedHashJoin::probeRelations(
         return;
     }
 
+    /* We will start building the index of relation 'R' */
     HashTable *R_tuples_table = new HashTable();
 
+    /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
     Tuple *S_table = relS->getTuples();
 
+    /* Helper variable for counting */
     unsigned int i;
 
+    /* Starting from the given starting index of 'R', we place
+     * every tuple of the 'R' table to the hash table. We keep
+     * inserting items until we reach the given end index of 'R'
+     */
     for(i = R_start_index; i < R_end_index; i++)
     {
         R_tuples_table->insert(&R_table[i], &R_table[i],
             PartitionedHashJoin::hashTuple);
     }
 
+    /* Starting from the given starting index of 'S', we search
+     * every tuple of the 'S' table in the hash table. If we
+     * find an item with the same value in the hash table, we
+     * include it in the final result of the 'join' operation
+     *
+     * We keep searching the tuples of 'S' in the hash
+     * table until we reach the given end index of 'S'
+     */
     for(i = S_start_index; i < S_end_index; i++)
     {
+        /* We search the current tuple of 'S' in the hash table */
         void *searched_item = R_tuples_table->searchItem(&S_table[i],
             PartitionedHashJoin::hashTuple, compareTupleUserData);
 
+        /* If the tuple does not exist in the hash table,
+         * we continue with the next tuple of 'S'
+         */
         if(searched_item == NULL)
             continue;
 
+        /* If this part is reached, an equal tuple was found
+         * in the hash table. We cast it to its original type
+         */
         Tuple *searched_tuple = (Tuple *) searched_item;
 
+        /* Now we have found a tuple of 'S' and a tuple of 'R'
+         * that have the same user data. We retrieve the row
+         * IDs of these two tuples
+         */
         unsigned int R_tuple_rowId = searched_tuple->getRowId();
         unsigned int S_tuple_rowId = S_table[i].getRowId();
 
+        /* We create an item that stores the pair of the above
+         * two row IDs and we insert that item in the list
+         */
         result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
     }
 
+    /* We free the allocated memory for the hash table */
     delete R_tuples_table;
 }
 
@@ -386,6 +410,72 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
     /* This is the array itself of the relation 'relS' */
     Tuple *S_table = relS->getTuples();
+
+    /*
+     * Case both realtion tables are below the size of level 2 cache
+     */
+    if((relR_size < lvl2CacheSize) && (relS_size < lvl2CacheSize))
+    {
+        /* We create the list that will be storing all the contents
+         * of the result. We are using a list because we do not know
+         * the size of the result beforehand (we don't know the num
+         * of tuples that the result will have)
+         */
+        List *resultAsList = new List();
+
+        /* Since the relations can fit in the
+         * cache, we probe the whole arrays
+         */
+        probeRelations(0, R_numOfTuples, 0, S_numOfTuples, resultAsList);
+
+        /* This is the number of row ID pairs of the result */
+        unsigned int numOfItemsInList = resultAsList->getCounter();
+
+        /* We create a new array of row ID pairs with size equal to the
+         * size of the list (which is the num of row ID pairs of the result)
+         */
+        RowIdPair *resultArray = new RowIdPair[numOfItemsInList];
+
+        /* We are going to transfer every row
+         * ID pair of the list to the array
+         */
+        Listnode *current = resultAsList->getHead();
+
+        /* Helper variable for counting */
+        unsigned int i;
+
+        /* As long as we have not transfered all the items from
+         * the list to the array, we do the following actions
+         */
+        for(i = 0; i < numOfItemsInList; i++)
+        {
+            /* We retrieve the current row ID pair for transer */
+            RowIdPair *current_pair = (RowIdPair *) current->getItem();
+
+            /* We transfer the information of the pair we retrieved
+             * to the pair of the current position in the array
+             */
+            resultArray[i].setLeftRowId(current_pair->getLeftRowId());
+            resultArray[i].setRightRowId(current_pair->getRightRowId());
+
+            /* We delete the pair of the list */
+            delete current_pair;
+
+            /* We proceed to the next pair of the list */
+            current = current->getNext();
+        }
+
+        /* We initialize the final item we will return.
+         * It holds the array of row ID pairs and its size.
+         */
+        RowIdRelation *result = new RowIdRelation(resultArray, numOfItemsInList);
+
+        /* We free the allocated memory for the auxiliary list */
+        delete resultAsList;
+
+        /* We return the final result */
+        return result;
+    }
 
     /* We will build the histogram of the relation 'relR'
      *
@@ -644,20 +734,43 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     probeRelations(prefixSum_R[i], R_numOfTuples,
         prefixSum_S[i], S_numOfTuples, resultAsList);
 
+    /* This is the number of row ID pairs of the result */
     unsigned int numOfItemsInList = resultAsList->getCounter();
 
+    /* We create a new array of row ID pairs with size equal to the
+     * size of the list (which is the num of row ID pairs of the result)
+     */
     RowIdPair *resultArray = new RowIdPair[numOfItemsInList];
+
+    /* We are going to transfer every row
+     * ID pair of the list to the array
+     */
     Listnode *current = resultAsList->getHead();
 
+    /* As long as we have not transfered all the items from
+     * the list to the array, we do the following actions
+     */
     for(i = 0; i < numOfItemsInList; i++)
     {
+        /* We retrieve the current row ID pair for transer */
         RowIdPair *current_pair = (RowIdPair *) current->getItem();
+
+        /* We transfer the information of the pair we retrieved
+         * to the pair of the current position in the array
+         */
         resultArray[i].setLeftRowId(current_pair->getLeftRowId());
         resultArray[i].setRightRowId(current_pair->getRightRowId());
+
+        /* We delete the pair of the list */
         delete current_pair;
+
+        /* We proceed to the next pair of the list */
         current = current->getNext();
     }
 
+    /* We initialize the final item we will return.
+     * It holds the array of row ID pairs and its size.
+     */
     RowIdRelation *result = new RowIdRelation(resultArray, numOfItemsInList);
 
     /* We free the allocated memory for the auxiliary list */
@@ -670,6 +783,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     delete[] prefixSum_R;
     delete[] prefixSum_S;
 
+    /* We return the final result */
 	return result;
 }
 
