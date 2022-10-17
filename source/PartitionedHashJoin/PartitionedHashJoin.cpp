@@ -644,9 +644,21 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     probeRelations(prefixSum_R[i], R_numOfTuples,
         prefixSum_S[i], S_numOfTuples, resultAsList);
 
-    std::cout << "Num of items in list: " << resultAsList->getCounter() << std::endl;
+    unsigned int numOfItemsInList = resultAsList->getCounter();
 
+    RowIdPair *resultArray = new RowIdPair[numOfItemsInList];
+    Listnode *current = resultAsList->getHead();
 
+    for(i = 0; i < numOfItemsInList; i++)
+    {
+        RowIdPair *current_pair = (RowIdPair *) current->getItem();
+        resultArray[i].setLeftRowId(current_pair->getLeftRowId());
+        resultArray[i].setRightRowId(current_pair->getRightRowId());
+        delete current_pair;
+        current = current->getNext();
+    }
+
+    RowIdRelation *result = new RowIdRelation(resultArray, numOfItemsInList);
 
     /* We free the allocated memory for the auxiliary list */
     delete resultAsList;
@@ -657,29 +669,6 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     delete[] S_histogram;
     delete[] prefixSum_R;
     delete[] prefixSum_S;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /* Hardcoded result just to check the output printing */
-    RowIdPair *a = new RowIdPair[2];
-    a[0].setLeftRowId(1);
-    a[0].setRightRowId(1);
-    a[1].setLeftRowId(2);
-    a[1].setRightRowId(3);
-
-    RowIdRelation *result = new RowIdRelation(a, 2);
 
 	return result;
 }
