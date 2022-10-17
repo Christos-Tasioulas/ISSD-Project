@@ -16,19 +16,6 @@ Tuple::Tuple(void *item, unsigned int rowId)
 
 Tuple::~Tuple() {}
 
-/********************
- * Copy Constructor *
- ********************/
-
-Tuple::Tuple(const Tuple& other)
-{
-	/* We copy the item of the other tuple to this one */
-	item = other.item;
-
-	/* We copy the row ID of the other tuple to this one */
-	rowId = other.rowId;
-}
-
 /*************************************************************
  * Getter - Returns the user data that is saved in the tuple *
  *************************************************************/
@@ -69,9 +56,18 @@ void Tuple::setRowId(unsigned int newRowId)
  * Examines if two tuples have equal user data *
  ***********************************************/
 
-bool Tuple::equals(Tuple *other, int (*compare)(void *, void *)) const
+bool Tuple::hasEqualItem(Tuple *other, int (*compare)(void *, void *)) const
 {
 	return (compare(item, other->item) == 0);
+}
+
+/********************************************
+ * Examines if two tuples have equal row ID *
+ ********************************************/
+
+bool Tuple::hasEqualRowId(Tuple *other) const
+{
+	return (rowId == other->rowId);
 }
 
 /****************************************************
@@ -81,4 +77,17 @@ bool Tuple::equals(Tuple *other, int (*compare)(void *, void *)) const
 void Tuple::print(void (*visit)(void *, unsigned int)) const
 {
 	visit(item, rowId);
+}
+
+/****************************************************************
+ * Determines what happens when we assign a tuple to a variable *
+ ****************************************************************/
+
+void Tuple::operator=(const Tuple& other)
+{
+	/* We copy the item of the other tuple to this one */
+	item = other.item;
+
+	/* We copy the row ID of the other tuple to this one */
+	rowId = other.rowId;
 }

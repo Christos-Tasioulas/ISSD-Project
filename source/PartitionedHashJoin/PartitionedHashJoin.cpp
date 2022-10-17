@@ -32,6 +32,49 @@ static void lineContext()
     std::cout << "+-----------+-----------+" << std::endl;
 }
 
+/***************************************************************************
+ *                      Compares two signed integers                       *
+ *                                                                         *
+ * Returns positive result if the first integer is greater than the second *
+ * Returns negative result if the second integer is greater than the first *
+ *                Returns zero if the two integers are equal               *
+ ***************************************************************************/
+
+static int compareInts(void *item_1, void *item_2)
+{
+    /* We retrieve the values of both integers */
+    int integer_1 = *((int *) item_1);
+    int integer_2 = *((int *) item_2);
+
+    /* We return the difference of the integers */
+    return integer_1 - integer_2;
+}
+
+/*************************************************************
+ * Compares only the user data of two tuples. That means the *
+ *  comparison doesn't depend on the row ID of either tuple  *
+ *       We just compare the user items stored in them       *
+ *************************************************************/
+
+static int compareTupleUserData(void *item_1, void *item_2)
+{
+    /* First, we cast both items to the 'Tuple' type */
+    Tuple *tuple_1 = (Tuple *) item_1;
+    Tuple *tuple_2 = (Tuple *) item_2;
+
+    /* We retrieve the items of both tuples */
+    void *tuple_1_item = tuple_1->getItem();
+    void *tuple_2_item = tuple_2->getItem();
+
+    /* The items stored in the tuples are integers
+     *
+     * We return the result of the comparison between them.
+     * This function ignores the row ID stored in the tuples.
+     * It just compares the two tuples by their user items.
+     */
+    return compareInts(tuple_1_item, tuple_2_item);
+}
+
 /*********************************************************************
  * Returns the size of the LVL2 cache or -1 in case an error occured *
  *********************************************************************/
@@ -218,6 +261,91 @@ unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
 
     /* We return the hashing result */
     return result;
+}
+
+/***********************************************
+ * Given the address of a tuple, it hashes its *
+ *  contents to a non-negative integer value   *
+ ***********************************************/
+
+unsigned int PartitionedHashJoin::hashTuple(void *item)
+{
+    /* We cast the given address to its original type */
+    Tuple *tuple = (Tuple *) item;
+
+    /* We retrieve the item stored in the tuple */
+    void *tuple_item = tuple->getItem();
+
+    /* The item stored in the tuple is an integer */
+    int integer_item = *((int *) tuple_item);
+
+    /* The hash value of the integer is the integer itself,
+     * but only after being cast to the unsigned integer type
+     */
+    return (unsigned int) integer_item;
+}
+
+/****************************************************************
+ *  Executes Building and Probing for a pair of buckets of the  *
+ * relations 'S' and 'R'. The four indexes determine the start  *
+ *  and the end of the buckets. The end index is not included   *
+ *                                                              *
+ * The method places the row ID pairs that exist in the buckets *
+ * and satisfy the join operation in the provided list 'result' *
+ ****************************************************************/
+
+void PartitionedHashJoin::probeRelations(
+    unsigned int R_start_index,
+    unsigned int R_end_index,
+    unsigned int S_start_index,
+    unsigned int S_end_index,
+    List *result) const
+{
+    printf("Probing R -> [%u,%u) and S -> [%u,%u)\n",
+        R_start_index,
+        R_end_index,
+        S_start_index,
+        S_end_index);
+
+    /* If one of the two buckets is empty, the join
+     * operation produces no result for these buckets
+     */
+    if(R_start_index >= R_end_index
+    || S_start_index >= S_end_index)
+    {
+        return;
+    }
+
+    HashTable *R_tuples_table = new HashTable();
+
+    Tuple *R_table = relR->getTuples();
+    Tuple *S_table = relS->getTuples();
+
+    unsigned int i;
+
+    for(i = R_start_index; i < R_end_index; i++)
+    {
+        R_tuples_table->insert(&R_table[i], &R_table[i],
+            PartitionedHashJoin::hashTuple);
+    }
+
+    for(i = S_start_index; i < S_end_index; i++)
+    {
+        void *searched_item = R_tuples_table->searchItem(&S_table[i],
+            PartitionedHashJoin::hashTuple, compareTupleUserData);
+
+        if(searched_item == NULL)
+            continue;
+
+        Tuple *searched_tuple = (Tuple *) searched_item;
+
+        unsigned int R_tuple_rowId = searched_tuple->getRowId();
+        unsigned int S_tuple_rowId = S_table[i].getRowId();
+
+        result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
+    }
+
+    delete R_tuples_table;
 }
 
 /************************************************
@@ -494,14 +622,41 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     /* We print the reordered arrays of the initial relations */
     displayInitialRelations("Relations with reordered contents");
 
+    /* We create the list that will be storing all the contents
+     * of the result. We are using a list because we do not know
+     * the size of the result beforehand (we don't know the num
+     * of tuples that the result will have)
+     */
+    List *resultAsList = new List();
+
+    /* We start probing the buckets of the reordered array 'R'
+     * to the buckets of the reordered array 'S' that have the
+     * same hashing ID
+     */
+    for(i = 0; i < R_histogramSize - 1; i++)
+    {
+        probeRelations(prefixSum_R[i], prefixSum_R[i+1],
+            prefixSum_S[i], prefixSum_S[i+1], resultAsList);
+    }
+
+    /* We compare the last pair of buckets */
+
+    probeRelations(prefixSum_R[i], R_numOfTuples,
+        prefixSum_S[i], S_numOfTuples, resultAsList);
+
+    std::cout << "Num of items in list: " << resultAsList->getCounter() << std::endl;
+
+
+
+    /* We free the allocated memory for the auxiliary list */
+    delete resultAsList;
+
     /* We free the allocated memory for the auxiliary arrays */
     delete[] elementsCounter;
     delete[] R_histogram;
     delete[] S_histogram;
     delete[] prefixSum_R;
     delete[] prefixSum_S;
-
-
 
 
 

@@ -17,9 +17,6 @@ public:
 	Tuple(void *item = NULL, unsigned int rowId = 0);
 	~Tuple();
 
-/* Copy Constructor */
-	Tuple(const Tuple&);
-
 /* Getters */
 	void *getItem() const;
 	unsigned int getRowId() const;
@@ -29,10 +26,16 @@ public:
 	void setRowId(unsigned int newRowId);
 
 /* Examines if two tuples have equal user data */
-	bool equals(Tuple *other, int (*compare)(void *, void *)) const;
+	bool hasEqualItem(Tuple *other, int (*compare)(void *, void *)) const;
+
+/* Examines if two tuples have equal row ID */
+	bool hasEqualRowId(Tuple *other) const;
 
 /* Prints the user data and the row ID of the tuple */
 	void print(void (*visit)(void *, unsigned int)) const;
+
+/* Determines what happens when we assign a tuple to a variable */
+	void operator=(const Tuple& other);
 
 };
 

@@ -15,7 +15,7 @@ TARGET=phj
 VERBOSE=FALSE
 
 # Create the list of directories
-DIRS=Bitmap HashTable Main PartitionedHashJoin Relation RowIdPair RowIdRelation Tuple
+DIRS=Bitmap HashTable List Main PartitionedHashJoin Relation RowIdPair RowIdRelation Tuple
 SOURCEDIRS=$(foreach dir, $(DIRS), $(addprefix $(SOURCEDIR)/, $(dir)))
 TARGETDIRS=$(foreach dir, $(DIRS), $(addprefix $(BUILDDIR)/, $(dir)))
 

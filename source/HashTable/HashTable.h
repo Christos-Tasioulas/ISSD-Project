@@ -77,6 +77,16 @@ public:
 	bool search(void *key, unsigned int (*hash_function)(void *),
 		int (*compare)(void *, void *)) const;
 
+/* Searches the given key in the hash table
+ *
+ * Returns the item that accompanies the given
+ * key if the key exists in the table
+ *
+ * Returns 'NULL' if the given key does not exist
+ */
+	void *searchItem(void *key, unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *)) const;
+
 /* Prints all the contents of the hash table */
 	void print(void (*visitItemAndKey)(void *, void *),
 		void (*contextBetweenDataAndBitmap)() = NULL,

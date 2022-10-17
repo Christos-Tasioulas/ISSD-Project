@@ -597,6 +597,63 @@ bool HashTable::search(void *key, unsigned int (*hash_function)(void *),
 	return false;
 }
 
+/**************************************************
+ *    Searches the given key in the hash table    *
+ *                                                *
+ *  Returns the item that accompanies the given   *
+ *       key if the key exists in the table       *
+ *                                                *
+ * Returns 'NULL' if the given key does not exist *
+ **************************************************/
+
+void *HashTable::searchItem(void *key, unsigned int (*hash_function)(void *),
+	int (*compare)(void *, void *)) const
+{
+	/* First we hash the key to find its neighborhood */
+	unsigned int hash_value = hash_function(key) % bucketsNum;
+
+	/* We retrieve the bitmap of the bucket
+	 * where the given key was hashed to
+	 */
+	Bitmap *bitmap = table[hash_value].getHopInformation();
+
+	/* Since the given key was hashed to the bucket with
+	 * index 'hash_value', the bitmap of this bucket
+	 * indicates the position of the given key for search,
+	 * if the key exists. So, we only need to look at the
+	 * positions of the table where the bitmap implies
+	 * the given key could be. These positions are
+	 * represented by the bits of the bitmap with value 1
+	 */
+	unsigned int posOfNextAce = 0;
+
+	while(1)
+	{
+		/* We find the position of the next ace */
+		posOfNextAce = bitmap->posOfFirstAceFromPos(posOfNextAce + 1);
+
+		/* If there are no more aces, the given key does not exist */
+
+		if(posOfNextAce == 0)
+			return NULL;
+
+		/* We retrieve the key of the next candidate
+		 * entry where the given key could be
+		 */
+		void *keyOfNextBucket = table[hash_value + posOfNextAce - 1].getKey();
+
+		/* If that key is equal to the given one, the key exists */
+
+		if(compare(key, keyOfNextBucket) == 0)
+			return table[hash_value + posOfNextAce - 1].getItem();
+	}
+
+	/* The control should not reach this place.
+	 * However, we just return arbitrarily 'NULL'
+	 */
+	return NULL;
+}
+
 /*********************************************
  * Prints all the contents of the hash table *
  *********************************************/
