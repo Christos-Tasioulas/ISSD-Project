@@ -860,7 +860,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
          * we proceed to the actions of this 'if' block
          */
         if(multiplePartitionRequired(R_histogram[i], S_histogram[i],
-            sizeof(Tuple), 31))
+            sizeof(Tuple), lvl2CacheSize))
         {
 
             /* The 'multiplePartitionRequired' function just examines
