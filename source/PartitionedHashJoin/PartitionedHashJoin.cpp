@@ -117,9 +117,9 @@ static long capacity_limit(long lvl_2_cache_size)
  *    the new amount of bits that must be used to hash the elements    *
  ***********************************************************************/
 
-unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
+static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
 {
-    return currentBitsNumForHashing + 4;
+    return currentBitsNumForHashing + 2;
 }
 
 /***************
