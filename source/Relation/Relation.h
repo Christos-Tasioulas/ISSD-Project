@@ -33,7 +33,7 @@ public:
 	void setNumOfTuples(unsigned int newNumOfTuples);
 
 /* Returns the size in bytes of the relation */
-	unsigned int getSize(unsigned int itemSize) const;
+	unsigned int getSize() const;
 
 /* Prints all the tuples of the relation */
 	void print(void (*visitTuple)(void *, unsigned int),

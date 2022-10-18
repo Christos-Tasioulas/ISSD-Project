@@ -19,10 +19,24 @@ private:
 /* The amount of included bits to hash the input integer elements */
     unsigned int bitsNumForHashing;
 
+/* Indicates whether at least one of the relations 'relR'
+ * and 'relS' is a subset of a larger relational array
+ */
+    bool hasSubrelations;
+
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
  */
-    bool noPartitionRequired(long lvl2CacheSize) const;
+    bool noPartitionRequired(long lvl_2_cache_size) const;
+
+/* Determines wheter a bucket of the relation 'rerR' or 'relS'
+ * needs to be further partitioned to additional buckets
+ */
+    bool multiplePartitionRequired(
+        unsigned int R_numOfItemsInBucket,
+        unsigned int S_numOfItemsInBucket,
+        unsigned int item_size,
+        unsigned int lvl_2_cache_size) const;
 
 /* Displays in the screen the contents of the initial relations */
     void displayInitialRelations(const char *message) const;
@@ -60,6 +74,10 @@ public:
 
 /* Constructor */
     PartitionedHashJoin(char *input_file, char *config_file);
+
+/* Secondary Constructor */
+    PartitionedHashJoin(Relation *relR, Relation *relS,
+        unsigned int bitsNumForHashing);
 
 /* Destructor */
     ~PartitionedHashJoin();

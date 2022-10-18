@@ -53,9 +53,9 @@ void Relation::setNumOfTuples(unsigned int newNumOfTuples)
  * Returns the size in bytes of the relation *
  *********************************************/
 
-unsigned int Relation::getSize(unsigned int itemSize) const
+unsigned int Relation::getSize() const
 {
-    return numOfTuples * (4 + itemSize);
+    return numOfTuples * sizeof(Tuple);
 }
 
 /*****************************************

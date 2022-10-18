@@ -100,6 +100,16 @@ static long get_Lvl2_Cache_Size()
     return lvl_2_cache_size;
 }
 
+/***********************************************************************
+ * Uses the level-2 cache size to return the maximum capacity in bytes *
+ *   that a relational array may have in order to need no partition    *
+ ***********************************************************************/
+
+static long capacity_limit(long lvl_2_cache_size)
+{
+    return lvl_2_cache_size;
+}
+
 /***************
  * Constructor *
  ***************/
@@ -114,13 +124,29 @@ PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
     tuples_array_1[2] = Tuple(new int(8), 3);
 
     tuples_array_2[0] = Tuple(new int(1), 1);
-    tuples_array_2[1] = Tuple(new int(9), 2);
+    tuples_array_2[1] = Tuple(new int(8), 2);
     tuples_array_2[2] = Tuple(new int(5), 3);
 
     relR = new Relation(tuples_array_1, 3);
     relS = new Relation(tuples_array_2, 3);
 
     bitsNumForHashing = 1;
+
+    hasSubrelations = false;
+}
+
+/*************************
+ * Secondary Constructor *
+ *************************/
+
+PartitionedHashJoin::PartitionedHashJoin(Relation *relR, Relation *relS,
+    unsigned int bitsNumForHashing)
+{
+    this->relR = relR;
+    this->relS = relS;
+    this->bitsNumForHashing = bitsNumForHashing;
+
+    hasSubrelations = true;
 }
 
 /**************
@@ -129,6 +155,13 @@ PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
 
 PartitionedHashJoin::~PartitionedHashJoin()
 {
+    if(hasSubrelations)
+    {
+        delete[] relR->getTuples();
+        delete[] relS->getTuples();
+        return;
+    }
+
     delete ((int *) (relR->getTuples()[0]).getItem());
     delete ((int *) (relR->getTuples()[1]).getItem());
     delete ((int *) (relR->getTuples()[2]).getItem());
@@ -175,16 +208,80 @@ unsigned int PartitionedHashJoin::getBitsNumForHashing() const
  *     to fit in the level-2 cache and 'false' otherwise     *
  *************************************************************/
 
-bool PartitionedHashJoin::noPartitionRequired(long lvl2CacheSize) const
+bool PartitionedHashJoin::noPartitionRequired(long lvl_2_cache_size) const
 {
     /* This is the size (in bytes) of relation 'relR' */
-    unsigned int relR_size = relR->getSize(sizeof(int));
+    unsigned int relR_size = relR->getSize();
 
     /* This is the size (in bytes) of relation 'relS' */
-    unsigned int relS_size = relS->getSize(sizeof(int));
+    unsigned int relS_size = relS->getSize();
+
+    /* We retrieve the maximum capacity in bytes that a relational
+     * array can have in order to fit the cache with no partition
+     */
+    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
 
     /* If both relations can fit the cache, no partition is needed */
-    return (relR_size < lvl2CacheSize) && (relS_size < lvl2CacheSize);
+    return (relR_size <= max_allowed_capacity)
+        && (relS_size <= max_allowed_capacity);
+}
+
+/***************************************************************
+ * Determines wheter a bucket of the relation 'rerR' or 'relS' *
+ *    needs to be further partitioned to additional buckets    *
+ ***************************************************************/
+
+bool PartitionedHashJoin::multiplePartitionRequired(
+    unsigned int R_numOfItemsInBucket,
+    unsigned int S_numOfItemsInBucket,
+    unsigned int item_size,
+    unsigned int lvl_2_cache_size) const
+{
+    /* We retrieve the maximum capacity in bytes that a relational
+     * array can have in order to fit the cache with no partition
+     */
+    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
+
+    /* We examine if the given bucket of 'relR' fits the cache.
+     *
+     * If the bucket has no elements, it definetely fits the cache.
+     *
+     * We examine if the bucket fits the caches as long as it has more
+     * than zero elements (the item of the end index is not included).
+     */
+    if(R_numOfItemsInBucket > 0)
+    {
+        /* We find the total size in bytes of the bucket */
+        unsigned int totalSize = R_numOfItemsInBucket * item_size;
+
+        /* If the total size surpasses the cache size,
+         * the bucket needs to be further partitioned
+         */
+        if(totalSize > max_allowed_capacity)
+            return true;
+    }
+
+    /* We examine if the given bucket of 'relS' fits the cache.
+     *
+     * If the bucket has no elements, it definetely fits the cache.
+     *
+     * We examine if the bucket fits the caches as long as it has more
+     * than zero elements (the item of the end index is not included).
+     */
+    if(S_numOfItemsInBucket > 0)
+    {
+        /* We find the total size in bytes of the bucket */
+        unsigned int totalSize = S_numOfItemsInBucket * item_size;
+
+        /* If the total size surpasses the cache size,
+         * the bucket needs to be further partitioned
+         */
+        if(totalSize > max_allowed_capacity)
+            return true;
+    }
+
+    /* If this part is reached, both buckets fit the cache */
+    return false;
 }
 
 /****************************************************************
@@ -688,7 +785,15 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
     /* We assign the reordered array to 'relR' and discard the previous array */
     relR->setTuples(reordered_R);
-    delete[] R_table;
+
+    /* All the 'PartitionedHashJoin' objects that are assigned with sub-relations
+     * use a part of the array of the whole relation. The object depicting the
+     * whole relation will delete these arrays in this part, but the objects that
+     * depict sub-relations must never delete the array, because they may delete
+     * elements that will be needed later by other 'PartitionedHashJoin' objects.
+     */
+    if(hasSubrelations == false)
+        delete[] R_table;
 
     /* We reset the contents of 'elementCounter' to zero,
      * because we want to repeat the process for 'relS'
@@ -718,12 +823,18 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
     /* We assign the reordered array to 'relS' and discard the previous array */
     relS->setTuples(reordered_S);
-    delete[] S_table;
+
+    /* All the 'PartitionedHashJoin' objects that are assigned with sub-relations
+     * use a part of the array of the whole relation. The object depicting the
+     * whole relation will delete these arrays in this part, but the objects that
+     * depict sub-relations must never delete the array, because they may delete
+     * elements that will be needed later by other 'PartitionedHashJoin' objects.
+     */
+    if(hasSubrelations == false)
+        delete[] S_table;
 
     /* We print the reordered arrays of the initial relations */
     displayInitialRelations("Relations with reordered contents");
-
-
 
     /* We create the list that will be storing all the contents
      * of the result. We are using a list because we do not know
@@ -732,20 +843,151 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
      */
     List *resultAsList = new List();
 
+    /* A bitmap with bit capacity equal to the number of buckets
+     * (both relations have the same number of buckets). The 1s
+     * of this bitmap indicate buckets that have already been
+     * processed by the multipartition algorithm and the result
+     * of 'join' that comes from these buckets has already been
+     * included to the result list.
+     */
+    Bitmap processedBuckets = Bitmap(R_histogramSize);
+
+    /* For each bucket we will examine if it needs to be partitioned */
+
+    for(i = 0; i < R_histogramSize; i++)
+    {
+        /* If the current bucket must be partitioned,
+         * we proceed to the actions of this 'if' block
+         */
+        if(multiplePartitionRequired(R_histogram[i], S_histogram[i],
+            sizeof(Tuple), 31))
+        {
+
+            /* The 'multiplePartitionRequired' function just examines
+             * whether at least one of the two buckets has greater
+             * size than the cache and if this is true, the function
+             * returns 'true'. However, if one bucket has size equal
+             * to zero and the other has size greater than the cache,
+             * the result of 'join' between the two buckets has zero
+             * elements, but the 'multiplePartitionRequired' function
+             * will suggest that there is the need for partitioning,
+             * which is not needed in this case. That's why we examine
+             * here if one of the two buckets has zero elements.
+             * Because it is not handled properly inside the function.
+             *
+             * No partitioning is needed if one bucket has zero items.
+             */
+            if((R_histogram[i] == 0) || (S_histogram[i] == 0))
+            {
+                /* We don't need to examine further these two buckets
+                 * at all, so we just set the bit of the bitmap that
+                 * indicates the position of these buckets to 1, as we
+                 * do not need to process them later either.
+                 */
+                processedBuckets.setBit(i+1);
+
+                /* We proceed to the next pair of buckets */
+                continue;
+            }
+
+            /* We retrieve the relational arrays of 'relR' and 'relS' */
+            Tuple *bucket_R = relR->getTuples();
+            Tuple *bucket_S = relS->getTuples();
+
+            /* We will move the pointer far from the base address of
+             * the whole relation up to the offset where the current
+             * bucket starts. We will do this for both relations.
+             */
+            bucket_R += prefixSum_R[i];
+            bucket_S += prefixSum_S[i];
+
+            /* We create the two sub-relations that only
+             * contain the elements of the current buckets
+             */
+            Relation subrelR = Relation(bucket_R, R_histogram[i]);
+            Relation subrelS = Relation(bucket_S, S_histogram[i]);
+
+            /* We will create a new 'PartitionedHashJoin' object that
+             * will perform the 'join' operation between the buckets,
+             */
+            PartitionedHashJoin *subjoin = new PartitionedHashJoin(
+                &subrelR, &subrelS, bitsNumForHashing + 4);
+
+            /* Here we perform the 'join' operation between the buckets */
+            RowIdRelation *subjoin_result = subjoin->executeJoin();
+
+            /* Case something went wrong with the 'join' operation above */
+
+            if(subjoin_result == NULL)
+            {
+                std::cout << "A unexpected problem occurred" << std::endl;
+                std::cout << "A bucket could not be processed" << std::endl;
+
+                delete subjoin;
+                continue;
+            }
+
+            /* If this part is reached, the 'join' operation was performed
+             * successfully. We retrieve the result array of the 'join'
+             */
+            RowIdPair *subjoin_array = subjoin_result->getRowIdPairs();
+
+            /* We retrieve the number of elements of the above array */
+            unsigned int subjoin_items = subjoin_result->getNumOfRowIdPairs();
+
+            /* Helper variable for counting */
+            unsigned int j;
+
+            /* We add all the elements of the result to the list */
+
+            for(j = 0; j < subjoin_items; j++)
+            {
+                resultAsList->insertLast(new RowIdPair(subjoin_array[j].
+                    getLeftRowId(), subjoin_array[j].getRightRowId()));
+            }
+
+            /* We free the allocated memory for the result of 'join' */
+            subjoin->freeJoinResult(subjoin_result);
+
+            /* We free the 'PartitionedHashJoin' object we created
+             * to perform the 'join' operation between the buckets
+             */
+            delete subjoin;
+
+            /* These two buckets have now been processed and the result
+             * of 'join' that comes from them has been included in the
+             * final result. We do not need to process these two buckets
+             * further. Therefore, we set the bit that indicates their
+             * position in the whole arrays to 1.
+             */
+            processedBuckets.setBit(i+1);
+        }
+    }
+
     /* We start probing the buckets of the reordered array 'R'
      * to the buckets of the reordered array 'S' that have the
-     * same hashing ID
+     * same hashing ID.
+     *
+     * We skip processing the buckets that have already been
+     * processed by the mutlipartitioning algorithm just above.
      */
     for(i = 0; i < R_histogramSize - 1; i++)
     {
-        probeRelations(prefixSum_R[i], prefixSum_R[i+1],
-            prefixSum_S[i], prefixSum_S[i+1], resultAsList);
+        if(!processedBuckets.isSet(i+1))
+        {
+            probeRelations(prefixSum_R[i], prefixSum_R[i+1],
+                prefixSum_S[i], prefixSum_S[i+1], resultAsList);
+        }
     }
 
-    /* We compare the last pair of buckets */
-
-    probeRelations(prefixSum_R[i], R_numOfTuples,
-        prefixSum_S[i], S_numOfTuples, resultAsList);
+    /* We compare the last pair of buckets (only if it has not
+     * already been processed by the multipartitioning algorithm)
+     */
+    if(!processedBuckets.isSet(R_histogramSize))
+    {
+        probeRelations(prefixSum_R[i], R_numOfTuples,
+            prefixSum_S[i], S_numOfTuples, resultAsList);
+    }
 
     /* This is the number of row ID pairs of the result */
     unsigned int numOfItemsInList = resultAsList->getCounter();
