@@ -19,6 +19,19 @@ private:
 /* The amount of included bits to hash the input integer elements */
     unsigned int bitsNumForHashing;
 
+/* Returns 'true' if both relational arrays are small enough
+ * to fit in the level-2 cache and 'false' otherwise
+ */
+    bool noPartitionRequired(long lvl2CacheSize) const;
+
+/* Displays in the screen the contents of the initial relations */
+    void displayInitialRelations(const char *message) const;
+
+/* Displays in the screen the contents of the auxiliary arrays */
+    void displayAuxiliaryArrays(unsigned int size,
+        unsigned int *R_hist, unsigned int *S_hist,
+        unsigned int *R_psum, unsigned int *S_psum) const;
+
 /* Hashes a given integer into the value of
  * its rightmost 'bitsNumForHashing' bits
  */
@@ -36,16 +49,12 @@ private:
  * The method places the row ID pairs that exist in the buckets
  * and satisfy the join operation in the provided list 'result'
  */
-    void probeRelations(unsigned int R_start_index, unsigned int R_end_index,
-        unsigned int S_start_index, unsigned int S_end_index, List *result) const;
-
-/* Displays in the screen the contents of the initial relations */
-    void displayInitialRelations(const char *message) const;
-
-/* Displays in the screen the contents of the auxiliary arrays */
-    void displayAuxiliaryArrays(unsigned int size,
-        unsigned int *R_hist, unsigned int *S_hist,
-        unsigned int *R_psum, unsigned int *S_psum) const;
+    void probeRelations(
+        unsigned int R_start_index,
+        unsigned int R_end_index,
+        unsigned int S_start_index,
+        unsigned int S_end_index,
+        List *result) const;
 
 public:
 

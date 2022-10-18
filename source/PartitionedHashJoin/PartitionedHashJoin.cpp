@@ -170,6 +170,23 @@ unsigned int PartitionedHashJoin::getBitsNumForHashing() const
     return bitsNumForHashing;
 }
 
+/*************************************************************
+ * Returns 'true' if both relational arrays are small enough *
+ *     to fit in the level-2 cache and 'false' otherwise     *
+ *************************************************************/
+
+bool PartitionedHashJoin::noPartitionRequired(long lvl2CacheSize) const
+{
+    /* This is the size (in bytes) of relation 'relR' */
+    unsigned int relR_size = relR->getSize(sizeof(int));
+
+    /* This is the size (in bytes) of relation 'relS' */
+    unsigned int relS_size = relS->getSize(sizeof(int));
+
+    /* If both relations can fit the cache, no partition is needed */
+    return (relR_size < lvl2CacheSize) && (relS_size < lvl2CacheSize);
+}
+
 /****************************************************************
  * Displays in the screen the contents of the initial relations *
  ****************************************************************/
@@ -390,12 +407,6 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     if(lvl2CacheSize == -1)
         return NULL;
 
-    /* This is the size (in bytes) of relation 'relR' */
-    unsigned int relR_size = relR->getSize(sizeof(int));
-
-    /* This is the size (in bytes) of relation 'relS' */
-    unsigned int relS_size = relS->getSize(sizeof(int));
-
     /* Variables we will need later in the algorithm */
     unsigned int i, R_numOfTuples, S_numOfTuples;
 
@@ -414,7 +425,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     /*
      * Case both realtion tables are below the size of level 2 cache
      */
-    if((relR_size < lvl2CacheSize) && (relS_size < lvl2CacheSize))
+    if(noPartitionRequired(lvl2CacheSize))
     {
         /* We create the list that will be storing all the contents
          * of the result. We are using a list because we do not know
@@ -711,6 +722,8 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
     /* We print the reordered arrays of the initial relations */
     displayInitialRelations("Relations with reordered contents");
+
+
 
     /* We create the list that will be storing all the contents
      * of the result. We are using a list because we do not know
