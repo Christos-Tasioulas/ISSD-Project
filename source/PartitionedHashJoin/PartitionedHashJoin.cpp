@@ -110,6 +110,18 @@ static long capacity_limit(long lvl_2_cache_size)
     return lvl_2_cache_size;
 }
 
+/***********************************************************************
+ * When a partition needs to be done, the amount of bits that will be  *
+ * used to determine the hash code of each element must increase. This *
+ *  function, given the current amount of bits that are used, decides  *
+ *    the new amount of bits that must be used to hash the elements    *
+ ***********************************************************************/
+
+unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
+{
+    return currentBitsNumForHashing + 4;
+}
+
 /***************
  * Constructor *
  ***************/
@@ -911,7 +923,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
              * will perform the 'join' operation between the buckets,
              */
             PartitionedHashJoin *subjoin = new PartitionedHashJoin(
-                &subrelR, &subrelS, bitsNumForHashing + 4);
+                &subrelR, &subrelS, alterBitsNum(bitsNumForHashing));
 
             /* Here we perform the 'join' operation between the buckets */
             RowIdRelation *subjoin_result = subjoin->executeJoin();
