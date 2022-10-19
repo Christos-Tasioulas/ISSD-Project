@@ -1,0 +1,19 @@
+n=1
+[the number of bits of each integer that will be used for its hash code]
+
+showInitialRelations=yes
+[choose "yes" to see the contents of the initial relations before and
+after the reordering or choose "no" so these details are not printed]
+
+showAuxiliaryArrays=yes
+[choose "yes" to see the contents of the histograms and the prefix sums
+of both relations (and subrelations) or choose "no" to not display them]
+
+showSubrelations=yes
+[choose "yes" to see the contents concerning the subrelations (initial
+contents, contents after reordering, histograms, prefix sums) or choose
+"no" to not display any information about the subrelations. In case the
+chosen value for this option is "yes", the initial contents as well as
+the contents after the reordering will be printed only if the value of
+the flag 'showInitialRelations' is "yes". The contents of the auxiliary
+arrays will be printed if the value of 'showAuxiliaryArrays' is "yes"]

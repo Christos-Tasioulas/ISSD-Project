@@ -1,6 +1,7 @@
 #ifndef _PARTITIONED_HASH_JOIN_H
 #define _PARTITIONED_HASH_JOIN_H
 
+#include "FileReader.h"
 #include "HashTable.h"
 #include "Relation.h"
 #include "RowIdRelation.h"
@@ -23,6 +24,10 @@ private:
  * and 'relS' is a subset of a larger relational array
  */
     bool hasSubrelations;
+
+    bool showInitialRelations;
+    bool showAuxiliaryArrays;
+    bool showSubrelations;
 
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
@@ -73,7 +78,7 @@ private:
 public:
 
 /* Constructor */
-    PartitionedHashJoin(char *input_file, char *config_file);
+    PartitionedHashJoin(const char *input_file, const char *config_file);
 
 /* Secondary Constructor */
     PartitionedHashJoin(Relation *relR, Relation *relS,

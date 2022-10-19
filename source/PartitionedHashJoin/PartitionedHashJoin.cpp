@@ -126,8 +126,20 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
  * Constructor *
  ***************/
 
-PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
+PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
+    const char *config_file)
 {
+    FileReader::readConfigFile(config_file, &bitsNumForHashing,
+        &showInitialRelations, &showAuxiliaryArrays, &showSubrelations);
+
+    std::cout << "Bits num for hashing from the config file: "
+        << bitsNumForHashing;
+
+    std::cout << "\nInitial relations: " << showInitialRelations
+        << "\nAux arrays: " << showAuxiliaryArrays
+        << "\nSubrelations: " << showSubrelations
+        << "\n" << std::endl;
+
     Tuple *tuples_array_1 = new Tuple[3];
     Tuple *tuples_array_2 = new Tuple[3];
 
