@@ -25,8 +25,22 @@ private:
  */
     bool hasSubrelations;
 
+/* Determines whether or not the contents of the relations 'relR'
+ * and 'relS' will be displayed in the screen. The option prints
+ * the initial contents of the relations and the contents after
+ * reordering the relational arrays
+ */
     bool showInitialRelations;
+
+/* Determines whether or not the contents of the histograms and
+ * the prefix sums will be displayed in the user's screen
+ */
     bool showAuxiliaryArrays;
+
+/* If one of the above two flags is 'true', this one determines
+ * whether or not the corresponding information for all the
+ * subrelations will be printed in the user's screen
+ */
     bool showSubrelations;
 
 /* Returns 'true' if both relational arrays are small enough
@@ -81,8 +95,13 @@ public:
     PartitionedHashJoin(const char *input_file, const char *config_file);
 
 /* Secondary Constructor */
-    PartitionedHashJoin(Relation *relR, Relation *relS,
-        unsigned int bitsNumForHashing);
+    PartitionedHashJoin(
+        Relation *relR,
+        Relation *relS,
+        unsigned int bitsNumForHashing,
+        bool showInitialRelations,
+        bool showAuxiliaryArrays,
+        bool showSubrelations);
 
 /* Destructor */
     ~PartitionedHashJoin();

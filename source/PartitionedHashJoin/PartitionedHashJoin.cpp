@@ -129,16 +129,10 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
 PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
     const char *config_file)
 {
+    /* We read the configuration file to store the user's options */
+
     FileReader::readConfigFile(config_file, &bitsNumForHashing,
         &showInitialRelations, &showAuxiliaryArrays, &showSubrelations);
-
-    std::cout << "Bits num for hashing from the config file: "
-        << bitsNumForHashing;
-
-    std::cout << "\nInitial relations: " << showInitialRelations
-        << "\nAux arrays: " << showAuxiliaryArrays
-        << "\nSubrelations: " << showSubrelations
-        << "\n" << std::endl;
 
     Tuple *tuples_array_1 = new Tuple[3];
     Tuple *tuples_array_2 = new Tuple[3];
@@ -154,8 +148,12 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
     relR = new Relation(tuples_array_1, 3);
     relS = new Relation(tuples_array_2, 3);
 
-    bitsNumForHashing = 1;
-
+    /* Since this object was created through an input and configuration
+     * file, it is the object that the user created and not an object
+     * created by another 'PartitionedHashJoin' object. That means
+     * the current object is not depicting subrelations, but the whole
+     * relations instead.
+     */
     hasSubrelations = false;
 }
 
@@ -163,13 +161,28 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
  * Secondary Constructor *
  *************************/
 
-PartitionedHashJoin::PartitionedHashJoin(Relation *relR, Relation *relS,
-    unsigned int bitsNumForHashing)
+PartitionedHashJoin::PartitionedHashJoin(
+    Relation *relR,
+    Relation *relS,
+    unsigned int bitsNumForHashing,
+    bool showInitialRelations,
+    bool showAuxiliaryArrays,
+    bool showSubrelations)
 {
+    /* We set the value of every variable field to
+     * the value provided by the constructor arguments
+     */
     this->relR = relR;
     this->relS = relS;
     this->bitsNumForHashing = bitsNumForHashing;
+    this->showInitialRelations = showInitialRelations;
+    this->showAuxiliaryArrays = showAuxiliaryArrays;
+    this->showSubrelations = showSubrelations;
 
+    /* An object initialized by this constructor
+     * always depicts subrelations. Consequently,
+     * we set the value of 'hasSubrelations' to 'true'
+     */
     hasSubrelations = true;
 }
 
@@ -336,7 +349,11 @@ void PartitionedHashJoin::displayAuxiliaryArrays(unsigned int size,
     unsigned int *R_hist, unsigned int *S_hist,
     unsigned int *R_psum, unsigned int *S_psum) const
 {
-    std::cout << "\nContents of Auxiliary Arrays\n" << std::endl;
+    if(!hasSubrelations)
+        std::cout << "\nContents of Auxiliary Arrays\n" << std::endl;
+
+    else
+        std::cout << "\nContents of Auxiliary Arrays of Subrelations\n" << std::endl;
 
     std::cout << "+------------+------------+------------+------------+" << std::endl;
     std::cout << "|   R Hist   |   R Psum   |   S Hist   |   S Psum   |" << std::endl;
@@ -517,8 +534,19 @@ void PartitionedHashJoin::probeRelations(
 
 RowIdRelation *PartitionedHashJoin::executeJoin()
 {
-    /* We print the contents of the initial relations */
-    displayInitialRelations("Relations in the beginning");
+    /* We print the initial contents of the relations */
+
+    if(hasSubrelations)
+    {
+        if(showInitialRelations && showSubrelations)
+            displayInitialRelations("Subrelations in the beginning");
+    }
+
+    else
+    {
+        if(showInitialRelations)
+            displayInitialRelations("Relations in the beginning");
+    }
 
     /* We retrieve the size of the level-2 cache */
     long lvl2CacheSize = get_Lvl2_Cache_Size();
@@ -756,8 +784,24 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     }
 
     /* We display both histograms and prefix sums in the screen */
-    displayAuxiliaryArrays(S_histogramSize, R_histogram,
-        S_histogram, prefixSum_R, prefixSum_S);
+
+    if(hasSubrelations)
+    {
+        if(showAuxiliaryArrays && showSubrelations)
+        {
+            displayAuxiliaryArrays(S_histogramSize, R_histogram,
+                S_histogram, prefixSum_R, prefixSum_S);
+        }
+    }
+
+    else
+    {
+        if(showAuxiliaryArrays)
+        {
+            displayAuxiliaryArrays(S_histogramSize, R_histogram,
+                S_histogram, prefixSum_R, prefixSum_S);
+        }
+    }
 
     /* Now we have everything we need to reorder the contents
      * of the relational arrays 'relR' and 'relS'.
@@ -859,7 +903,18 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         delete[] S_table;
 
     /* We print the reordered arrays of the initial relations */
-    displayInitialRelations("Relations with reordered contents");
+
+    if(hasSubrelations)
+    {
+        if(showInitialRelations && showSubrelations)
+            displayInitialRelations("Subrelations with reordered contents");
+    }
+
+    else
+    {
+        if(showInitialRelations)
+            displayInitialRelations("Relations with reordered contents");
+    }
 
     /* We create the list that will be storing all the contents
      * of the result. We are using a list because we do not know
@@ -935,7 +990,8 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
              * will perform the 'join' operation between the buckets,
              */
             PartitionedHashJoin *subjoin = new PartitionedHashJoin(
-                &subrelR, &subrelS, alterBitsNum(bitsNumForHashing));
+                &subrelR, &subrelS, alterBitsNum(bitsNumForHashing),
+                showInitialRelations, showAuxiliaryArrays, showSubrelations);
 
             /* Here we perform the 'join' operation between the buckets */
             RowIdRelation *subjoin_result = subjoin->executeJoin();
@@ -1076,7 +1132,7 @@ void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
 
     if(resultOfExecuteJoin != NULL)
     {
-        std::cout << "Result of Join Operation\n\n\tR |>-<| S" << std::endl;
+        std::cout << "\nResult of Join Operation\n\n\tR |>-<| S" << std::endl;
         resultOfExecuteJoin->print(printUnsignedPair, lineContext);
         std::cout << std::endl;
     }
