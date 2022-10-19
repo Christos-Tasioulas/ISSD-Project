@@ -390,6 +390,7 @@ unsigned int PartitionedHashJoin::bitReductionHash(int integer) const
 }
 
 /***********************************************
+ * (Hash Function)                             *
  * Given the address of a tuple, it hashes its *
  *  contents to a non-negative integer value   *
  ***********************************************/
