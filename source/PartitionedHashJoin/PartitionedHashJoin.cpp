@@ -875,7 +875,6 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         if(multiplePartitionRequired(R_histogram[i], S_histogram[i],
             sizeof(Tuple), lvl2CacheSize))
         {
-
             /* The 'multiplePartitionRequired' function just examines
              * whether at least one of the two buckets has greater
              * size than the cache and if this is true, the function
