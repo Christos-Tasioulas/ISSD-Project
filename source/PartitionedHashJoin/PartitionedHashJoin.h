@@ -1,5 +1,5 @@
-#ifndef _PARTITIONED_HASH_JOIN_H
-#define _PARTITIONED_HASH_JOIN_H
+#ifndef _PARTITIONED_HASH_JOIN_H_
+#define _PARTITIONED_HASH_JOIN_H_
 
 #include "FileReader.h"
 #include "HashTable.h"
@@ -37,11 +37,38 @@ private:
  */
     bool showAuxiliaryArrays;
 
+/* Determines whether or not the contents of the hash table used
+ * to probe the relations will be printed in the user's screen
+ */
+    bool showHashTable;
+
 /* If one of the above two flags is 'true', this one determines
  * whether or not the corresponding information for all the
  * subrelations will be printed in the user's screen
  */
     bool showSubrelations;
+
+/* Determines whether or not the result of the 'join' operation
+ * will be printed in the user's screen
+ */
+    bool showResult;
+
+/* The amount of initial buckets the hash table will have */
+    unsigned int hopscotchBuckets;
+
+/* The size of each neighborhood in the hash table */
+    unsigned int hopscotchRange;
+
+/* Determines if the hash table can be resized when a load
+ * factor is surpassed, even if the Hopscotch algorithm does
+ * not require the table to grow at that specific moment
+ */
+    bool resizableByLoadFactor;
+
+/* The limit that if surpassed by (elements/buckets) forces
+ * the hash table to grow if 'resizableByLoadFactor' is 'true'
+ */
+    double loadFactor;
 
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
@@ -101,7 +128,13 @@ public:
         unsigned int bitsNumForHashing,
         bool showInitialRelations,
         bool showAuxiliaryArrays,
-        bool showSubrelations);
+        bool showHashTable,
+        bool showSubrelations,
+        bool showResult,
+        unsigned int hopscotchBuckets,
+        unsigned int hopscotchRange,
+        bool resizableByLoadFactor,
+        double loadFactor);
 
 /* Destructor */
     ~PartitionedHashJoin();
@@ -119,7 +152,7 @@ public:
     RowIdRelation *executeJoin();
 
 /* Displays in the screen the result returned by 'executeJoin' */
-    static void printJoinResult(RowIdRelation *resultOfExecuteJoin);
+    void printJoinResult(RowIdRelation *resultOfExecuteJoin);
 
 /* Frees the result that was returned by 'executeJoin' */
     static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);

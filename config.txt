@@ -9,6 +9,10 @@ showAuxiliaryArrays=yes
 [choose "yes" to see the contents of the histograms and the prefix sums
 of both relations (and subrelations) or choose "no" to not display them]
 
+showHashTable=yes
+[choose "yes" to see the contents of the hash table that was built to
+probe the two relational arrays]
+
 showSubrelations=yes
 [choose "yes" to see the contents concerning the subrelations (initial
 contents, contents after reordering, histograms, prefix sums) or choose
@@ -16,4 +20,29 @@ contents, contents after reordering, histograms, prefix sums) or choose
 chosen value for this option is "yes", the initial contents as well as
 the contents after the reordering will be printed only if the value of
 the flag 'showInitialRelations' is "yes". The contents of the auxiliary
-arrays will be printed if the value of 'showAuxiliaryArrays' is "yes"]
+arrays will be printed if the value of 'showAuxiliaryArrays' is "yes".
+The hash table contents will be displayed if 'showHashTable' is "yes"]
+
+showResult=yes
+[choose "yes" to see the contents of the result after the join operation
+has been performed]
+
+hopscotchBuckets=101
+[determines the amount of buckets that each hash table will have at the
+moment it is created. It may grow with the insertion of many elements]
+
+hopscotchRange=16
+[determines the size of the neighborhood of each hash table entry when
+the hash table is created. It may grow when many elements are inserted]
+
+resizableByLoadFactor=yes
+[determines whether or not the hash table may grow when the number of
+elements divided by the number of buckets surpasses a specified constant.
+The table will grow anyway when the Hopscotch algorithm imposes it, no
+matter the value of this option, but this option, if enabled, will make
+the table grow even in cases that the Hopscotch algorithm did not impose
+it, just when the amount of elements over buckets surpasses a limit]
+
+loadFactor=0.8
+[the limit that, if surpassed by the amount elements/buckets, forces the
+table to grow even if it was not required by the Hopscotch algorithm]

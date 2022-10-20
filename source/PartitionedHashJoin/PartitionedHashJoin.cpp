@@ -32,6 +32,53 @@ static void lineContext()
     std::cout << "+-----------+-----------+" << std::endl;
 }
 
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void printTupleAndTuple(void *item1, void *item2)
+{
+    /* The item and the key are identical in every hash entry.
+     *
+     * We just print one of them.
+     */
+    Tuple *tuple = (Tuple *) item1;
+
+    /* We retrieve the user data and the row ID of the tuple */
+    int dataValue = *((int *) tuple->getItem());
+    unsigned int rowId = tuple->getRowId();
+
+    /* We print the tuple */
+    printf("|%11u|%11d|", rowId, dataValue);
+}
+
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void colonContext()
+{
+    std::cout << " : ";
+}
+
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void lineContextWithNewLine()
+{
+    std::cout << "\n+-----------+-----------+" << std::endl;
+}
+
+/***************************************************************
+ * Used to print the empty entries of the Hopscotch Hash Table *
+ ***************************************************************/
+
+static void emptyHashEntryPrinting()
+{
+    std::cout << "|           |           |";
+}
+
 /***************************************************************************
  *                      Compares two signed integers                       *
  *                                                                         *
@@ -131,8 +178,17 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
 {
     /* We read the configuration file to store the user's options */
 
-    FileReader::readConfigFile(config_file, &bitsNumForHashing,
-        &showInitialRelations, &showAuxiliaryArrays, &showSubrelations);
+    FileReader::readConfigFile(config_file,
+        &bitsNumForHashing,
+        &showInitialRelations,
+        &showAuxiliaryArrays,
+        &showHashTable,
+        &showSubrelations,
+        &showResult,
+        &hopscotchBuckets,
+        &hopscotchRange,
+        &resizableByLoadFactor,
+        &loadFactor);
 
     Tuple *tuples_array_1 = new Tuple[3];
     Tuple *tuples_array_2 = new Tuple[3];
@@ -167,7 +223,13 @@ PartitionedHashJoin::PartitionedHashJoin(
     unsigned int bitsNumForHashing,
     bool showInitialRelations,
     bool showAuxiliaryArrays,
-    bool showSubrelations)
+    bool showHashTable,
+    bool showSubrelations,
+    bool showResult,
+    unsigned int hopscotchBuckets,
+    unsigned int hopscotchRange,
+    bool resizableByLoadFactor,
+    double loadFactor)
 {
     /* We set the value of every variable field to
      * the value provided by the constructor arguments
@@ -177,7 +239,13 @@ PartitionedHashJoin::PartitionedHashJoin(
     this->bitsNumForHashing = bitsNumForHashing;
     this->showInitialRelations = showInitialRelations;
     this->showAuxiliaryArrays = showAuxiliaryArrays;
+    this->showHashTable = showHashTable;
     this->showSubrelations = showSubrelations;
+    this->showResult = showResult;
+    this->hopscotchBuckets = hopscotchBuckets;
+    this->hopscotchRange = hopscotchRange;
+    this->resizableByLoadFactor = resizableByLoadFactor;
+    this->loadFactor = loadFactor;
 
     /* An object initialized by this constructor
      * always depicts subrelations. Consequently,
@@ -192,12 +260,19 @@ PartitionedHashJoin::PartitionedHashJoin(
 
 PartitionedHashJoin::~PartitionedHashJoin()
 {
+    /* Actions if the object is an "inner" helper object */
+
     if(hasSubrelations)
     {
+        /* We delete the arrays of both subrelations */
         delete[] relR->getTuples();
         delete[] relS->getTuples();
+
+        /* There is nothing more to do in this case */
         return;
     }
+
+    /* Actions if the object is the user's object */
 
     delete ((int *) (relR->getTuples()[0]).getItem());
     delete ((int *) (relR->getTuples()[1]).getItem());
@@ -467,7 +542,9 @@ void PartitionedHashJoin::probeRelations(
     }
 
     /* We will start building the index of relation 'R' */
-    HashTable *R_tuples_table = new HashTable();
+
+    HashTable *R_tuples_table = new HashTable(hopscotchBuckets,
+        resizableByLoadFactor, loadFactor, hopscotchRange);
 
     /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
@@ -484,6 +561,38 @@ void PartitionedHashJoin::probeRelations(
     {
         R_tuples_table->insert(&R_table[i], &R_table[i],
             PartitionedHashJoin::hashTuple);
+    }
+
+    /* We print the contents of the hash table if we need to */
+
+    if(hasSubrelations)
+    {
+        if(showHashTable && showSubrelations)
+        {
+            std::cout << "Hash Table of Subrelations" << std::endl;
+
+            R_tuples_table->print(
+                printTupleAndTuple,
+                colonContext,
+                lineContextWithNewLine,
+                emptyHashEntryPrinting
+            );
+        }
+    }
+
+    else
+    {
+        if(showHashTable)
+        {
+            std::cout << "Hash Table of Relations" << std::endl;
+
+            R_tuples_table->print(
+                printTupleAndTuple,
+                colonContext,
+                lineContextWithNewLine,
+                emptyHashEntryPrinting
+            );
+        }
     }
 
     /* Starting from the given starting index of 'S', we search
@@ -990,8 +1099,19 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
              * will perform the 'join' operation between the buckets,
              */
             PartitionedHashJoin *subjoin = new PartitionedHashJoin(
-                &subrelR, &subrelS, alterBitsNum(bitsNumForHashing),
-                showInitialRelations, showAuxiliaryArrays, showSubrelations);
+                &subrelR,
+                &subrelS,
+                alterBitsNum(bitsNumForHashing),
+                showInitialRelations,
+                showAuxiliaryArrays,
+                showHashTable,
+                showSubrelations,
+                showResult,
+                hopscotchBuckets,
+                hopscotchRange,
+                resizableByLoadFactor,
+                loadFactor
+            );
 
             /* Here we perform the 'join' operation between the buckets */
             RowIdRelation *subjoin_result = subjoin->executeJoin();
@@ -1128,6 +1248,10 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
 void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
 {
+    /* If the user does not desire to see the result, we just return */
+    if(showResult == false)
+        return;
+
     /* Case the result is valid */
 
     if(resultOfExecuteJoin != NULL)
