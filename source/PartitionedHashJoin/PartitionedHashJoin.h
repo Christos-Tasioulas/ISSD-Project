@@ -9,6 +9,48 @@
 
 class PartitionedHashJoin {
 
+public:
+
+/* Constructor */
+    PartitionedHashJoin(const char *input_file, const char *config_file);
+
+/* Secondary Constructor */
+    PartitionedHashJoin(
+        Relation *relR,
+        Relation *relS,
+        unsigned int bitsNumForHashing,
+        bool showInitialRelations,
+        bool showAuxiliaryArrays,
+        bool showHashTable,
+        bool showSubrelations,
+        bool showResult,
+        unsigned int hopscotchBuckets,
+        unsigned int hopscotchRange,
+        bool resizableByLoadFactor,
+        double loadFactor,
+        double maxAllowedSizeModifier);
+
+/* Destructor */
+    ~PartitionedHashJoin();
+
+/* Getter - Returns the relational array 'relR' */
+    Relation *getRelR() const;
+
+/* Getter - Returns the relational array 'relS' */
+    Relation *getRelS() const;
+
+/* Getter - Returns the number of included bits for hashing */
+    unsigned int getBitsNumForHashing() const;
+
+/* Executes the Partitioned Hash Join Algorithm */
+    RowIdRelation *executeJoin();
+
+/* Displays in the screen the result returned by 'executeJoin' */
+    void printJoinResult(RowIdRelation *resultOfExecuteJoin);
+
+/* Frees the result that was returned by 'executeJoin' */
+    static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);
+
 private:
 
 /* The first relation that takes part in the join operation */
@@ -56,7 +98,7 @@ private:
 /* The amount of initial buckets the hash table will have */
     unsigned int hopscotchBuckets;
 
-/* The size of each neighborhood in the hash table */
+/* The initial size of each neighborhood in the hash table */
     unsigned int hopscotchRange;
 
 /* Determines if the hash table can be resized when a load
@@ -69,6 +111,12 @@ private:
  * the hash table to grow if 'resizableByLoadFactor' is 'true'
  */
     double loadFactor;
+
+/* This is a value between 0.0 and 1.0 that determines the
+ * maximum size an array may have so as it does not need to
+ * be partitioned divided by the size of the lvl-2 cache.
+ */
+    double maxAllowedSizeModifier;
 
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
@@ -115,47 +163,6 @@ private:
         unsigned int S_start_index,
         unsigned int S_end_index,
         List *result) const;
-
-public:
-
-/* Constructor */
-    PartitionedHashJoin(const char *input_file, const char *config_file);
-
-/* Secondary Constructor */
-    PartitionedHashJoin(
-        Relation *relR,
-        Relation *relS,
-        unsigned int bitsNumForHashing,
-        bool showInitialRelations,
-        bool showAuxiliaryArrays,
-        bool showHashTable,
-        bool showSubrelations,
-        bool showResult,
-        unsigned int hopscotchBuckets,
-        unsigned int hopscotchRange,
-        bool resizableByLoadFactor,
-        double loadFactor);
-
-/* Destructor */
-    ~PartitionedHashJoin();
-
-/* Getter - Returns the relational array 'relR' */
-    Relation *getRelR() const;
-
-/* Getter - Returns the relational array 'relS' */
-    Relation *getRelS() const;
-
-/* Getter - Returns the number of included bits for hashing */
-    unsigned int getBitsNumForHashing() const;
-
-/* Executes the Partitioned Hash Join Algorithm */
-    RowIdRelation *executeJoin();
-
-/* Displays in the screen the result returned by 'executeJoin' */
-    void printJoinResult(RowIdRelation *resultOfExecuteJoin);
-
-/* Frees the result that was returned by 'executeJoin' */
-    static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);
 
 };
 

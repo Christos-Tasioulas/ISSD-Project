@@ -152,9 +152,10 @@ static long get_Lvl2_Cache_Size()
  *   that a relational array may have in order to need no partition    *
  ***********************************************************************/
 
-static long capacity_limit(long lvl_2_cache_size)
+static long capacity_limit(long lvl_2_cache_size, double max_percent_of_size = 1.0)
 {
-    return lvl_2_cache_size;
+    double max_allowed_size = ((double) lvl_2_cache_size) * max_percent_of_size;
+    return (long) max_allowed_size;
 }
 
 /***********************************************************************
@@ -188,7 +189,8 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
         &hopscotchBuckets,
         &hopscotchRange,
         &resizableByLoadFactor,
-        &loadFactor);
+        &loadFactor,
+        &maxAllowedSizeModifier);
 
     Tuple *tuples_array_1 = new Tuple[3];
     Tuple *tuples_array_2 = new Tuple[3];
@@ -229,7 +231,8 @@ PartitionedHashJoin::PartitionedHashJoin(
     unsigned int hopscotchBuckets,
     unsigned int hopscotchRange,
     bool resizableByLoadFactor,
-    double loadFactor)
+    double loadFactor,
+    double maxAllowedSizeModifier)
 {
     /* We set the value of every variable field to
      * the value provided by the constructor arguments
@@ -246,6 +249,7 @@ PartitionedHashJoin::PartitionedHashJoin(
     this->hopscotchRange = hopscotchRange;
     this->resizableByLoadFactor = resizableByLoadFactor;
     this->loadFactor = loadFactor;
+    this->maxAllowedSizeModifier = maxAllowedSizeModifier;
 
     /* An object initialized by this constructor
      * always depicts subrelations. Consequently,
@@ -331,7 +335,8 @@ bool PartitionedHashJoin::noPartitionRequired(long lvl_2_cache_size) const
     /* We retrieve the maximum capacity in bytes that a relational
      * array can have in order to fit the cache with no partition
      */
-    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
+    long max_allowed_capacity = capacity_limit(
+        lvl_2_cache_size, maxAllowedSizeModifier);
 
     /* If both relations can fit the cache, no partition is needed */
     return (relR_size <= max_allowed_capacity)
@@ -352,7 +357,8 @@ bool PartitionedHashJoin::multiplePartitionRequired(
     /* We retrieve the maximum capacity in bytes that a relational
      * array can have in order to fit the cache with no partition
      */
-    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
+    long max_allowed_capacity = capacity_limit(
+        lvl_2_cache_size, maxAllowedSizeModifier);
 
     /* We examine if the given bucket of 'relR' fits the cache.
      *
@@ -569,7 +575,7 @@ void PartitionedHashJoin::probeRelations(
     {
         if(showHashTable && showSubrelations)
         {
-            std::cout << "Hash Table of Subrelations" << std::endl;
+            std::cout << "Hash Table of Subrelation" << std::endl;
 
             R_tuples_table->print(
                 printTupleAndTuple,
@@ -584,7 +590,7 @@ void PartitionedHashJoin::probeRelations(
     {
         if(showHashTable)
         {
-            std::cout << "Hash Table of Relations" << std::endl;
+            std::cout << "Hash Table of Relation" << std::endl;
 
             R_tuples_table->print(
                 printTupleAndTuple,
@@ -1110,7 +1116,8 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
                 hopscotchBuckets,
                 hopscotchRange,
                 resizableByLoadFactor,
-                loadFactor
+                loadFactor,
+                maxAllowedSizeModifier
             );
 
             /* Here we perform the 'join' operation between the buckets */

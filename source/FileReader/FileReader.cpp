@@ -61,7 +61,8 @@ void FileReader::readConfigFile(
     unsigned int *hopscotchBuckets,
     unsigned int *hopscotchRange,
     bool *resizableByLoadFactor,
-    double *loadFactor)
+    double *loadFactor,
+    double *maxAllowedSizeModifier)
 {
     /* We open the configuration file */
 
@@ -442,6 +443,38 @@ void FileReader::readConfigFile(
                  * save that amount to the given address of that option.
                  */
                 (*loadFactor) = strtod(loadFactorAsString, NULL);
+
+                /* There is nothing more to do with this line of file */
+                break;
+            }
+
+            /* Case the currently read line is the 50th line of the file */
+
+            case 50:
+            {
+                /* We create a new variable that points to the base address
+                 * of the buffer storing the content of the current line
+                 */
+                char *maxAllowedSizeModifierAsString = buf;
+
+                /* As long as we do not encounter the '=' symbol,
+                 * we go to the next character of the string
+                 */
+                while(*maxAllowedSizeModifierAsString != '=')
+                    maxAllowedSizeModifierAsString++;
+
+                /* We go to the next character exactly after the '=' */
+                maxAllowedSizeModifierAsString++;
+
+                /* Now the variable is pointing to the start of the data
+                 * we are interested in reading. In this line we want to
+                 * read the ratio of the max allowed array size divided
+                 * by the lvl-2 cache size.
+                 *
+                 * We convert the arithmetic string to double and we
+                 * save that amount to the given address of that option.
+                 */
+                (*maxAllowedSizeModifier) = strtod(maxAllowedSizeModifierAsString, NULL);
 
                 /* There is nothing more to do with this line of file */
                 break;

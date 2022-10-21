@@ -28,7 +28,8 @@ void readConfigFile(
     unsigned int *hopscotchBuckets,
     unsigned int *hopscotchRange,
     bool *resizableByLoadFactor,
-    double *loadFactor
+    double *loadFactor,
+    double *maxAllowedSizeModifier
 );
 
 };

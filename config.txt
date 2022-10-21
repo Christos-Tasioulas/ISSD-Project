@@ -1,7 +1,7 @@
 n=1
 [the number of bits of each integer that will be used for its hash code]
 
-showInitialRelations=yes
+showInitialRelations=
 [choose "yes" to see the contents of the initial relations before and
 after the reordering or choose "no" so these details are not printed]
 
@@ -9,7 +9,7 @@ showAuxiliaryArrays=yes
 [choose "yes" to see the contents of the histograms and the prefix sums
 of both relations (and subrelations) or choose "no" to not display them]
 
-showHashTable=yes
+showHashTable=
 [choose "yes" to see the contents of the hash table that was built to
 probe the two relational arrays]
 
@@ -46,3 +46,10 @@ it, just when the amount of elements over buckets surpasses a limit]
 loadFactor=0.8
 [the limit that, if surpassed by the amount elements/buckets, forces the
 table to grow even if it was not required by the Hopscotch algorithm]
+
+maxArraySizeDividedByCacheSize=0.85
+[determines the maximum allowed size a relational array may have so as
+it does not need to be partitioned. This size is analogous to the cache
+size. For example, if this option has value 0.85, that means the max
+allowed size of any array so as it does not need to be partitioned is
+85% of the size of the cache]
