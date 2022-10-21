@@ -39,9 +39,24 @@ static unsigned int atou(char *arithmeticString)
  *   given addresses passed as arguments to the function   *
  ***********************************************************/
 
-void FileReader::readInputFile(const char *input_file)
+void FileReader::readInputFile(
+    const char *input_file,
+    Relation **relR,
+    Relation **relS)
 {
+    Tuple *tuples_array_1 = new Tuple[3];
+    Tuple *tuples_array_2 = new Tuple[3];
 
+    tuples_array_1[0] = Tuple(new int(1), 1);
+    tuples_array_1[1] = Tuple(new int(5), 2);
+    tuples_array_1[2] = Tuple(new int(8), 3);
+
+    tuples_array_2[0] = Tuple(new int(1), 1);
+    tuples_array_2[1] = Tuple(new int(8), 2);
+    tuples_array_2[2] = Tuple(new int(5), 3);
+
+    (*relR) = new Relation(tuples_array_1, 3);
+    (*relS) = new Relation(tuples_array_2, 3);
 }
 
 /*********************************************************************

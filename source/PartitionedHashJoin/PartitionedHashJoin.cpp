@@ -177,6 +177,10 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
 PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
     const char *config_file)
 {
+    /* We read the input file to access the user's relations */
+
+    FileReader::readInputFile(input_file, &relR, &relS);
+
     /* We read the configuration file to store the user's options */
 
     FileReader::readConfigFile(config_file,
@@ -191,20 +195,6 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
         &resizableByLoadFactor,
         &loadFactor,
         &maxAllowedSizeModifier);
-
-    Tuple *tuples_array_1 = new Tuple[3];
-    Tuple *tuples_array_2 = new Tuple[3];
-
-    tuples_array_1[0] = Tuple(new int(1), 1);
-    tuples_array_1[1] = Tuple(new int(5), 2);
-    tuples_array_1[2] = Tuple(new int(8), 3);
-
-    tuples_array_2[0] = Tuple(new int(1), 1);
-    tuples_array_2[1] = Tuple(new int(8), 2);
-    tuples_array_2[2] = Tuple(new int(5), 3);
-
-    relR = new Relation(tuples_array_1, 3);
-    relS = new Relation(tuples_array_2, 3);
 
     /* Since this object was created through an input and configuration
      * file, it is the object that the user created and not an object
@@ -276,18 +266,30 @@ PartitionedHashJoin::~PartitionedHashJoin()
         return;
     }
 
-    /* Actions if the object is the user's object */
+    /* We retrieve the amount of tuples of 'relR' and 'relS' */
+    unsigned int R_numOfTuples = relR->getNumOfTuples();
+    unsigned int S_numOfTuples = relS->getNumOfTuples();
 
-    delete ((int *) (relR->getTuples()[0]).getItem());
-    delete ((int *) (relR->getTuples()[1]).getItem());
-    delete ((int *) (relR->getTuples()[2]).getItem());
-    delete ((int *) (relS->getTuples()[0]).getItem());
-    delete ((int *) (relS->getTuples()[1]).getItem());
-    delete ((int *) (relS->getTuples()[2]).getItem());
+    /* Helper variable for counting */
+    unsigned int i;
 
+    /* We delete the user data of every tuple of 'relR' */
+
+    for(i = 0; i < R_numOfTuples; i++)
+        delete ((int *) (relR->getTuples()[i]).getItem());
+
+    /* We delete the user data of every tuple of 'relS' */
+
+    for(i = 0; i < S_numOfTuples; i++)
+        delete ((int *) (relS->getTuples()[i]).getItem());
+
+    /* We delete the allocated memory for the relational
+     * arrays of both 'relR' and 'relS'
+     */
     delete[] relR->getTuples();
     delete[] relS->getTuples();
 
+    /* We delete the relations themselves */
     delete relR;
     delete relS;
 }

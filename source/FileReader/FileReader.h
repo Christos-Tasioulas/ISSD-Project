@@ -1,6 +1,8 @@
 #ifndef _FILE_READER_H_
 #define _FILE_READER_H_
 
+#include "Relation.h"
+
 /* A namespace with operations that read data from the
  * input file and the configuration file of the user
  */
@@ -10,7 +12,9 @@ namespace FileReader {
  * given addresses passed as arguments to the function
  */
 void readInputFile(
-    const char *input_file
+    const char *input_file,
+    Relation **relR,
+    Relation **relS
 );
 
 /* Reads the given configuration file and returns the value
