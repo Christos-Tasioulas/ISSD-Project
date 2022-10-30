@@ -8,4 +8,5 @@
 !*.txt
 !Makefile
 !.gitignore
+!.gitattributes
 !README.md
