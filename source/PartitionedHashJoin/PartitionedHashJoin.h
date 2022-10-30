@@ -1,12 +1,54 @@
-#ifndef _PARTITIONED_HASH_JOIN_H
-#define _PARTITIONED_HASH_JOIN_H
+#ifndef _PARTITIONED_HASH_JOIN_H_
+#define _PARTITIONED_HASH_JOIN_H_
 
+#include "FileReader.h"
 #include "HashTable.h"
-#include "Relation.h"
 #include "RowIdRelation.h"
 #include "List.h"
 
 class PartitionedHashJoin {
+
+public:
+
+/* Constructor */
+    PartitionedHashJoin(const char *input_file, const char *config_file);
+
+/* Secondary Constructor */
+    PartitionedHashJoin(
+        Relation *relR,
+        Relation *relS,
+        unsigned int bitsNumForHashing,
+        bool showInitialRelations,
+        bool showAuxiliaryArrays,
+        bool showHashTable,
+        bool showSubrelations,
+        bool showResult,
+        unsigned int hopscotchBuckets,
+        unsigned int hopscotchRange,
+        bool resizableByLoadFactor,
+        double loadFactor,
+        double maxAllowedSizeModifier);
+
+/* Destructor */
+    ~PartitionedHashJoin();
+
+/* Getter - Returns the relational array 'relR' */
+    Relation *getRelR() const;
+
+/* Getter - Returns the relational array 'relS' */
+    Relation *getRelS() const;
+
+/* Getter - Returns the number of included bits for hashing */
+    unsigned int getBitsNumForHashing() const;
+
+/* Executes the Partitioned Hash Join Algorithm */
+    RowIdRelation *executeJoin();
+
+/* Displays in the screen the result returned by 'executeJoin' */
+    void printJoinResult(RowIdRelation *resultOfExecuteJoin);
+
+/* Frees the result that was returned by 'executeJoin' */
+    static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);
 
 private:
 
@@ -23,6 +65,57 @@ private:
  * and 'relS' is a subset of a larger relational array
  */
     bool hasSubrelations;
+
+/* Determines whether or not the contents of the relations 'relR'
+ * and 'relS' will be displayed in the screen. The option prints
+ * the initial contents of the relations and the contents after
+ * reordering the relational arrays
+ */
+    bool showInitialRelations;
+
+/* Determines whether or not the contents of the histograms and
+ * the prefix sums will be displayed in the user's screen
+ */
+    bool showAuxiliaryArrays;
+
+/* Determines whether or not the contents of the hash table used
+ * to probe the relations will be printed in the user's screen
+ */
+    bool showHashTable;
+
+/* If one of the above two flags is 'true', this one determines
+ * whether or not the corresponding information for all the
+ * subrelations will be printed in the user's screen
+ */
+    bool showSubrelations;
+
+/* Determines whether or not the result of the 'join' operation
+ * will be printed in the user's screen
+ */
+    bool showResult;
+
+/* The amount of initial buckets the hash table will have */
+    unsigned int hopscotchBuckets;
+
+/* The initial size of each neighborhood in the hash table */
+    unsigned int hopscotchRange;
+
+/* Determines if the hash table can be resized when a load
+ * factor is surpassed, even if the Hopscotch algorithm does
+ * not require the table to grow at that specific moment
+ */
+    bool resizableByLoadFactor;
+
+/* The limit that if surpassed by (elements/buckets) forces
+ * the hash table to grow if 'resizableByLoadFactor' is 'true'
+ */
+    double loadFactor;
+
+/* This is a value between 0.0 and 1.0 that determines the
+ * maximum size an array may have so as it does not need to
+ * be partitioned divided by the size of the lvl-2 cache.
+ */
+    double maxAllowedSizeModifier;
 
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
@@ -69,36 +162,6 @@ private:
         unsigned int S_start_index,
         unsigned int S_end_index,
         List *result) const;
-
-public:
-
-/* Constructor */
-    PartitionedHashJoin(char *input_file, char *config_file);
-
-/* Secondary Constructor */
-    PartitionedHashJoin(Relation *relR, Relation *relS,
-        unsigned int bitsNumForHashing);
-
-/* Destructor */
-    ~PartitionedHashJoin();
-
-/* Getter - Returns the relational array 'relR' */
-    Relation *getRelR() const;
-
-/* Getter - Returns the relational array 'relS' */
-    Relation *getRelS() const;
-
-/* Getter - Returns the number of included bits for hashing */
-    unsigned int getBitsNumForHashing() const;
-
-/* Executes the Partitioned Hash Join Algorithm */
-    RowIdRelation *executeJoin();
-
-/* Displays in the screen the result returned by 'executeJoin' */
-    static void printJoinResult(RowIdRelation *resultOfExecuteJoin);
-
-/* Frees the result that was returned by 'executeJoin' */
-    static void freeJoinResult(RowIdRelation *resultOfExecuteJoin);
 
 };
 

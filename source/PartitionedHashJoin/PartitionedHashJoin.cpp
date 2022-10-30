@@ -32,6 +32,53 @@ static void lineContext()
     std::cout << "+-----------+-----------+" << std::endl;
 }
 
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void printTupleAndTuple(void *item1, void *item2)
+{
+    /* The item and the key are identical in every hash entry.
+     *
+     * We just print one of them.
+     */
+    Tuple *tuple = (Tuple *) item1;
+
+    /* We retrieve the user data and the row ID of the tuple */
+    int dataValue = *((int *) tuple->getItem());
+    unsigned int rowId = tuple->getRowId();
+
+    /* We print the tuple */
+    printf("|%11u|%11d|", rowId, dataValue);
+}
+
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void colonContext()
+{
+    std::cout << " : ";
+}
+
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
+static void lineContextWithNewLine()
+{
+    std::cout << "\n+-----------+-----------+" << std::endl;
+}
+
+/***************************************************************
+ * Used to print the empty entries of the Hopscotch Hash Table *
+ ***************************************************************/
+
+static void emptyHashEntryPrinting()
+{
+    std::cout << "|           |           |";
+}
+
 /***************************************************************************
  *                      Compares two signed integers                       *
  *                                                                         *
@@ -105,9 +152,10 @@ static long get_Lvl2_Cache_Size()
  *   that a relational array may have in order to need no partition    *
  ***********************************************************************/
 
-static long capacity_limit(long lvl_2_cache_size)
+static long capacity_limit(long lvl_2_cache_size, double max_percent_of_size = 1.0)
 {
-    return lvl_2_cache_size;
+    double max_allowed_size = ((double) lvl_2_cache_size) * max_percent_of_size;
+    return (long) max_allowed_size;
 }
 
 /***********************************************************************
@@ -126,24 +174,34 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
  * Constructor *
  ***************/
 
-PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
+PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
+    const char *config_file)
 {
-    Tuple *tuples_array_1 = new Tuple[3];
-    Tuple *tuples_array_2 = new Tuple[3];
+    /* We read the input file to access the user's relations */
 
-    tuples_array_1[0] = Tuple(new int(1), 1);
-    tuples_array_1[1] = Tuple(new int(5), 2);
-    tuples_array_1[2] = Tuple(new int(8), 3);
+    FileReader::readInputFile(input_file, &relR, &relS);
 
-    tuples_array_2[0] = Tuple(new int(1), 1);
-    tuples_array_2[1] = Tuple(new int(8), 2);
-    tuples_array_2[2] = Tuple(new int(5), 3);
+    /* We read the configuration file to store the user's options */
 
-    relR = new Relation(tuples_array_1, 3);
-    relS = new Relation(tuples_array_2, 3);
+    FileReader::readConfigFile(config_file,
+        &bitsNumForHashing,
+        &showInitialRelations,
+        &showAuxiliaryArrays,
+        &showHashTable,
+        &showSubrelations,
+        &showResult,
+        &hopscotchBuckets,
+        &hopscotchRange,
+        &resizableByLoadFactor,
+        &loadFactor,
+        &maxAllowedSizeModifier);
 
-    bitsNumForHashing = 1;
-
+    /* Since this object was created through an input and configuration
+     * file, it is the object that the user created and not an object
+     * created by another 'PartitionedHashJoin' object. That means
+     * the current object is not depicting subrelations, but the whole
+     * relations instead.
+     */
     hasSubrelations = false;
 }
 
@@ -151,13 +209,42 @@ PartitionedHashJoin::PartitionedHashJoin(char *input_file, char *config_file)
  * Secondary Constructor *
  *************************/
 
-PartitionedHashJoin::PartitionedHashJoin(Relation *relR, Relation *relS,
-    unsigned int bitsNumForHashing)
+PartitionedHashJoin::PartitionedHashJoin(
+    Relation *relR,
+    Relation *relS,
+    unsigned int bitsNumForHashing,
+    bool showInitialRelations,
+    bool showAuxiliaryArrays,
+    bool showHashTable,
+    bool showSubrelations,
+    bool showResult,
+    unsigned int hopscotchBuckets,
+    unsigned int hopscotchRange,
+    bool resizableByLoadFactor,
+    double loadFactor,
+    double maxAllowedSizeModifier)
 {
+    /* We set the value of every variable field to
+     * the value provided by the constructor arguments
+     */
     this->relR = relR;
     this->relS = relS;
     this->bitsNumForHashing = bitsNumForHashing;
+    this->showInitialRelations = showInitialRelations;
+    this->showAuxiliaryArrays = showAuxiliaryArrays;
+    this->showHashTable = showHashTable;
+    this->showSubrelations = showSubrelations;
+    this->showResult = showResult;
+    this->hopscotchBuckets = hopscotchBuckets;
+    this->hopscotchRange = hopscotchRange;
+    this->resizableByLoadFactor = resizableByLoadFactor;
+    this->loadFactor = loadFactor;
+    this->maxAllowedSizeModifier = maxAllowedSizeModifier;
 
+    /* An object initialized by this constructor
+     * always depicts subrelations. Consequently,
+     * we set the value of 'hasSubrelations' to 'true'
+     */
     hasSubrelations = true;
 }
 
@@ -167,23 +254,42 @@ PartitionedHashJoin::PartitionedHashJoin(Relation *relR, Relation *relS,
 
 PartitionedHashJoin::~PartitionedHashJoin()
 {
+    /* Actions if the object is an "inner" helper object */
+
     if(hasSubrelations)
     {
+        /* We delete the arrays of both subrelations */
         delete[] relR->getTuples();
         delete[] relS->getTuples();
+
+        /* There is nothing more to do in this case */
         return;
     }
 
-    delete ((int *) (relR->getTuples()[0]).getItem());
-    delete ((int *) (relR->getTuples()[1]).getItem());
-    delete ((int *) (relR->getTuples()[2]).getItem());
-    delete ((int *) (relS->getTuples()[0]).getItem());
-    delete ((int *) (relS->getTuples()[1]).getItem());
-    delete ((int *) (relS->getTuples()[2]).getItem());
+    /* We retrieve the amount of tuples of 'relR' and 'relS' */
+    unsigned int R_numOfTuples = relR->getNumOfTuples();
+    unsigned int S_numOfTuples = relS->getNumOfTuples();
 
+    /* Helper variable for counting */
+    unsigned int i;
+
+    /* We delete the user data of every tuple of 'relR' */
+
+    for(i = 0; i < R_numOfTuples; i++)
+        delete ((int *) (relR->getTuples()[i]).getItem());
+
+    /* We delete the user data of every tuple of 'relS' */
+
+    for(i = 0; i < S_numOfTuples; i++)
+        delete ((int *) (relS->getTuples()[i]).getItem());
+
+    /* We delete the allocated memory for the relational
+     * arrays of both 'relR' and 'relS'
+     */
     delete[] relR->getTuples();
     delete[] relS->getTuples();
 
+    /* We delete the relations themselves */
     delete relR;
     delete relS;
 }
@@ -231,7 +337,8 @@ bool PartitionedHashJoin::noPartitionRequired(long lvl_2_cache_size) const
     /* We retrieve the maximum capacity in bytes that a relational
      * array can have in order to fit the cache with no partition
      */
-    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
+    long max_allowed_capacity = capacity_limit(
+        lvl_2_cache_size, maxAllowedSizeModifier);
 
     /* If both relations can fit the cache, no partition is needed */
     return (relR_size <= max_allowed_capacity)
@@ -252,7 +359,8 @@ bool PartitionedHashJoin::multiplePartitionRequired(
     /* We retrieve the maximum capacity in bytes that a relational
      * array can have in order to fit the cache with no partition
      */
-    long max_allowed_capacity = capacity_limit(lvl_2_cache_size);
+    long max_allowed_capacity = capacity_limit(
+        lvl_2_cache_size, maxAllowedSizeModifier);
 
     /* We examine if the given bucket of 'relR' fits the cache.
      *
@@ -324,7 +432,11 @@ void PartitionedHashJoin::displayAuxiliaryArrays(unsigned int size,
     unsigned int *R_hist, unsigned int *S_hist,
     unsigned int *R_psum, unsigned int *S_psum) const
 {
-    std::cout << "\nContents of Auxiliary Arrays\n" << std::endl;
+    if(!hasSubrelations)
+        std::cout << "\nContents of Auxiliary Arrays\n" << std::endl;
+
+    else
+        std::cout << "\nContents of Auxiliary Arrays of Subrelations\n" << std::endl;
 
     std::cout << "+------------+------------+------------+------------+" << std::endl;
     std::cout << "|   R Hist   |   R Psum   |   S Hist   |   S Psum   |" << std::endl;
@@ -438,7 +550,9 @@ void PartitionedHashJoin::probeRelations(
     }
 
     /* We will start building the index of relation 'R' */
-    HashTable *R_tuples_table = new HashTable();
+
+    HashTable *R_tuples_table = new HashTable(hopscotchBuckets,
+        resizableByLoadFactor, loadFactor, hopscotchRange);
 
     /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
@@ -455,6 +569,38 @@ void PartitionedHashJoin::probeRelations(
     {
         R_tuples_table->insert(&R_table[i], &R_table[i],
             PartitionedHashJoin::hashTuple);
+    }
+
+    /* We print the contents of the hash table if we need to */
+
+    if(hasSubrelations)
+    {
+        if(showHashTable && showSubrelations)
+        {
+            std::cout << "Hash Table of Subrelation" << std::endl;
+
+            R_tuples_table->print(
+                printTupleAndTuple,
+                colonContext,
+                lineContextWithNewLine,
+                emptyHashEntryPrinting
+            );
+        }
+    }
+
+    else
+    {
+        if(showHashTable)
+        {
+            std::cout << "Hash Table of Relation" << std::endl;
+
+            R_tuples_table->print(
+                printTupleAndTuple,
+                colonContext,
+                lineContextWithNewLine,
+                emptyHashEntryPrinting
+            );
+        }
     }
 
     /* Starting from the given starting index of 'S', we search
@@ -505,8 +651,19 @@ void PartitionedHashJoin::probeRelations(
 
 RowIdRelation *PartitionedHashJoin::executeJoin()
 {
-    /* We print the contents of the initial relations */
-    displayInitialRelations("Relations in the beginning");
+    /* We print the initial contents of the relations */
+
+    if(hasSubrelations)
+    {
+        if(showInitialRelations && showSubrelations)
+            displayInitialRelations("Subrelations in the beginning");
+    }
+
+    else
+    {
+        if(showInitialRelations)
+            displayInitialRelations("Relations in the beginning");
+    }
 
     /* We retrieve the size of the level-2 cache */
     long lvl2CacheSize = get_Lvl2_Cache_Size();
@@ -744,8 +901,24 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
     }
 
     /* We display both histograms and prefix sums in the screen */
-    displayAuxiliaryArrays(S_histogramSize, R_histogram,
-        S_histogram, prefixSum_R, prefixSum_S);
+
+    if(hasSubrelations)
+    {
+        if(showAuxiliaryArrays && showSubrelations)
+        {
+            displayAuxiliaryArrays(S_histogramSize, R_histogram,
+                S_histogram, prefixSum_R, prefixSum_S);
+        }
+    }
+
+    else
+    {
+        if(showAuxiliaryArrays)
+        {
+            displayAuxiliaryArrays(S_histogramSize, R_histogram,
+                S_histogram, prefixSum_R, prefixSum_S);
+        }
+    }
 
     /* Now we have everything we need to reorder the contents
      * of the relational arrays 'relR' and 'relS'.
@@ -847,7 +1020,18 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         delete[] S_table;
 
     /* We print the reordered arrays of the initial relations */
-    displayInitialRelations("Relations with reordered contents");
+
+    if(hasSubrelations)
+    {
+        if(showInitialRelations && showSubrelations)
+            displayInitialRelations("Subrelations with reordered contents");
+    }
+
+    else
+    {
+        if(showInitialRelations)
+            displayInitialRelations("Relations with reordered contents");
+    }
 
     /* We create the list that will be storing all the contents
      * of the result. We are using a list because we do not know
@@ -923,7 +1107,20 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
              * will perform the 'join' operation between the buckets,
              */
             PartitionedHashJoin *subjoin = new PartitionedHashJoin(
-                &subrelR, &subrelS, alterBitsNum(bitsNumForHashing));
+                &subrelR,
+                &subrelS,
+                alterBitsNum(bitsNumForHashing),
+                showInitialRelations,
+                showAuxiliaryArrays,
+                showHashTable,
+                showSubrelations,
+                showResult,
+                hopscotchBuckets,
+                hopscotchRange,
+                resizableByLoadFactor,
+                loadFactor,
+                maxAllowedSizeModifier
+            );
 
             /* Here we perform the 'join' operation between the buckets */
             RowIdRelation *subjoin_result = subjoin->executeJoin();
@@ -1060,11 +1257,15 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
 void PartitionedHashJoin::printJoinResult(RowIdRelation *resultOfExecuteJoin)
 {
+    /* If the user does not desire to see the result, we just return */
+    if(showResult == false)
+        return;
+
     /* Case the result is valid */
 
     if(resultOfExecuteJoin != NULL)
     {
-        std::cout << "Result of Join Operation\n\n\tR |>-<| S" << std::endl;
+        std::cout << "\nResult of Join Operation\n\n\tR |>-<| S" << std::endl;
         resultOfExecuteJoin->print(printUnsignedPair, lineContext);
         std::cout << std::endl;
     }

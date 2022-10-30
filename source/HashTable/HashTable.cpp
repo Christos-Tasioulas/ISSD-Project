@@ -540,6 +540,17 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 	 * We increase the number of elements by 1
 	 */
 	elementsNum++;
+
+	/* If the 'isResizable' option is enabled, that means the table will
+	 * not only grow under the Hopscotch intention, but also when the
+	 * amount of elements in the table divided by the number of buckets
+	 * surpasses the load factor of the table
+	 */
+	if(isResizable)
+	{
+		if(((double) elementsNum) / ((double) bucketsNum) >= loadFactor)
+			rehash(hash_function);
+	}
 }
 
 /*******************************************************

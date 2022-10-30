@@ -495,16 +495,10 @@ void Bitmap::print() const
 			mask *= 2;
 		}
 
-		/* After every 4th integer, we print a new line */
-
-		if((i != 0) && ((i+1) % 4 == 0))
-			std::cout << std::endl;
-
-		/* Else we print a space to distinguish the
+		/* We print a white space to distinguish the
 		 * integers that are printed in the same row
 		 */
-		else
-			std::cout << " ";
+		std::cout << " ";
 
 		/* If we have printed as many bits as the capacity
 		 * of the bit array, we exit immediatelly. We need
@@ -516,21 +510,6 @@ void Bitmap::print() const
 			break;
 		}
 	}
-
-	/* If the last integer we printed was not in
-	 * the 4th position of the row where it was
-	 * printed, we need to escape that row with
-	 * a new line.
-	 */
-	if((i != 0) && (i % 4 != 0))
-		std::cout << std::endl;
-
-	/* We print a new line for better aesthetic, just to
-	 * leave a blank line between the end of the bit map
-	 * and the next contents that will be printed in the
-	 * future
-	 */
-	std::cout << std::endl;
 }
 
 /********************************************************
