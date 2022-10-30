@@ -4,6 +4,7 @@
 
 # whitelist
 !*.c
+!*.cpp
 !*.h
 !*.txt
 !Makefile
