@@ -33,7 +33,8 @@ void readConfigFile(
     unsigned int *hopscotchRange,
     bool *resizableByLoadFactor,
     double *loadFactor,
-    double *maxAllowedSizeModifier
+    double *maxAllowedSizeModifier,
+    unsigned int *maxPartitionDepth
 );
 
 };

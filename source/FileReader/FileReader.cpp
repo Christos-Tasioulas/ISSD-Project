@@ -44,19 +44,23 @@ void FileReader::readInputFile(
     Relation **relR,
     Relation **relS)
 {
-    Tuple *tuples_array_1 = new Tuple[3];
-    Tuple *tuples_array_2 = new Tuple[3];
+    Tuple *tuples_array_1 = new Tuple[5];
+    Tuple *tuples_array_2 = new Tuple[5];
 
     tuples_array_1[0] = Tuple(new int(1), 1);
-    tuples_array_1[1] = Tuple(new int(5), 2);
+    tuples_array_1[1] = Tuple(new int(8), 2);
     tuples_array_1[2] = Tuple(new int(8), 3);
+    tuples_array_1[3] = Tuple(new int(7), 4);
+    tuples_array_1[4] = Tuple(new int(3), 5);
 
     tuples_array_2[0] = Tuple(new int(1), 1);
-    tuples_array_2[1] = Tuple(new int(8), 2);
-    tuples_array_2[2] = Tuple(new int(5), 3);
+    tuples_array_2[1] = Tuple(new int(9), 2);
+    tuples_array_2[2] = Tuple(new int(2), 3);
+    tuples_array_2[3] = Tuple(new int(8), 4);
+    tuples_array_2[4] = Tuple(new int(8), 5);
 
-    (*relR) = new Relation(tuples_array_1, 3);
-    (*relS) = new Relation(tuples_array_2, 3);
+    (*relR) = new Relation(tuples_array_1, 5);
+    (*relS) = new Relation(tuples_array_2, 5);
 }
 
 /*********************************************************************
@@ -77,7 +81,8 @@ void FileReader::readConfigFile(
     unsigned int *hopscotchRange,
     bool *resizableByLoadFactor,
     double *loadFactor,
-    double *maxAllowedSizeModifier)
+    double *maxAllowedSizeModifier,
+    unsigned int *maxPartitionDepth)
 {
     /* We open the configuration file */
 
@@ -490,6 +495,38 @@ void FileReader::readConfigFile(
                  * save that amount to the given address of that option.
                  */
                 (*maxAllowedSizeModifier) = strtod(maxAllowedSizeModifierAsString, NULL);
+
+                /* There is nothing more to do with this line of file */
+                break;
+            }
+
+            /* Case the currently read line is the 57th line of the file */
+
+            case 57:
+            {
+                /* We create a new variable that points to the base address
+                 * of the buffer storing the content of the current line
+                 */
+                char *maxPartitionDepthAsString = buf;
+
+                /* As long as we do not encounter the '=' symbol,
+                 * we go to the next character of the string
+                 */
+                while(*maxPartitionDepthAsString != '=')
+                    maxPartitionDepthAsString++;
+
+                /* We go to the next character exactly after the '=' */
+                maxPartitionDepthAsString++;
+
+                /* Now the variable is pointing to the start of the data
+                 * we are interested in reading. In this line we want to
+                 * read the initial size of neighborhood that each hash table
+                 * created by the partitioned hash join algorithm will have.
+                 *
+                 * We convert the arithmetic string to integer and we
+                 * save that integer to the given address of that option.
+                 */
+                (*maxPartitionDepth) = atou(maxPartitionDepthAsString);
 
                 /* There is nothing more to do with this line of file */
                 break;

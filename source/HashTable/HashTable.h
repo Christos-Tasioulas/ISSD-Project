@@ -2,6 +2,7 @@
 #define _HASH_TABLE_H_
 
 #include "HashTableEntry.h"
+#include "List.h"
 
 class HashTable {
 
@@ -86,6 +87,23 @@ public:
  */
 	void *searchItem(void *key, unsigned int (*hash_function)(void *),
 		int (*compare)(void *, void *)) const;
+
+/* Searches the given key in the hash table
+ *
+ * Returns a linked list of all the keys inside
+ * the hash table that match the given key.
+ *
+ * The list must be terminated after use with
+ * the operation 'terminateBulkSearchList'.
+ *
+ * Even if the list was empty, it must still be
+ * terminated using the same operation.
+ */
+	List *bulkSearch(void *key, unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *));
+
+/* Terminates the result returned by 'bulkSearch' */
+	static void terminateBulkSearchList(List *bulkSearchResult);
 
 /* Prints all the contents of the hash table */
 	void print(void (*visitItemAndKey)(void *, void *),

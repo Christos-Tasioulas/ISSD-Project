@@ -665,6 +665,77 @@ void *HashTable::searchItem(void *key, unsigned int (*hash_function)(void *),
 	return NULL;
 }
 
+/************************************************
+ *   Searches the given key in the hash table   *
+ *                                              *
+ * Returns a linked list of all the keys inside *
+ *   the hash table that match the given key.   *
+ *                                              *
+ *  The list must be terminated after use with  *
+ *   the operation 'terminateBulkSearchList'.   *
+ *                                              *
+ * Even if the list was empty, it must still be *
+ *     terminated using the same operation.     *
+ ************************************************/
+
+List *HashTable::bulkSearch(void *key, unsigned int (*hash_function)(void *),
+	int (*compare)(void *, void *))
+{
+	/* We initialize the list with the results (the matching keys) */
+	List *result = new List();
+
+	/* We hash the key to find its neighborhood */
+	unsigned int hash_value = hash_function(key) % bucketsNum;
+
+	/* We retrieve the bitmap of the bucket
+	 * where the given key was hashed to
+	 */
+	Bitmap *bitmap = table[hash_value].getHopInformation();
+
+	/* Since the given key was hashed to the bucket with
+	 * index 'hash_value', the bitmap of this bucket
+	 * indicates the position of the given key for search,
+	 * if the key exists. So, we only need to look at the
+	 * positions of the table where the bitmap implies
+	 * the given key could be. These positions are
+	 * represented by the bits of the bitmap with value 1
+	 */
+	unsigned int posOfNextAce = 0;
+
+	while(1)
+	{
+		/* We find the position of the next ace */
+		posOfNextAce = bitmap->posOfFirstAceFromPos(posOfNextAce + 1);
+
+		/* If there are no more aces, the given key does not exist */
+
+		if(posOfNextAce == 0)
+			break;
+
+		/* We retrieve the key of the next candidate
+		 * entry where the given key could be
+		 */
+		void *keyOfNextBucket = table[hash_value + posOfNextAce - 1].getKey();
+
+		/* If that key is equal to the given one, the key exists */
+
+		if(compare(key, keyOfNextBucket) == 0)
+			result->insertLast(keyOfNextBucket);
+	}
+
+	/* Finally, we return the list of all matching keys */
+	return result;
+}
+
+/**************************************************
+ * Terminates the result returned by 'bulkSearch' *
+ **************************************************/
+
+void HashTable::terminateBulkSearchList(List *bulkSearchResult)
+{
+	delete bulkSearchResult;
+}
+
 /*********************************************
  * Prints all the contents of the hash table *
  *********************************************/

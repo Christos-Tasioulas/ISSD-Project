@@ -27,7 +27,8 @@ public:
         unsigned int hopscotchRange,
         bool resizableByLoadFactor,
         double loadFactor,
-        double maxAllowedSizeModifier);
+        double maxAllowedSizeModifier,
+        unsigned int maxPartitionDepth);
 
 /* Destructor */
     ~PartitionedHashJoin();
@@ -116,6 +117,14 @@ private:
  * be partitioned divided by the size of the lvl-2 cache.
  */
     double maxAllowedSizeModifier;
+
+/* Determines the maximum depth of partitions */
+    unsigned int maxPartitionDepth;
+
+/* Determines when we must delete the tables of the
+ * subrelations (only when we need to reorder them)
+ */
+    bool alteredTables;
 
 /* Returns 'true' if both relational arrays are small enough
  * to fit in the level-2 cache and 'false' otherwise
