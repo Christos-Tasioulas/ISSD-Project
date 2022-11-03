@@ -1,5 +1,5 @@
 #include "acutest.h"
-#include "Test.h"
+#include "PartitionedHashJoin.h"
 
 static unsigned int hash_int(void *i)
 {
@@ -15,7 +15,7 @@ void hopScotchTest()
 
     ht->insert(&myKey, &myKey, hash_int);
 
-    TEST_ASSERT(*((int *) ht->getTable()->getKey()) == 5);
+    TEST_ASSERT(*((int *) ht->getTable()[5].getKey()) == 5);
 
     delete ht;
 }
