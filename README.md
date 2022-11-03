@@ -17,10 +17,11 @@
 - make valgrind
 - make count
 - make list
+
 Για να εκτελεστεί η επιθυμιτή εντολή, αρκεί στο terminal να γράψουμε 
-'''
+```
 ./make.sh <command>
-''' 
+``` 
 Όπου command είναι οποιαδήποτε από τις παραπάνω εντολές 
 
 ### config.txt
