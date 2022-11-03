@@ -1,5 +1,3 @@
-https://github.com/chatziko-k08/lecture-code/workflows/run-tests/badge.svg
-
 # ISSD-Project1
 
 ## Συγγραφείς 
