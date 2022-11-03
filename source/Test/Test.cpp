@@ -1,4 +1,5 @@
 #include "acutest.h"
+
 #include "PartitionedHashJoin.h"
 
 static unsigned int hash_int(void *i)
