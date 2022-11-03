@@ -20,7 +20,25 @@ void hopScotchTest()
     delete ht;
 }
 
+void partitionTest()
+{
+
+}
+
+void buildingTest()
+{
+
+}
+
+void probingTest()
+{
+    
+}
+
 TEST_LIST = {
-    { "hopScotchTest",  hopScotchTest},
+    { "Hopscotch Test",  hopScotchTest},
+    { "Partition Test", partitionTest},
+    { "Building Test", buildingTest},
+    { "Probing Test", probingTest},
     { NULL, NULL }
 };
