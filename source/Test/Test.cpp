@@ -15,7 +15,7 @@ void hopScotchTest()
 
     ht->insert(&myKey, &myKey, hash_int);
 
-    TEST_ASSERT(*((int *) ht->getTable()[5].getKey()) == 4);
+    TEST_ASSERT(*((int *) ht->getTable()[5].getKey()) == 5);
 
     delete ht;
 }
