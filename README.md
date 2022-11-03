@@ -1,4 +1,4 @@
-![run-tests](https://github.com/chatziko-k08/lecture-code/workflows/run-tests/badge.svg)
+![run-tests](https://github.com/Christos-Tasioulas/ISSD-Project1/workflows/run-tests/badge.svg)
 
 # ISSD-Project1
 
