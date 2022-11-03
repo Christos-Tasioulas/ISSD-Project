@@ -36,9 +36,9 @@ void probingTest()
 }
 
 TEST_LIST = {
-    { "Hopscotch Test",  hopScotchTest},
-    { "Partition Test", partitionTest},
-    { "Building Test", buildingTest},
-    { "Probing Test", probingTest},
+    { "Hopscotch",  hopScotchTest},
+    { "Partition", partitionTest},
+    { "Building", buildingTest},
+    { "Probing", probingTest},
     { NULL, NULL }
 };
