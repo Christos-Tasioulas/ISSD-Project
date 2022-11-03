@@ -100,11 +100,11 @@ directories:
 	$(HIDE)$(MKDIR) $(subst /,$(PSEP),$(TARGETDIRS)) $(ERRIGNORE)
 
 # Runs the program. Sometimes useful to avoid rewriting long commands.
-run: $(TARGET)
+run_test: $(TARGET)
 	$(HIDE)./$(TARGET) $(ARGUMENTS)
 
 # Runs Valgrind for the program to check possible memory leaks.
-run_valgrind: $(TARGET)
+run_valgrind_test: $(TARGET)
 	$(HIDE)valgrind $(VALGRINDARGS) ./$(TARGET) $(ARGUMENTS)
 
 # Counts the lines, the amount of words and the quantity of characters in each .h and .cpp
