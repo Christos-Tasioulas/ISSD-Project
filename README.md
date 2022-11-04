@@ -74,7 +74,7 @@
 Είναι μία σχέση που αποτελείται από ένα ζευγάρι δύο σειρών. Περιλαμβάνει τις συναρτήσεις και τα χαρακτηριστικά που την αφορούν.
 
 #### Test.cpp/ acutest.h
-Το test πηγαίο αρχείο που υλοποιούνται όλα τα test για την PartitionedHashJoin με την βοήθεια του acutest framework
+Το test πηγαίο αρχείο που υλοποιούνται όλα τα test για την PartitionedHashJoin με την βοήθεια του acutest framework.
 
 #### Tuple.cpp/.h
 Είναι ένα στοιχέιο του Relation.
