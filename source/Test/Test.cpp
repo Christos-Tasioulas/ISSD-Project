@@ -91,8 +91,6 @@ void partitionedHashJoinTest()
     
     TEST_ASSERT(compare_results(result, expected) == 1);
 
-    phj.printJoinResult(result);
-
     phj.freeJoinResult(result);
     delete expected;
     
