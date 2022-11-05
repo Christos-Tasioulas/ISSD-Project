@@ -47,7 +47,7 @@ loadFactor=0.8
 [the limit that, if surpassed by the amount elements/buckets, forces the
 table to grow even if it was not required by the Hopscotch algorithm]
 
-maxArraySizeDividedByCacheSize=1.0
+maxArraySizeDividedByCacheSize=0.85
 [determines the maximum allowed size a relational array may have so as
 it does not need to be partitioned. This size is analogous to the cache
 size. For example, if this option has value 0.85, that means the max
