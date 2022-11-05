@@ -3,6 +3,10 @@
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string>
+#include <fstream>
+#include <bits/stdc++.h>
+#include <sstream>
 #include "FileReader.h"
 
 /**********************************************************************
@@ -34,6 +38,64 @@ static unsigned int atou(char *arithmeticString)
 	return (unsigned int) unsignedLongResult;
 }
 
+// Function that return count of the given
+// character in the string
+static int count(std::string s, char c)
+{
+    // Count variable
+    int res = 0;
+ 
+    for (long unsigned int i=0;i<s.length();i++)
+ 
+        // checking character in string
+        if (s[i] == c)
+            res++;
+ 
+    return res;
+}
+
+// function that has a text as input and returns an array with it
+// Text has to be like this: <text> [i1,i2, ...  ,in] 
+static int* line_to_array(std::string text)
+{
+    //Find the start and end of each table
+    std::size_t l_bracket = text.find("[");
+    std::size_t r_bracket = text.find("]");
+
+    //Remove brackets from string
+    std::string numbers = text.substr(l_bracket+1, r_bracket-l_bracket-1);
+
+    // the size of our array will be equal to the number of commas in the text plus one
+    int* array = new int[count(numbers, ',') + 1];
+
+    
+    std::string number = "";
+    int i = 0;
+    for (auto x: numbers)
+    {
+        // We detected a comma therefore we have found an element of the array
+        if(x == ',')
+        {
+            // string to integer using stringstream
+            std::stringstream alpharethmetic(number);
+            int n = 0;
+            alpharethmetic >> n;
+            array[i] = n;
+            i++;
+            number = "";
+        }
+        // we have found part of the element of the array
+        else number = number + x;
+    }
+    // This is the last element of the array
+    std::stringstream alpharethmetic(number);
+    int n = 0;
+    alpharethmetic >> n;
+    array[i] = n;
+
+    return array;
+}
+
 /***********************************************************
  * Reads the input file and stores the user's input to the *
  *   given addresses passed as arguments to the function   *
@@ -44,23 +106,72 @@ void FileReader::readInputFile(
     Relation **relR,
     Relation **relS)
 {
-    Tuple *tuples_array_1 = new Tuple[5];
-    Tuple *tuples_array_2 = new Tuple[5];
 
-    tuples_array_1[0] = Tuple(new int(1), 1);
-    tuples_array_1[1] = Tuple(new int(8), 2);
-    tuples_array_1[2] = Tuple(new int(8), 3);
-    tuples_array_1[3] = Tuple(new int(7), 4);
-    tuples_array_1[4] = Tuple(new int(3), 5);
+    int r_size;
+    int s_size;
 
-    tuples_array_2[0] = Tuple(new int(1), 1);
-    tuples_array_2[1] = Tuple(new int(9), 2);
-    tuples_array_2[2] = Tuple(new int(2), 3);
-    tuples_array_2[3] = Tuple(new int(8), 4);
-    tuples_array_2[4] = Tuple(new int(8), 5);
+    //Check if Input File exists
+    if(input_file)
+    {
+        std::string filetext1, filetext2;
+        std::ifstream inputFile(input_file);
+        
+        //Break the text file into two strings (The text file will have 2 lines)
+        getline(inputFile, filetext1);
+        getline(inputFile, filetext2);
+        
+        //Convert the two strings into 2 arrays
+        int* array1 = line_to_array(filetext1);
+        int* array2 = line_to_array(filetext2);
 
-    (*relR) = new Relation(tuples_array_1, 5);
-    (*relS) = new Relation(tuples_array_2, 5);
+        // the size of the arrays will be equal to the number of commas in the text plus one 
+        r_size = count(filetext1, ',') + 1;
+        s_size = count(filetext2, ',') + 1;
+
+        //Create an array of Tuples equal to the number of items in each item array
+        Tuple *tuples_array_1 = new Tuple[r_size];
+        Tuple *tuples_array_2 = new Tuple[s_size];
+
+        //Insert items into tuples
+        for(int i=0; i<r_size; i++)
+        {
+            int entry = array1[i];
+            tuples_array_1[i] = Tuple(new int(entry), i+1);
+        }
+
+        for(int i=0; i<s_size; i++)
+        {
+            int entry = array2[i];
+            tuples_array_2[i] = Tuple(new int(entry), i+1);
+        }
+
+        
+        (*relR) = new Relation(tuples_array_1, r_size);
+        (*relS) = new Relation(tuples_array_2, s_size);
+
+    }
+    // Hardcoding if an input file is not given
+    else 
+    {
+        Tuple *tuples_array_1 = new Tuple[5];
+        Tuple *tuples_array_2 = new Tuple[5];
+
+        tuples_array_1[0] = Tuple(new int(1), 1);
+        tuples_array_1[1] = Tuple(new int(8), 2);
+        tuples_array_1[2] = Tuple(new int(8), 3);
+        tuples_array_1[3] = Tuple(new int(7), 4);
+        tuples_array_1[4] = Tuple(new int(3), 5);
+
+        tuples_array_2[0] = Tuple(new int(1), 1);
+        tuples_array_2[1] = Tuple(new int(9), 2);
+        tuples_array_2[2] = Tuple(new int(2), 3);
+        tuples_array_2[3] = Tuple(new int(8), 4);
+        tuples_array_2[4] = Tuple(new int(8), 5);
+
+        (*relR) = new Relation(tuples_array_1, 5);
+        (*relS) = new Relation(tuples_array_2, 5);  
+    }
+    
 }
 
 /*********************************************************************

@@ -6,7 +6,7 @@ int main(int argc, char const *argv[])
 	/* We create a 'PartitionedHashJoin' object by giving
 	 * the input and configuration files to initialize it
 	 */
-	PartitionedHashJoin phj = PartitionedHashJoin(NULL, "../config.txt");
+	PartitionedHashJoin phj = PartitionedHashJoin("../input.txt", "../config.txt");
 
 	/* We use the initialized object to perform the join */
 	RowIdRelation *result = phj.executeJoin();
