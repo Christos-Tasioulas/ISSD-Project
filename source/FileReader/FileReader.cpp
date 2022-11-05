@@ -145,7 +145,9 @@ void FileReader::readInputFile(
             tuples_array_2[i] = Tuple(new int(entry), i+1);
         }
 
-        
+        delete[] array1;
+        delete[] array2;
+
         (*relR) = new Relation(tuples_array_1, r_size);
         (*relS) = new Relation(tuples_array_2, s_size);
 

@@ -11,6 +11,30 @@ static unsigned int hash_int(void *i)
     return (unsigned int) myInt;
 }
 
+static int compare_results(RowIdRelation* r1, RowIdRelation* r2)
+{
+    if(r1->getNumOfRowIdPairs() != r2->getNumOfRowIdPairs()) return 0;
+    else
+    {
+        unsigned int number_of_pairs = r1->getNumOfRowIdPairs();
+        RowIdPair* array1 = r1->getRowIdPairs();
+        RowIdPair* array2 = r2->getRowIdPairs();
+
+        for(unsigned int i = 0; i < number_of_pairs; i++)
+        {
+            RowIdPair p1 = array1[i];
+            RowIdPair p2 = array2[i];
+            if((p1.getLeftRowId() != p2.getLeftRowId()) || (p1.getRightRowId() != p2.getRightRowId())) 
+            {
+                return 0;  
+            }
+            
+        }
+
+    }
+    return 1;
+}
+
 void hopScotchTest()
 {
     HashTable *ht = new HashTable();
@@ -52,7 +76,26 @@ void hopScotchTest()
 
 void partitionedHashJoinTest()
 {
+    PartitionedHashJoin phj = PartitionedHashJoin("../test.txt", "../config.txt");
 
+    RowIdPair rp2(1, 1);
+    RowIdPair rp1(2, 3);
+
+    RowIdPair array[2];
+    array[0] = rp1;
+    array[1] = rp2;
+
+    RowIdRelation* expected = new RowIdRelation(array, 2);
+
+    RowIdRelation* result = phj.executeJoin();
+    
+    TEST_ASSERT(compare_results(result, expected) == 1);
+
+    phj.printJoinResult(result);
+
+    phj.freeJoinResult(result);
+    delete expected;
+    
 }
 
 TEST_LIST = {
