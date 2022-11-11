@@ -79,8 +79,8 @@ void partitionedHashJoinTest()
     PartitionedHashJoin phj = PartitionedHashJoin("../test.txt", "../config.txt");
 
     // Replicating the result of our tested input's execution
-    RowIdPair rp2(1, 1);
-    RowIdPair rp1(2, 3);
+    RowIdPair rp1(1, 1);
+    RowIdPair rp2(2, 3);
 
     RowIdPair array[2];
     array[0] = rp1;

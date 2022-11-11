@@ -154,9 +154,8 @@ static long get_Lvl2_Cache_Size()
 
 static long capacity_limit(long lvl_2_cache_size, double max_percent_of_size = 1.0)
 {
-    //double max_allowed_size = ((double) lvl_2_cache_size) * max_percent_of_size;
-    //return (long) max_allowed_size;
-    return 32;
+    double max_allowed_size = ((double) lvl_2_cache_size) * max_percent_of_size;
+    return (long) max_allowed_size;
 }
 
 /***********************************************************************
