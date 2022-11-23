@@ -15,7 +15,7 @@ TARGET=phj_test
 VERBOSE=FALSE
 
 # Create the list of directories
-DIRS=Bitmap FileReader HashTable List PartitionedHashJoin Relation RowIdPair RowIdRelation Test Tuple
+DIRS=Bitmap FileReader HashTable List PartitionedHashJoin Relation RowIdPair RowIdRelation Table Test Tuple
 SOURCEDIRS=$(foreach dir, $(DIRS), $(addprefix $(SOURCEDIR)/, $(dir)))
 TARGETDIRS=$(foreach dir, $(DIRS), $(addprefix $(BUILDDIR)/, $(dir)))
 

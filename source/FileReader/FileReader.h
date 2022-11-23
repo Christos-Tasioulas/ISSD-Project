@@ -2,6 +2,7 @@
 #define _FILE_READER_H_
 
 #include "Relation.h"
+#include "Table.h"
 
 /* A namespace with operations that read data from the
  * input file and the configuration file of the user
@@ -37,17 +38,11 @@ void readConfigFile(
     unsigned int *maxPartitionDepth
 );
 
-/**
- * Reads the input file that contains all the relation name
- * sto
- * 
+/*
+ * Reads the input file that contains all the relation names
+ * stores the final relations in a list
  */
-// void initialize(const char *filepath);
-
-/* 
- *
- */
-void read_test(const char *filepath);
+List *initialize(const char *init_file);
 
 };
 

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
@@ -95,6 +96,121 @@ static int* line_to_array(std::string text)
 
     return array;
 }
+
+
+/*************************************************************
+ * Reads the input file that contains all the relation names *
+ *           stores the final relations in a list            *
+ *************************************************************/
+
+List *FileReader::initialize(const char *init_file)
+{
+    /* A list that will be storing the file name of every binary file */
+
+    List *relations = new List();
+
+    /* We open the initialization file */
+
+	int fd = open(init_file, O_RDONLY);
+
+	/* We examine if the opening was successful */
+
+	if(fd == -1)
+	{
+		printf("Error opening \"%s\"\n", init_file);
+		perror("open");
+		return NULL;
+	}
+
+	/* We prepare the variables we will need to read the file */
+
+	char read_char = 0;
+	char buf[messageLength];
+	unsigned int i = 0;
+	unsigned int currentLine = 1;
+	bool endOfFile = false;
+
+	/* We will read the file character by character and each time
+	 * we will save the read character in the 'read_char' variable
+	 */
+
+	while(1)
+	{
+		/* With the inner 'while' we read a single line of the file */
+
+		while(1)
+		{
+			/* Here we read the next character */
+
+			int read_bytes = read(fd, &read_char, 1);
+
+			/* If there are no more characters in the file,
+			 * (result from 'read' <= 0) we exit immediatelly
+			 */
+
+			if(read_bytes <= 0)
+			{
+				endOfFile = true;
+				break;
+			}
+
+			/* If the read character was a new line, the loop ends */
+
+			if(read_char == '\n')
+			{
+				/* We complete the string with final zero
+		 		 * and reset 'i' for the next loop
+				 */
+
+				buf[i] = '\0';
+				i = 0;
+
+				break;
+			}
+
+			/* Else we store the character in the buffer and continue */
+
+			buf[i++] = read_char;
+		}
+
+		/* If the end of file was reached, we stop the loop */
+
+		if(endOfFile)
+			break;
+
+		/* Now the 'buf' array is storing the whole content of the current
+		 * line of the file that we just read in the above inner 'while' loop.
+		 *
+		 * In this part we will do any actions we want with this line of file.
+		 */
+        std::cout << buf << std::endl;
+
+        unsigned int buffer_length = strlen(buf);
+        char currentBinaryFilename[strlen("../input/") + buffer_length + 1];
+        sprintf(currentBinaryFilename, "../input/%s", buf);
+
+        Table *new_table = new Table(currentBinaryFilename);
+        relations->insertLast(new_table);
+
+        /* We proceed to the next line of the file */
+        currentLine++;
+    }
+
+    /* Finally, we close the opened initialization file */
+
+	int close_result = close(fd);
+
+	/* We examine if the closing of the file was successful */
+
+	if(close_result == -1)
+	{
+		printf("Error closing \"%s\"\n", init_file);
+		perror("close");
+	}
+
+    return relations;
+}
+
 
 /***********************************************************
  * Reads the input file and stores the user's input to the *
@@ -666,106 +782,6 @@ void FileReader::readConfigFile(
 	if(close_result == -1)
 	{
 		printf("Error closing \"%s\"\n", config_file);
-		perror("close");
-	}
-}
-
-void FileReader::read_test(const char *filepath)
-{
-    /* We open the file */
-
-	int fd = open(filepath, O_RDONLY);
-
-	/* We examine if the opening was successful */
-
-	if(fd == -1)
-	{
-		printf("Error opening \"%s\"\n", filepath);
-		perror("open");
-		return;
-	}
-
-	/* We prepare the variables we will need to read the file */
-
-	char read_char = 0;
-	char buf[messageLength];
-	unsigned int i = 0;
-	unsigned int currentLine = 1;
-	bool endOfFile = false;
-
-	/* We will read the file character by character and each time
-	 * we will save the read character in the 'read_char' variable
-	 */
-
-	while(1)
-	{
-		/* With the inner 'while' we read a single line of the file */
-
-		while(1)
-		{
-			/* Here we read the next character */
-
-			int read_bytes = read(fd, &read_char, 1);
-
-			/* If there are no more characters in the file,
-			 * (result from 'read' <= 0) we exit immediatelly
-			 */
-
-			if(read_bytes <= 0)
-			{
-				endOfFile = true;
-				break;
-			}
-
-			/* If the read character was a new line, the loop ends */
-
-			if(read_char == '\n')
-			{
-				/* We complete the string with final zero
-		 		 * and reset 'i' for the next loop
-				 */
-
-				buf[i] = '\0';
-				i = 0;
-
-				break;
-			}
-
-			/* Else we store the character in the buffer and continue */
-
-			buf[i++] = read_char;
-		}
-
-		/* Now the 'buf' array is storing the whole content of the current
-		 * line of the file that we just read in the above inner 'while' loop.
-		 *
-		 * In this part we will do any actions we want with this line of file.
-		 */
-
-        /* We update the current line and proceed to the next loop */
-        currentLine++;
-
-        unsigned int k;
-        for(k = 0; k < messageLength; k++)
-        {
-            std::cout << "Current Byte: " << (int) buf[k] << std::endl;
-        }
-
-		/* If the end of file was reached, we stop the loop */
-
-		if(endOfFile)
-			break;
-    }
-
-    /* Finally, we close the opened configuration file */
-
-	int close_result = close(fd);
-
-	/* We examine if the closing of the file was successful */
-
-	if(close_result == -1)
-	{
-		printf("Error closing \"%s\"\n", filepath);
 		perror("close");
 	}
 }
