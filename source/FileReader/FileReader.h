@@ -37,6 +37,8 @@ void readConfigFile(
     unsigned int *maxPartitionDepth
 );
 
+void read_test(const char *filepath);
+
 };
 
 #endif
