@@ -16,4 +16,6 @@ int main(int argc, char const *argv[])
 
 	/* We terminate the result returned by the operation */
 	phj.freeJoinResult(result);
+
+	FileReader::read_test("../input/r0");
 }

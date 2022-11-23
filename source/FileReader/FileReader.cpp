@@ -736,11 +736,6 @@ void FileReader::read_test(const char *filepath)
 			buf[i++] = read_char;
 		}
 
-		/* If the end of file was reached, we stop the loop */
-
-		if(endOfFile)
-			break;
-
 		/* Now the 'buf' array is storing the whole content of the current
 		 * line of the file that we just read in the above inner 'while' loop.
 		 *
@@ -755,6 +750,11 @@ void FileReader::read_test(const char *filepath)
         {
             std::cout << "Current Byte: " << (int) buf[k] << std::endl;
         }
+
+		/* If the end of file was reached, we stop the loop */
+
+		if(endOfFile)
+			break;
     }
 
     /* Finally, we close the opened configuration file */

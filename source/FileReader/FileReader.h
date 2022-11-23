@@ -37,6 +37,16 @@ void readConfigFile(
     unsigned int *maxPartitionDepth
 );
 
+/**
+ * Reads the input file that contains all the relation name
+ * sto
+ * 
+ */
+// void initialize(const char *filepath);
+
+/* 
+ *
+ */
 void read_test(const char *filepath);
 
 };
