@@ -134,46 +134,80 @@ PredicatesParser::PredicatesParser(char *predicate_string)
 		 *
 		 * We proceed to the next character and repeat.
 		 *
-		 * If we reach the end of the string and still
-		 * have not found the dot, that means the right
-		 * part is an integer and not an array. In this
-		 * case the auxiliary pointer will be pointing
-		 * to the final zero of the string after this
-		 * ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-		 * 'while' is escaped
+		 * If we reach the end of the string and still have not
+		 * found the dot, that means the right part is an integer
+		 * and not an array. In this case the auxiliary pointer
+		 * will be pointing to the final zero of the string after
+		 *                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		 * this 'while' is escaped
 		 */
 		predicate_string_pointer++;
 	}
 
+	/* Now we proceed to one of the two cases below,
+	 * depending on whether or not we found the dot
+	 *
+	 * Case the dot was found (the right part is an array column)
+	 */
 	if(dotWasFound)
 	{
+		/* We set the value of the boolean flag of the class to 'false' */
 		rvalueIsConstant = false;
 
+		/* We have identified the relation of the right part.
+		 *
+		 * We store the relation as string.
+		 */
 		char rightArrayAsString[predicate_string_pointer - predicate_string + 1];
 		memcpy(rightArrayAsString, predicate_string, predicate_string_pointer - predicate_string);
 		rightArrayAsString[predicate_string_pointer - predicate_string] = 0;
+
+		/* We convert the string of the relation to unsigned integer */
 		rightArray = atou(rightArrayAsString);
 
+		/* We set the auxiliary variable point one character after the dot */
 		predicate_string_pointer++;
 
+		/* We set the pointer of the predicate to point
+	 	 * at the first character after the dot. We
+	 	 * do not need the previous information anymore.
+		 */
 		predicate_string = predicate_string_pointer;
 
+		/* We parse the rest of the string */
 		while(*predicate_string_pointer != 0)
 			predicate_string_pointer++;
 
+		/* Now we have identified the column of the right relation.
+		 *
+		 * We store the column of the right relation as string.
+		 */
 		char rightArrayColumnAsString[predicate_string_pointer - predicate_string + 1];
 		memcpy(rightArrayColumnAsString, predicate_string, predicate_string_pointer - predicate_string);
 		rightArrayColumnAsString[predicate_string_pointer - predicate_string] = 0;
+
+		/* We convert the string of the right array column to unsigned integer */
 		rightArrayColumn = atou(rightArrayColumnAsString);
 	}
 
+	/* Case the dot was not found (the right part is an integer constant) */
+
 	else
 	{
+		/* We set the value of the boolean flag of the class to 'true' */
 		rvalueIsConstant = true;
 
+		/* In this case the auxiliary variable is already pointing
+		 * to the final zero of the string. That means we have
+		 * identified the unsigned integer constant of the right part.
+		 *
+		 * We store the integer constant as string
+		 */
 		char filterValueAsString[predicate_string_pointer - predicate_string + 1];
 		memcpy(filterValueAsString, predicate_string, predicate_string_pointer - predicate_string);
 		filterValueAsString[predicate_string_pointer - predicate_string] = 0;
+
+		/* We convert the string to unsigned integer */
 		filterValue = atou(filterValueAsString);
 	}
 }

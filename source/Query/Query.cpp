@@ -82,6 +82,29 @@ static void deletePredicatesParser(void *item)
 	delete my_parser;
 }
 
+/********************************************
+ * Operations needed to process the list of *
+ *               projections                *
+ *               ^^^^^^^^^^^                *
+ ********************************************/
+
+static void printProjectionsParser(void *item)
+{
+	ProjectionsParser *my_parser = (ProjectionsParser *) item;
+	my_parser->print();
+}
+
+static void contextBetweenProjectionsParsers()
+{
+	std::cout << " ";
+}
+
+static void deleteProjectionsParser(void *item)
+{
+	ProjectionsParser *my_parser = (ProjectionsParser *) item;
+	delete my_parser;
+}
+
 /***************
  * Constructor *
  ***************/
@@ -152,7 +175,29 @@ Query::Query(char *initialization_string)
 		predicateToken = strtok(NULL, "&");
 	}
 
-	//char *projectionToken = strtok(projectionsAsString, " ");
+	/* Now we will start processing the string for the projections
+	 *                                                 ^^^^^^^^^^^
+	 * In the string form the projections are distincted by spaces.
+	 *
+	 * We split the string in spaces. We retrieve the first token.
+	 */
+	char *projectionToken = strtok(projectionsAsString, " ");
+
+	/* As long as we have not processed all the
+	 * projections, we do the following 'while' loop
+	 */
+	while(projectionToken != NULL)
+	{
+		/* We create an object that will handle the current projection */
+		ProjectionsParser *parser_of_current_projection =
+			new ProjectionsParser(projectionToken);
+
+		/* We insert the new object in the 'projections' list */
+		projections->insertLast(parser_of_current_projection);
+
+		/* We proceed to the next projection */
+		projectionToken = strtok(NULL, " ");
+	}
 }
 
 /**************
@@ -170,6 +215,7 @@ Query::~Query()
 	delete predicates;
 
 	/* We free the allocated memory for each projection */
+	projections->traverseFromHead(deleteProjectionsParser);
 	delete projections;
 }
 
@@ -216,5 +262,8 @@ void Query::print() const
 
 	/* Finally, in the next line we print the projections of the query */
 	std::cout << "\nProjections: ";
+	projections->printFromHead(printProjectionsParser, contextBetweenProjectionsParsers);
+
+	/* We print a new line to escape the line of projections */
 	std::cout << std::endl;
 }

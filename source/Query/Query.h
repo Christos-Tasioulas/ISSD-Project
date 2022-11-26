@@ -3,6 +3,7 @@
 
 #include "List.h"
 #include "PredicatesParser.h"
+#include "ProjectionsParser.h"
 
 /* A structure that stores the information of a query
  *

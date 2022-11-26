@@ -6,7 +6,7 @@
 #include "Query.h"
 
 /* A namespace with operations that read data from the
- * input file and the configuration file of the user
+ * input files and the configuration file of the program
  */
 namespace FileReader {
 
