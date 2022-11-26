@@ -37,7 +37,13 @@ static unsigned int atou(char *arithmetic_string, unsigned int *read_bytes = NUL
      * in case the user has given a no-null unsigned int address
      */
     if(read_bytes != NULL)
+    {
+        /* The amount of bytes parsed successfully is the address
+         * where 'strtoul' stopped parsing minus the address where
+         * 'strtou' started parsing.
+         */
         (*read_bytes) = parsingStopPoint - arithmetic_string;
+    }
 
 	/* Finally, if no error has occured, we cast the unsigned
 	 * long result to unsigned int and we return it.
