@@ -19,9 +19,23 @@ void readInputFile(
     Relation **relS
 );
 
-/* Reads the given configuration file and returns the value
- * of each option in the file through the memory addresses
- * that are given as arguments to the function
+/* Reads the "init" file that contains all the relation names that
+ * will take part in the follow-up queries. Then it reads the binary
+ * input file of each relation. Retuns a lined list that stores a
+ * (Table *) in each node. Each 'Table' object stores all the rows
+ * and columns of a relation.
+ */
+List *readInitFile(const char *init_file);
+
+/* Reads the "work" file that contains all the queries that will
+ * be given to the program. Every query is stored in a 'Query'
+ * object. A linked list of all the 'Query' objects is returned.
+ */
+List *readWorkFile(const char *work_file);
+
+/* Reads the given configuration file and returns the
+ * value of each option in the file through the memory
+ * addresses that are given as arguments to the function.
  */
 void readConfigFile(
     const char *config_file,
@@ -38,13 +52,6 @@ void readConfigFile(
     double *maxAllowedSizeModifier,
     unsigned int *maxPartitionDepth
 );
-
-/* Reads the input file that contains all the relation names
- * stores the final relations in a list
- */
-List *initialize(const char *init_file);
-
-List *readWorkFile(const char *work_file);
 
 };
 

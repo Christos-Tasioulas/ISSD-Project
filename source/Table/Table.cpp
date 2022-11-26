@@ -7,12 +7,19 @@
 #include <sys/stat.h>
 #include "Table.h"
 
+/***************
+ * Constructor *
+ ***************/
+
 Table::Table(const char *binary_filename)
 {
     int fd = open(binary_filename, O_RDONLY);
-    if (fd == -1) {
-        std::cerr << "cannot open " << binary_filename << std::endl;
-        throw;
+
+    if(fd == -1)
+    {
+        std::cout << "Error opening" << binary_filename << std::endl;
+		perror("open");
+		return;
     }
 
     // Obtain file size
@@ -53,42 +60,73 @@ Table::Table(const char *binary_filename)
     }
 }
 
+/**************
+ * Destructor *
+ **************/
+
 Table::~Table()
 {
+    /* Auxiliary variable used for counting */
     unsigned long long i;
+
+    /* We delete all the contents of the table */
 
     for(i = 0; i < numColumns; i++)
         delete[] table[i];
 
+    /* We delete the table itself */
     delete[] table;
 }
+
+/****************************************************
+ * Getter - Returns the number of rows of the table *
+ ****************************************************/
 
 unsigned long long Table::getNumOfTuples() const
 {
     return this->numTuples;
 }
 
+/*******************************************************
+ * Getter - Returns the number of columns of the table *
+ *******************************************************/
+
 unsigned long long Table::getNumOfColumns() const
 {
     return this->numColumns;
 }
 
-unsigned long long **Table::getColumns() const
+/**************************************************
+ * Getter - Returns a pointer to the table itself *
+ **************************************************/
+
+unsigned long long **Table::getTable() const
 {
     return this->table;
 }
 
+/**********************************************
+ * Prints the information stored in the table *
+ **********************************************/
+
 void Table::print() const
 {
+    /* Auxiliary variables used for counting */
     unsigned long long i, j;
+
+    /* For each column of the table we do the following */
 
     for(i = 0; i < numColumns; i++)
     {
+        /* We announce the start of the column with a '[' */
         std::cout << "[ " << std::endl;
+
+        /* We print the contents of that column */
 
         for(j = 0; j < numTuples; j++)
             std::cout << table[i][j] << " ";
 
+        /* We announce the end of the column with a ']' */
         std::cout << "]" << std::endl;
     }
 }

@@ -22,16 +22,22 @@ static unsigned int messageLength = 512;
  * Converts a string to unsigned integer * 
  *****************************************/
 
-static unsigned int atou(char *arithmeticString)
+static unsigned int atou(char *arithmetic_string, unsigned int *read_bytes = NULL)
 {
 	/* We convert the given argument to unsigned long integer
 	 * by using the function 'strtoul'. Then we will cast that
 	 * unsigned long integer to unsigned int and return it.
 	 */
-	char *conversionErrorMessage;
+	char *parsingStopPoint;
 
-	unsigned long unsignedLongResult = strtoul(arithmeticString,
-		&conversionErrorMessage, 10);
+	unsigned long unsignedLongResult = strtoul(arithmetic_string,
+		&parsingStopPoint, 10);
+
+    /* We store the amount of bytes that were successfully parsed
+     * in case the user has given a no-null unsigned int address
+     */
+    if(read_bytes != NULL)
+        (*read_bytes) = parsingStopPoint - arithmetic_string;
 
 	/* Finally, if no error has occured, we cast the unsigned
 	 * long result to unsigned int and we return it.
@@ -97,15 +103,17 @@ static int* line_to_array(std::string text)
     return array;
 }
 
+/*********************************************************************
+ *  Reads the "init" file that contains all the relation names that  *
+ * will take part in the follow-up queries. Then it reads the binary *
+ *  input file of each relation. Retuns a lined list that stores a   *
+ *  (Table *) in each node. Each 'Table' object stores all the rows  *
+ *                     and columns of a relation                     *
+ *********************************************************************/
 
-/*************************************************************
- * Reads the input file that contains all the relation names *
- *           stores the final relations in a list            *
- *************************************************************/
-
-List *FileReader::initialize(const char *init_file)
+List *FileReader::readInitFile(const char *init_file)
 {
-    /* A list that will be storing the file name of every binary file */
+    /* A list that will be storing the table of every relation */
 
     List *relations = new List();
 
@@ -133,7 +141,6 @@ List *FileReader::initialize(const char *init_file)
 	/* We will read the file character by character and each time
 	 * we will save the read character in the 'read_char' variable
 	 */
-
 	while(1)
 	{
 		/* With the inner 'while' we read a single line of the file */
@@ -182,14 +189,22 @@ List *FileReader::initialize(const char *init_file)
 		 * line of the file that we just read in the above inner 'while' loop.
 		 *
 		 * In this part we will do any actions we want with this line of file.
-		 */
-        std::cout << buf << std::endl;
-
+		 *
+         * First, we retrieve the length of the buffer (in bytes).
+         */
         unsigned int buffer_length = strlen(buf);
+
+        /* All the binary files of the relations are inside the "input"
+         * directory. Consequently, the path from the executable of the
+         * program to a binary file "rX" is "../input/rX".
+         */
         char currentBinaryFilename[strlen("../input/") + buffer_length + 1];
         sprintf(currentBinaryFilename, "../input/%s", buf);
 
+        /* We create a new Table giving it the binary file as input */
         Table *new_table = new Table(currentBinaryFilename);
+
+        /* We store the new Table we just created in the list */
         relations->insertLast(new_table);
 
         /* We proceed to the next line of the file */
@@ -208,12 +223,20 @@ List *FileReader::initialize(const char *init_file)
 		perror("close");
 	}
 
+    /* Finally we return the list of Tables of each relation */
+
     return relations;
 }
 
+/*****************************************************************
+ * Reads the "work" file that contains all the queries that will *
+ *  be given to the program. Every query is stored in a 'Query'  *
+ * object. A linked list of all the 'Query' objects is returned  *
+ *****************************************************************/
+
 List *FileReader::readWorkFile(const char *work_file)
 {
-    /* A list that will be storing the file name of every binary file */
+    /* A list that will be storing all the input queries */
 
     List *queries = new List();
 
@@ -290,16 +313,19 @@ List *FileReader::readWorkFile(const char *work_file)
          * line of the file that we just read in the above inner 'while' loop.
          *
          * In this part we will do any actions we want with this line of file.
+         *
+         *
          */
-        std::cout << buf << std::endl;
-
         if(!strcmp(buf, "F"))
         {
             currentLine++;
             continue;
         }
 
+        /* We store the current query in a 'Query' object */
         Query *new_query = new Query(buf);
+
+        /* We insert the 'Query' object we just created in the list */
         queries->insertLast(new_query);
 
         /* We proceed to the next line of the file */
@@ -317,6 +343,8 @@ List *FileReader::readWorkFile(const char *work_file)
         printf("Error closing \"%s\"\n", work_file);
         perror("close");
     }
+
+    /* Finally we return the list of queries */
 
     return queries;
 }

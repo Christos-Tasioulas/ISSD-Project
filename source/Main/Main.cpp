@@ -28,7 +28,7 @@ static void deleteQuery(void *item)
 
 int main(int argc, char const *argv[])
 {
-	List *list = FileReader::initialize("../input/small.init");
+	List *list = FileReader::readInitFile("../input/small.init");
 	std::cout << "Done" << std::endl;
 	std::cout << "Sleeping for 1 second..." << std::endl;
 	sleep(1);
