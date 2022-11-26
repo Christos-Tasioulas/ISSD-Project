@@ -18,7 +18,7 @@ private:
     unsigned long long numTuples;
 
     /* The amount of columns of the table */
-    unsigned long long numColumns;
+    size_t numColumns;
 
 public:
 
@@ -30,7 +30,7 @@ public:
     unsigned long long getNumOfTuples() const;
 
     /* Getter - Returns the number of columns of the table */
-    unsigned long long getNumOfColumns() const;
+    size_t getNumOfColumns() const;
 
     /* Getter - Returns a pointer to the table itself */
     unsigned long long **getTable() const;

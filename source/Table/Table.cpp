@@ -13,7 +13,11 @@
 
 Table::Table(const char *binary_filename)
 {
+    /* We open the binary input file */
+
     int fd = open(binary_filename, O_RDONLY);
+
+    /* We examine if the opening was successful */
 
     if(fd == -1)
     {
@@ -22,42 +26,93 @@ Table::Table(const char *binary_filename)
 		return;
     }
 
-    // Obtain file size
-    struct stat sb;
-    if (fstat(fd,&sb)==-1)
-    std::cerr << "fstat\n";
+    /* We will use a 'struct stat' object to
+     * retrieve information for the file
+     */
+    struct stat fileInfo;
 
-    auto length=sb.st_size;
+    /* We examine if the 'fstat' system call was successful */
 
-    char *addr=static_cast<char*>(mmap(nullptr,length,PROT_READ,MAP_PRIVATE,fd,0u));
-    if(addr == MAP_FAILED)
+    if(fstat(fd, &fileInfo) == -1)
     {
-        std::cerr << "cannot mmap " << binary_filename << " of length " << length << std::endl;
-        throw;
+        std::cout << "Could not retrieve file information" << std::endl;
+        perror("fstat");
+        return;
     }
 
-    if(length < 16)
+    /* We retrieve the size of the file */
+    unsigned int fileSize = fileInfo.st_size;
+
+    /* We create a new mapping for the input binary file */
+    char *pointerToMapping = (char *) mmap(NULL, fileSize, PROT_READ, MAP_PRIVATE, fd, 0u);
+
+    /* We examine if the mapping was successful */
+
+    if(pointerToMapping == MAP_FAILED)
     {
-        std::cerr << "relation file " << binary_filename << " does not contain a valid header" << std::endl;
-        throw;
+        std::cout << "Could not mmap the file " << binary_filename
+            << " of size " << fileSize << std::endl;
+
+        perror("mmap");
+        return;
     }
 
-    this->numTuples=*reinterpret_cast<unsigned long long *>(addr);
-    addr+=sizeof(numTuples);
-    this->numColumns=*reinterpret_cast<size_t*>(addr);
-    addr+=sizeof(size_t);
+    /* If the size of the file is less than 16 bytes,
+     * that means the file does not have a valid header
+     */
+    if(fileSize < 16)
+    {
+        std::cout << "Relation file " << binary_filename
+            << " does not contain a valid header" << std::endl;
 
+        return;
+    }
+
+    /* The first 8 bytes of the header describe the number of rows */
+    this->numTuples = *((unsigned long long *) pointerToMapping);
+
+    /* We proceed to the next data of the header */
+    pointerToMapping += sizeof(unsigned long long);
+
+    /* The next 4 bytes describe the number of columns */
+    this->numColumns = *((size_t *) pointerToMapping);
+
+    /* Now we proceed to the data of the table */
+    pointerToMapping += sizeof(size_t);
+
+    /* We allocate memory for the table */
     table = new unsigned long long *[numColumns];
-    unsigned long long i;
+
+    /* Auxiliary variable used for counting */
+    size_t i;
+
+    /* We allocate memory for the rows of the table */
 
     for(i = 0; i < numColumns; i++)
         table[i] = new unsigned long long[numTuples];
 
-    for(unsigned long long i = 0; i < numColumns; i++)
+    /* Now we will fill the table with the rest data from the file */
+
+    for(i = 0; i < numColumns; i++)
     {
-        memcpy(table[i], addr, numTuples * sizeof(unsigned long long));
-        addr += numTuples * sizeof(unsigned long long);
+        /* We copy the next column from the file to the table */
+        memcpy(table[i], pointerToMapping, numTuples * sizeof(unsigned long long));
+
+        /* We proceed to the base address of the next column */
+        pointerToMapping += numTuples * sizeof(unsigned long long);
     }
+
+    /* Finally, we close the opened binary file */
+
+	int close_result = close(fd);
+
+	/* We examine if the closing of the file was successful */
+
+	if(close_result == -1)
+	{
+		std::cout << "Error closing " << binary_filename << std::endl;
+		perror("close");
+	}
 }
 
 /**************
@@ -67,7 +122,7 @@ Table::Table(const char *binary_filename)
 Table::~Table()
 {
     /* Auxiliary variable used for counting */
-    unsigned long long i;
+    size_t i;
 
     /* We delete all the contents of the table */
 
@@ -91,7 +146,7 @@ unsigned long long Table::getNumOfTuples() const
  * Getter - Returns the number of columns of the table *
  *******************************************************/
 
-unsigned long long Table::getNumOfColumns() const
+size_t Table::getNumOfColumns() const
 {
     return this->numColumns;
 }
@@ -112,7 +167,8 @@ unsigned long long **Table::getTable() const
 void Table::print() const
 {
     /* Auxiliary variables used for counting */
-    unsigned long long i, j;
+    size_t i;
+    unsigned long long j;
 
     /* For each column of the table we do the following */
 
