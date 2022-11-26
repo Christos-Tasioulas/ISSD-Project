@@ -3,6 +3,7 @@
 
 #include "Relation.h"
 #include "Table.h"
+#include "Query.h"
 
 /* A namespace with operations that read data from the
  * input file and the configuration file of the user
@@ -38,11 +39,12 @@ void readConfigFile(
     unsigned int *maxPartitionDepth
 );
 
-/*
- * Reads the input file that contains all the relation names
+/* Reads the input file that contains all the relation names
  * stores the final relations in a list
  */
 List *initialize(const char *init_file);
+
+List *readWorkFile(const char *work_file);
 
 };
 

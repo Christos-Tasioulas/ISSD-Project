@@ -49,7 +49,6 @@ Table::Table(const char *binary_filename)
     for(unsigned long long i = 0; i < numColumns; i++)
     {
         memcpy(table[i], addr, numTuples * sizeof(unsigned long long));
-        //this->columns->insertLast(reinterpret_cast<unsigned long long *>(addr));
         addr += numTuples * sizeof(unsigned long long);
     }
 }

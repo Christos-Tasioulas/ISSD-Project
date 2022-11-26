@@ -2,16 +2,28 @@
 #include <unistd.h>
 #include "PartitionedHashJoin.h"
 
+static void printTable(void *item)
+{
+	Table *table = (Table *) item;
+	table->print();
+}
+
 static void deleteTable(void *item)
 {
 	Table *table = (Table *) item;
 	delete table;
 }
 
-static void printContents(void *item)
+static void printQuery(void *item)
 {
-	Table *table = (Table *) item;
-	table->print();
+	Query *query = (Query *) item;
+	query->print();
+}
+
+static void deleteQuery(void *item)
+{
+	Query *query = (Query *) item;
+	delete query;
 }
 
 int main(int argc, char const *argv[])
@@ -21,9 +33,14 @@ int main(int argc, char const *argv[])
 	std::cout << "Sleeping for 1 second..." << std::endl;
 	sleep(1);
 
-	list->traverseFromHead(printContents);
+	list->traverseFromHead(printTable);
 	list->traverseFromHead(deleteTable);
 	delete list;
+
+	List *work_list = FileReader::readWorkFile("../input/small.work");
+	work_list->traverseFromHead(printQuery);
+	work_list->traverseFromHead(deleteQuery);
+	delete work_list;
 
 	/* We create a 'PartitionedHashJoin' object by giving
 	 * the input and configuration files to initialize it
