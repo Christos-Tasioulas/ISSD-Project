@@ -218,6 +218,69 @@ PredicatesParser::PredicatesParser(char *predicate_string)
 
 PredicatesParser::~PredicatesParser() {}
 
+/***************************************************************
+ * Getter - Returns the relation where the left column belongs *
+ ***************************************************************/
+
+unsigned int PredicatesParser::getLeftArray() const
+{
+	return leftArray;
+}
+
+/*****************************************************
+ * Getter - Returns the left column of the predicate *
+ *****************************************************/
+
+unsigned int PredicatesParser::getLeftArrayColumn() const
+{
+	return leftArrayColumn;
+}
+
+/****************************************************************
+ * Getter - Returns the relation where the right column belongs *
+ ****************************************************************/
+
+unsigned int PredicatesParser::getRightArray() const
+{
+	return rightArray;
+}
+
+/******************************************************
+ * Getter - Returns the right column of the predicate *
+ ******************************************************/
+
+unsigned int PredicatesParser::getRightArrayColumn() const
+{
+	return rightArrayColumn;
+}
+
+/********************************************************************
+ * Getter - Returns the constant of the right part of the predicate *
+ ********************************************************************/
+
+unsigned int PredicatesParser::getFilterValue() const
+{
+	return filterValue;
+}
+
+/******************************************************************
+ * Getter - Returns the operator of the predicate ('<', '>', '=') *
+ ******************************************************************/
+
+char PredicatesParser::getFilterOperator() const
+{
+	return filterOperator;
+}
+
+/*******************************************************************
+ * Returns 'true' if the right part of the predicate is a constant *
+ *******************************************************************/
+
+bool PredicatesParser::hasConstant() const
+{
+	return rvalueIsConstant;
+}
+
 /************************
  * Prints the predicate *
  ************************/

@@ -237,14 +237,20 @@ List *FileReader::readInitFile(const char *init_file)
 /*****************************************************************
  * Reads the "work" file that contains all the queries that will *
  *  be given to the program. Every query is stored in a 'Query'  *
- * object. A linked list of all the 'Query' objects is returned  *
+ *  object. A linked list of lists will be returned. Each inner  *
+ * linked list contains a full batch of input queries. The outer *
+ *              list contains all the input batches              *
  *****************************************************************/
 
 List *FileReader::readWorkFile(const char *work_file)
 {
-    /* A list that will be storing all the input queries */
+    /* A list of lists - each inner list stores a batch of queries */
 
-    List *queries = new List();
+    List *allBatches = new List();
+
+    /* A list that will be storing all the input queries of the current batch */
+
+    List *currentBatchOfQueries = new List();
 
     /* We open the initialization file */
 
@@ -320,19 +326,28 @@ List *FileReader::readWorkFile(const char *work_file)
          *
          * In this part we will do any actions we want with this line of file.
          *
-         *
+         * Case we have reached the end of the current batch
          */
         if(!strcmp(buf, "F"))
         {
+            /* We insert the complete batch in the list of all batches */
+            allBatches->insertLast(currentBatchOfQueries);
+
+            /* We prepare the helper list for the next batch */
+            currentBatchOfQueries = new List();
+
+            /* We proceed to the next line of the file */
             currentLine++;
+
+            /* There is nothing else to do in this case */
             continue;
         }
 
         /* We store the current query in a 'Query' object */
         Query *new_query = new Query(buf);
 
-        /* We insert the 'Query' object we just created in the list */
-        queries->insertLast(new_query);
+        /* We insert the 'Query' object we just created in the current batch */
+        currentBatchOfQueries->insertLast(new_query);
 
         /* We proceed to the next line of the file */
         currentLine++;
@@ -350,9 +365,13 @@ List *FileReader::readWorkFile(const char *work_file)
         perror("close");
     }
 
-    /* Finally we return the list of queries */
+    /* We delete the temporary helper list */
 
-    return queries;
+    delete currentBatchOfQueries;
+
+    /* Finally we return the list of all batches */
+
+    return allBatches;
 }
 
 /***********************************************************

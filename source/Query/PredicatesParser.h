@@ -49,6 +49,27 @@ public:
 	PredicatesParser(char *predicate_string);
 	~PredicatesParser();
 
+	/* Getter - Returns the relation where the left column belongs */
+	unsigned int getLeftArray() const;
+
+	/* Getter - Returns the left column of the predicate */
+	unsigned int getLeftArrayColumn() const;
+
+	/* Getter - Returns the relation where the right column belongs */
+	unsigned int getRightArray() const;
+
+	/* Getter - Returns the right column of the predicate */
+	unsigned int getRightArrayColumn() const;
+
+	/* Getter - Returns the constant of the right part of the predicate */
+	unsigned int getFilterValue() const;
+
+	/* Getter - Returns the operator of the predicate ('<', '>', '=') */
+	char getFilterOperator() const;
+
+	/* Returns 'true' if the right part of the predicate is a constant */
+	bool hasConstant() const;
+
 	/* Prints the predicate */
 	void print() const;
 

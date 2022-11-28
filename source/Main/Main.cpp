@@ -26,21 +26,35 @@ static void deleteQuery(void *item)
 	delete query;
 }
 
+static void printBatch(void *item)
+{
+	List *batch = (List *) item;
+	std::cout << "================ Next Batch ================" << std::endl;
+	batch->traverseFromHead(printQuery);
+}
+
+static void deleteBatch(void *item)
+{
+	List *batch = (List *) item;
+	batch->traverseFromHead(deleteQuery);
+	delete batch;
+}
+
 int main(int argc, char const *argv[])
 {
-	List *list = FileReader::readInitFile("../input/small.init");
+	List *tables = FileReader::readInitFile("../input/small.init");
 	std::cout << "Done" << std::endl;
 	std::cout << "Sleeping for 1 second..." << std::endl;
 	sleep(1);
 
-	list->traverseFromHead(printTable);
-	list->traverseFromHead(deleteTable);
-	delete list;
+	tables->traverseFromHead(printTable);
+	tables->traverseFromHead(deleteTable);
+	delete tables;
 
-	List *work_list = FileReader::readWorkFile("../input/small.work");
-	work_list->traverseFromHead(printQuery);
-	work_list->traverseFromHead(deleteQuery);
-	delete work_list;
+	List *batches = FileReader::readWorkFile("../input/small.work");
+	batches->traverseFromHead(printBatch);
+	batches->traverseFromHead(deleteBatch);
+	delete batches;
 
 	/* We create a 'PartitionedHashJoin' object by giving
 	 * the input and configuration files to initialize it

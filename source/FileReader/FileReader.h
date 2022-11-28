@@ -29,7 +29,9 @@ List *readInitFile(const char *init_file);
 
 /* Reads the "work" file that contains all the queries that will
  * be given to the program. Every query is stored in a 'Query'
- * object. A linked list of all the 'Query' objects is returned.
+ * object. A linked list of lists will be returned. Each inner
+ * linked list contains a full batch of input queries. The outer
+ * list contains all the input batches.
  */
 List *readWorkFile(const char *work_file);
 
