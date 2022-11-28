@@ -174,34 +174,34 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
  * Constructor *
  ***************/
 
-PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
-    const char *config_file)
+PartitionedHashJoin::PartitionedHashJoin(Relation *relS,
+    Relation *relR, PartitionedHashJoinInput *inputStructure)
 {
-    /* We read the input file to access the user's relations */
+    /* We assign the given relations to the fields of the class */
+    this->relS = relS;
+    this->relR = relR;
 
-    FileReader::readInputFile(input_file, &relR, &relS);
+    /* We set the value of every additional parameter to
+     * the value provided by the given input structure
+     */
+    this->bitsNumForHashing = inputStructure->bitsNumForHashing;
+    this->showInitialRelations = inputStructure->showInitialRelations;
+    this->showAuxiliaryArrays = inputStructure->showAuxiliaryArrays;
+    this->showHashTable = inputStructure->showHashTable;
+    this->showSubrelations = inputStructure->showSubrelations;
+    this->showResult = inputStructure->showResult;
+    this->hopscotchBuckets = inputStructure->hopscotchBuckets;
+    this->hopscotchRange = inputStructure->hopscotchRange;
+    this->resizableByLoadFactor = inputStructure->resizableByLoadFactor;
+    this->loadFactor = inputStructure->loadFactor;
+    this->maxAllowedSizeModifier = inputStructure->maxAllowedSizeModifier;
+    this->maxPartitionDepth = inputStructure->maxPartitionDepth;
 
-    /* We read the configuration file to store the user's options */
-
-    FileReader::readConfigFile(config_file,
-        &bitsNumForHashing,
-        &showInitialRelations,
-        &showAuxiliaryArrays,
-        &showHashTable,
-        &showSubrelations,
-        &showResult,
-        &hopscotchBuckets,
-        &hopscotchRange,
-        &resizableByLoadFactor,
-        &loadFactor,
-        &maxAllowedSizeModifier,
-        &maxPartitionDepth);
-
-    /* Since this object was created through an input and configuration
-     * file, it is the object that the user created and not an object
-     * created by another 'PartitionedHashJoin' object. That means
-     * the current object is not depicting subrelations, but the whole
-     * relations instead.
+    /* Since this object was created through a 'PartitionedHashJoinInput'
+     * structure, it is the object that the query handler created and not
+     * an object created by another 'PartitionedHashJoin' object. That
+     * means the current object is not depicting subrelations, but the
+     * whole relations instead.
      */
     hasSubrelations = false;
 
@@ -209,9 +209,9 @@ PartitionedHashJoin::PartitionedHashJoin(const char *input_file,
     alteredTables = false;
 }
 
-/*************************
- * Secondary Constructor *
- *************************/
+/**********************************************************
+ * Constructor for subrelations (used by this class only) *
+ **********************************************************/
 
 PartitionedHashJoin::PartitionedHashJoin(
     Relation *relR,

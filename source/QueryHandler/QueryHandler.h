@@ -1,9 +1,9 @@
 #ifndef _QUERY_HANDLER_H_
 #define _QUERY_HANDLER_H_
 
-#include "FileReader.h"
 #include "BinaryHeap.h"
 #include "PartitionedHashJoin.h"
+#include "PartitionedHashJoinInput.h"
 
 /* A class that stores the input relations (tables) and
  * the input queries split in batches. The class contains

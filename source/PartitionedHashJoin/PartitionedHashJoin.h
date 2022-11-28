@@ -1,19 +1,19 @@
 #ifndef _PARTITIONED_HASH_JOIN_H_
 #define _PARTITIONED_HASH_JOIN_H_
 
-#include "FileReader.h"
 #include "HashTable.h"
 #include "RowIdRelation.h"
-#include "List.h"
+#include "PartitionedHashJoinInput.h"
 
 class PartitionedHashJoin {
 
 public:
 
 /* Constructor */
-    PartitionedHashJoin(const char *input_file, const char *config_file);
+    PartitionedHashJoin(Relation *relS, Relation *relR,
+        PartitionedHashJoinInput *inputStructure);
 
-/* Secondary Constructor */
+/* Constructor for subrelations (used by this class only) */
     PartitionedHashJoin(
         Relation *relR,
         Relation *relS,
