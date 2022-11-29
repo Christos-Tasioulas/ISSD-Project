@@ -19,10 +19,15 @@ private:
     /* The list of input batches of queries */
     List *queryBatches;
 
+    PartitionedHashJoinInput *joinParameters;
+
+    void addressSingleQuery(Query *query, int fileDescOfResultFile);
+
 public:
 
     /* Constuctor & Destructor */
-    QueryHandler(const char *init_file, const char *work_file);
+    QueryHandler(const char *init_file, const char *work_file,
+        const char *config_file);
     ~QueryHandler();
 
     /* Getter - Returns the list of tables */
@@ -30,6 +35,11 @@ public:
 
     /* Getter - Returns the list of query batches */
     List *getQueryBatches() const;
+
+    /* Addresses the queries from all the batches and stores
+     * the results in the given file (the file may not exist)
+     */
+    void addressQueries(const char *result_file);
 
     /* Prints the tables and the batches of queries */
     void print() const;

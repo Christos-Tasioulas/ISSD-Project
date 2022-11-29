@@ -246,6 +246,15 @@ List *Query::getProjections() const
 	return projections;
 }
 
+/**********************************************
+ * Returns the relation in the given position *
+ **********************************************/
+
+unsigned int Query::getRelationInPos(unsigned int pos) const
+{
+	return *((unsigned int *) relations->getItemInPos(pos + 1));
+}
+
 /**************************************************************
  * Prints a query (its relations, predicates and projections) *
  **************************************************************/

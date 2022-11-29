@@ -30,6 +30,9 @@ struct PartitionedHashJoinInput {
     PartitionedHashJoinInput(const char *config_file);
     ~PartitionedHashJoinInput();
 
+/* Prints the value of each field of the class */
+    void print() const;
+
 };
 
 #endif

@@ -38,6 +38,9 @@ public:
 	/* Getter - Returns the list of projections of the query */
 	List *getProjections() const;
 
+	/* Returns the relation in the given position */
+	unsigned int getRelationInPos(unsigned int pos) const;
+
 	/* Prints a query (its relations, predicates and projections) */
 	void print() const;
 
