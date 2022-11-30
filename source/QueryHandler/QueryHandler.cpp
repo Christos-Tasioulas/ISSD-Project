@@ -59,6 +59,10 @@ static void deleteBatch(void *item)
 	delete batch;
 }
 
+/**********************************
+ * Compares two unsigned integers *
+ **********************************/
+
 static int compareUnsignedInts(void *item1, void *item2)
 {
     unsigned int my_uint_1 = *((unsigned int *) item1);
@@ -117,77 +121,193 @@ QueryHandler::~QueryHandler()
 
 void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
 {
+    /* We retrieve the amount of relations taking part in the query */
     unsigned int relationsNum = query->getRelations()->getCounter();
 
+    /* These two arrays below form the intermediate state of the query.
+     *                                 ^^^^^^^^^^^^^^^^^^
+     * The intermediate state of the query is a sequence of arrays.
+     * There are as many arrays as the amount of relations taking part
+     * in the query. If, for example, the relations 3, 5 and 7 are
+     * taking part in the query, then the intermediate representation
+     * will consist of three arrays, the first depicting the row IDs
+     * of relation 3 that satisfy the predicates, the second depicting
+     * the row IDs of relation 5 that satisfy the predicates and the
+     * the third depicting the row IDs of relation 7 that satisfy the
+     * predicates.
+     *
+     * The 'intermediateRelation' array is the above sequence of arrays.
+     * The 'rowsNumOfIntermediateRelations' array stores the amount of
+     * elements of each array in the sequence 'intermediateRelation'.
+     */
     unsigned int *intermediateRelations[relationsNum];
     unsigned int rowsNumOfIntermediateRelations[relationsNum];
+
+    /* Auxiliary variables used for counting */
     unsigned int i, j;
 
-    // Initialization (implementing the FROM part of the query matching relations with indexes)
+    /* We initialize the intermediate structure with the initial state */
+
     for(i = 0; i < relationsNum; i++)
     {
+        /* We retrieve the name of the current relation */
         unsigned int currentRelationName = query->getRelationInPos(i);
+
+        /* We retrieve the table of that relation */
         Table *currentTable = (Table *) tables->getItemInPos(currentRelationName + 1);
 
+        /* We retrieve the amount of tuples of that table */
         unsigned int tuplesNum = currentTable->getNumOfTuples();
+
+        /* This table will be the next table in the sequence of intermediate arrays */
         intermediateRelations[i] = new unsigned int[tuplesNum];
+
+        /* Initially we store all the row IDs of the table in the intermediate array */
 
         for(j = 0; j < tuplesNum; j++)
             intermediateRelations[i][j] = j;
 
+        /* We update the intermediate state with the amount of tuples of the array */
         rowsNumOfIntermediateRelations[i] = tuplesNum;
     }
 
+    /* Now we will start traversing the predicates.
+     *
+     * We retrieve the list of predicates.
+     */
     List *predicates = query->getPredicates();
+
+    /* We will start traversing the list of predicates from the head */
     Listnode *currentNodeOfPredicate = predicates->getHead();
 
+    /* As long as we have not finished traversing the list of predicates,
+     * we do the following actions inside the 'while' loop below
+     */
     while(currentNodeOfPredicate != NULL)
     {
-        PredicatesParser *currentPredicate = (PredicatesParser *) currentNodeOfPredicate->getItem();
+        /* We retrieve the next predicate */
+        PredicatesParser *currentPredicate = (PredicatesParser *)
+            currentNodeOfPredicate->getItem();
 
+        /* That predicate will either be a 'JOIN' between array columns or
+         * a simple filter with a constant value.
+         *
+         * We identify which of the two categories the predicate belongs to.
+         */
         bool needsJoin = !currentPredicate->hasConstant();
 
+        /* Case 1: The predicate suggests a 'JOIN' between two columns
+         * ^^^^^^
+         */
         if(needsJoin)
         {
-            // Left
+            /* This is the position in the query of the left array
+             *             ^^^^^^^^^^^^^^^^^^^^^
+             */
             unsigned int leftArrayNotation = currentPredicate->getLeftArray();
-            unsigned int leftArray = *((unsigned int *) query->getRelations()->getItemInPos(leftArrayNotation + 1));
+
+            /* This is the real position of the left array
+             *             ^^^^^^^^^^^^^
+             */
+            unsigned int leftArray = query->getRelationInPos(leftArrayNotation);
+
+            /* This is the suggested column for 'JOIN' of the left array */
             unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
+            /* We retrieve the table with all the data of the left array */
             Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
+
+            /* We retrieve the amount of tuples of the array from the intermediate state */
             unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
+
+            /* We will create tuples of <RowId,value> for the left array */
             Tuple *leftArrayTuples = new Tuple[leftTableTuplesNum];
+
+            /* We start creating the tuples */
 
             for(i = 0; i < leftTableTuplesNum; i++)
             {
-                // Tuple = <RowIDa , A.C>
-                leftArrayTuples[i].setItem(new unsigned long long(leftTable->getTable()[leftArrayColumn][intermediateRelations[leftArrayNotation][i]]));
+                /* We set the value of the tuple */
+                leftArrayTuples[i].setItem(new unsigned long long(leftTable->getTable()
+                    [leftArrayColumn][intermediateRelations[leftArrayNotation][i]]));
+
+                /* We set the row ID of the tuple */
                 leftArrayTuples[i].setRowId(intermediateRelations[leftArrayNotation][i]);
             }
 
+            /* We have created all the tuples.
+             *
+             * Now we create the relation that will hold them together.
+             */
             Relation *leftRel = new Relation(leftArrayTuples, leftTableTuplesNum);
 
-            // Right
+            /* This is the position in the query of the right array
+             *             ^^^^^^^^^^^^^^^^^^^^^
+             */
             unsigned int rightArrayNotation = currentPredicate->getRightArray();
-            unsigned int rightArray = *((unsigned int *) query->getRelations()->getItemInPos(rightArrayNotation + 1));
+
+            /* This is the real position of the right array
+             *             ^^^^^^^^^^^^^
+             */
+            unsigned int rightArray = query->getRelationInPos(rightArrayNotation);
+
+            /* This is the suggested column for 'JOIN' of the right array */
             unsigned int rightArrayColumn = currentPredicate->getRightArrayColumn();
 
+            /* We retrieve the table with all the data of the right array */
             Table *rightTable = (Table *) tables->getItemInPos(rightArray + 1);
+
+            /* We retrieve the amount of tuples of the array from the intermediate state */
             unsigned int rightTableTuplesNum = rowsNumOfIntermediateRelations[rightArrayNotation];
+
+            /* We will create tuples of <RowId,value> for the right array */
             Tuple *rightArrayTuples = new Tuple[rightTableTuplesNum];
+
+            /* We start creating the tuples */
 
             for(i = 0; i < rightTableTuplesNum; i++)
             {   
-                // Tuple = <RowIDb , B.C>
-                rightArrayTuples[i].setItem(new unsigned long long(rightTable->getTable()[rightArrayColumn][intermediateRelations[rightArrayNotation][i]]));
+                /* We set the value of the tuple */
+                rightArrayTuples[i].setItem(new unsigned long long(rightTable->getTable()
+                    [rightArrayColumn][intermediateRelations[rightArrayNotation][i]]));
+
+                /* We set the row ID of the tuple */
                 rightArrayTuples[i].setRowId(intermediateRelations[rightArrayNotation][i]);
             }
 
+            /* We have created all the tuples.
+             *
+             * Now we create the relation that will hold them together.
+             */
             Relation *rightRel = new Relation(rightArrayTuples, rightTableTuplesNum);
 
+
+
+
+
+
+
+
+
+
+
+            /* We have built the relations that take part in the 'JOIN' operation.
+             *
+             * We create an object that will help us perform that operation.
+             */
             PartitionedHashJoin phj = PartitionedHashJoin(rightRel, leftRel, joinParameters);
 
+            /* We execute the 'JOIN' operation */
             RowIdRelation *join_result = phj.executeJoin();
+
+            /* The result of the 'JOIN' is an array of items of the form:
+             *
+             *                  <RowId_1_Left,RowId_1_Right>
+             *                  <RowId_2_Left,RowId_2_Right>
+             *                  <RowId_3_Left,RowId_3_Right>
+             *                              ...
+             *                  <RowId_N_Left,RowId_N_Right>
+             */
 
             BinaryHeap *leftHeap, *rightHeap;
             leftHeap = new BinaryHeap(MINHEAP);
@@ -411,29 +531,45 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
 
 void QueryHandler::addressQueries(const char *result_file)
 {
-
     // we open the result file here...
     int fd = 0;
 
     std::cout << "============================== Results ==============================" << std::endl;
 
+    /* We will start traversing the list of batches from the head */
     Listnode *currentNodeOfBatch = queryBatches->getHead();
+
+    /* As long as we have not finished traversing the list of batches */
 
     while(currentNodeOfBatch != NULL)
     {
+        /* We retrieve the batch of the current node */
         List *currentBatch = (List *) currentNodeOfBatch->getItem();
 
+        /* That batch is a list of queries.
+         *
+         * We traverse the list of queries from the head.
+         */
         Listnode *currentNodeOfQuery = currentBatch->getHead();
+
+        /* As long as we have not finished traversing the list of queries */
 
         while(currentNodeOfQuery != NULL)
         {
+            /* We retrieve the next query of the batch */
             Query *currentQuery = (Query *) currentNodeOfQuery->getItem();
 
+            /* We address that query */
             addressSingleQuery(currentQuery, fd);
 
+            /* We proceed to the next query */
             currentNodeOfQuery = currentNodeOfQuery->getNext();
         }
 
+        /* We have finished processing the current batch.
+         *
+         * We proceed to the next batch.
+         */
         currentNodeOfBatch = currentNodeOfBatch->getNext();
     }
 
