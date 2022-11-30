@@ -3,6 +3,54 @@
 #include <unistd.h>
 #include "QueryHandler.h"
 
+/********************************************************************
+ * An auxiliary global array that will help in various calculations *
+ ********************************************************************/
+
+static unsigned int *auxiliaryArray;
+
+/********************************************************************************
+ * A counter that will help in the insertion of elements in the auxiliary array *
+ ********************************************************************************/
+
+static unsigned int auxiliaryArrayCounter;
+
+/*****************************************************
+ * Places an unsigned integer in the auxiliary array *
+ *****************************************************/
+
+static void transferItemToAuxiliaryArray(void *item, void *key)
+{
+    unsigned int my_uint = *((unsigned int *) item);
+    auxiliaryArray[auxiliaryArrayCounter++] = my_uint;
+}
+
+/*******************************
+ * Deletes an unsigned integer *
+ *******************************/
+
+static void deleteUnsignedInteger(void *item, void *key)
+{
+    unsigned int *my_uint = (unsigned int *) item;
+    delete my_uint;
+}
+
+/******************************
+ * Prints the auxiliary array *
+ ******************************/
+
+static void printAuxiliaryArray(unsigned int array_size)
+{
+    std::cout << "aux = [";
+
+    unsigned int i;
+
+    for(i = 0; i < array_size; i++)
+        std::cout << auxiliaryArray[i] << ",";
+
+    std::cout << "end]" << std::endl;
+}
+
 /*********************************
  * Operations used for the input *
  *            tables             *
@@ -281,16 +329,6 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
              */
             Relation *rightRel = new Relation(rightArrayTuples, rightTableTuplesNum);
 
-
-
-
-
-
-
-
-
-
-
             /* We have built the relations that take part in the 'JOIN' operation.
              *
              * We create an object that will help us perform that operation.
@@ -309,91 +347,149 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
              *                  <RowId_N_Left,RowId_N_Right>
              */
 
-            BinaryHeap *leftHeap, *rightHeap;
-            leftHeap = new BinaryHeap(MINHEAP);
-            rightHeap = new BinaryHeap(MINHEAP);
+            //BinaryHeap *leftHeap, *rightHeap;
+            //leftHeap = new BinaryHeap(MINHEAP);
+            //rightHeap = new BinaryHeap(MINHEAP);
+
+            RowIdPair *pairs = join_result->getRowIdPairs();
+            unsigned int pairsNum = join_result->getNumOfRowIdPairs();
 
             RedBlackTree *leftTree, *rightTree;
             leftTree = new RedBlackTree();
             rightTree = new RedBlackTree();
 
-            unsigned int pairsNum = join_result->getNumOfRowIdPairs();
-            RowIdPair *pairs = join_result->getRowIdPairs();
-
             for(i = 0; i < pairsNum; i++)
             {
+                /* We store the left & right row IDs in seperate variables */
                 unsigned int leftRowId = pairs[i].getLeftRowId();
                 unsigned int rightRowId = pairs[i].getRightRowId();
 
-                if(!leftTree->search(&leftRowId, compareUnsignedInts))
+                /* If the left row ID does not exist in the
+                 * left tree already, we insert it in the tree
+                 */
+                if(leftTree->search(&leftRowId, compareUnsignedInts) == false)
                 {
                     unsigned int *new_entry = new unsigned int(leftRowId);
-                    leftHeap->insert(new_entry, new_entry, compareUnsignedInts);
                     leftTree->insert(new_entry, new_entry, compareUnsignedInts);
                 }
 
-                if(!rightTree->search(&rightRowId, compareUnsignedInts))
+                /* If the right row ID does not exist in the
+                 * right tree already, we insert it in the tree
+                 */
+                if(rightTree->search(&rightRowId, compareUnsignedInts) == false)
                 {
                     unsigned int *new_entry = new unsigned int(rightRowId);
-                    rightHeap->insert(new_entry, new_entry, compareUnsignedInts);
                     rightTree->insert(new_entry, new_entry, compareUnsignedInts);
                 }
             }
 
-            unsigned int leftPairsNum = leftTree->getCounter();
+            /* We retrieve the amount of unique left row IDs */
+            unsigned int leftRowIdsNum = leftTree->getCounter();
+
+            /* We retrieve the amount of unique right row IDs */
+            unsigned int rightRowIdsNum = rightTree->getCounter();
+
+            /* We will transfer the elements of the tree
+             * to the auxiliary array in sorted order
+             */
+            auxiliaryArray = new unsigned int[leftRowIdsNum];
+            auxiliaryArrayCounter = 0;
+            leftTree->traverse(Inorder, transferItemToAuxiliaryArray);
+
+            //printAuxiliaryArray(leftRowIdsNum);
+
+            /* We update the intermediate representation with
+             * the new sequence of row IDs for the left array
+             */
+            delete[] intermediateRelations[leftArrayNotation];
+            intermediateRelations[leftArrayNotation] = auxiliaryArray;
+            rowsNumOfIntermediateRelations[leftArrayNotation] = leftRowIdsNum;
+
+            /* We free the items of the left tree and the left tree itself */
+            leftTree->traverse(Inorder, deleteUnsignedInteger);
             delete leftTree;
 
-            unsigned int rightPairsNum = rightTree->getCounter();
+            /* We will transfer the elements of the tree
+             * to the auxiliary array in sorted order
+             */
+            auxiliaryArray = new unsigned int[rightRowIdsNum];
+            auxiliaryArrayCounter = 0;
+            rightTree->traverse(Inorder, transferItemToAuxiliaryArray);
+
+            //printAuxiliaryArray(rightRowIdsNum);
+
+            /* We update the intermediate representation with
+             * the new sequence of row IDs for the right array
+             */
+            delete[] intermediateRelations[rightArrayNotation];
+            intermediateRelations[rightArrayNotation] = auxiliaryArray;
+            rowsNumOfIntermediateRelations[rightArrayNotation] = rightRowIdsNum;
+
+            /* We free the items of the right tree and the right tree itself */
+            rightTree->traverse(Inorder, deleteUnsignedInteger);
             delete rightTree;
 
-            // Replacing left array in main structure
-            delete[] intermediateRelations[leftArrayNotation];
-            intermediateRelations[leftArrayNotation] = new unsigned int[leftPairsNum];
-            rowsNumOfIntermediateRelations[leftArrayNotation] = leftPairsNum;
 
-            for(i = 0; i < leftPairsNum; i++)
-            {
-                unsigned int *nextHighestPriority = (unsigned int *) leftHeap->getHighestPriorityKey();
-                unsigned int currentLowestRowId = *nextHighestPriority;
-                leftHeap->remove(compareUnsignedInts);
-                delete nextHighestPriority;
 
-                intermediateRelations[leftArrayNotation][i] = currentLowestRowId;
-            }
 
-            delete leftHeap;
 
-            // Replacing right array in main structure
-            delete[] intermediateRelations[rightArrayNotation];
-            intermediateRelations[rightArrayNotation] = new unsigned int[rightPairsNum];
-            rowsNumOfIntermediateRelations[rightArrayNotation] = rightPairsNum;
 
-            for(i = 0; i < rightPairsNum; i++)
-            {
-                unsigned int *nextHighestPriority = (unsigned int *) rightHeap->getHighestPriorityKey();
-                unsigned int currentLowestRowId = *nextHighestPriority;
-                rightHeap->remove(compareUnsignedInts);
-                delete nextHighestPriority;
 
-                intermediateRelations[rightArrayNotation][i] = currentLowestRowId;
-            }
+            // // Replacing left array in main structure
+            // delete[] intermediateRelations[leftArrayNotation];
+            // intermediateRelations[leftArrayNotation] = new unsigned int[leftRowIdsNum];
+            // rowsNumOfIntermediateRelations[leftArrayNotation] = leftRowIdsNum;
 
-            delete rightHeap;
+            // for(i = 0; i < leftRowIdsNum; i++)
+            // {
+            //     unsigned int *nextHighestPriority = (unsigned int *) leftHeap->getHighestPriorityKey();
+            //     unsigned int currentLowestRowId = *nextHighestPriority;
+            //     leftHeap->remove(compareUnsignedInts);
+            //     delete nextHighestPriority;
 
+            //     intermediateRelations[leftArrayNotation][i] = currentLowestRowId;
+            // }
+
+            // delete leftHeap;
+
+            // // Replacing right array in main structure
+            // delete[] intermediateRelations[rightArrayNotation];
+            // intermediateRelations[rightArrayNotation] = new unsigned int[rightRowIdsNum];
+            // rowsNumOfIntermediateRelations[rightArrayNotation] = rightRowIdsNum;
+
+            // for(i = 0; i < rightRowIdsNum; i++)
+            // {
+            //     unsigned int *nextHighestPriority = (unsigned int *) rightHeap->getHighestPriorityKey();
+            //     unsigned int currentLowestRowId = *nextHighestPriority;
+            //     rightHeap->remove(compareUnsignedInts);
+            //     delete nextHighestPriority;
+
+            //     intermediateRelations[rightArrayNotation][i] = currentLowestRowId;
+            // }
+
+            // delete rightHeap;
+
+            /* We free the result of the join operation */
             phj.freeJoinResult(join_result);
 
+            /* We free the items we used to initialize the tuples of the left array */
             for(i = 0; i < leftTableTuplesNum; i++)
                 delete (unsigned long long *) leftArrayTuples[i].getItem();
 
+            /* We free the tuples of the left array */
             delete[] leftArrayTuples;
 
+            /* We free the relation that depicted the suggested column of the left array */
             delete leftRel;
 
+            /* We free the items we used to initialize the tuples of the rightt array */
             for(i = 0; i < rightTableTuplesNum; i++)
                 delete (unsigned long long *) rightArrayTuples[i].getItem();
 
+            /* We free the tuples of the right array */
             delete[] rightArrayTuples;
 
+            /* We free the relation that depicted the suggested column of the right array */
             delete rightRel;
         }
 
