@@ -297,9 +297,9 @@ void PredicatesParser::print() const
 	 * Case the right part is a constant
 	 */
 	if(rvalueIsConstant)
-		std::cout << filterValue << "}";
+		std::cout << filterValue << ", (Const)}";
 
 	/* Case the right part is an array column */
 	else
-		std::cout << rightArray << "." << rightArrayColumn << "}";
+		std::cout << rightArray << "." << rightArrayColumn << " (Array)}";
 }

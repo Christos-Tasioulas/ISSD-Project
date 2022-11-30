@@ -275,33 +275,6 @@ PartitionedHashJoin::~PartitionedHashJoin()
 
         return;
     }
-
-    /* We retrieve the amount of tuples of 'relR' and 'relS' */
-    unsigned int R_numOfTuples = relR->getNumOfTuples();
-    unsigned int S_numOfTuples = relS->getNumOfTuples();
-
-    /* Helper variable for counting */
-    unsigned int i;
-
-    /* We delete the user data of every tuple of 'relR' */
-
-    for(i = 0; i < R_numOfTuples; i++)
-        delete ((int *) (relR->getTuples()[i]).getItem());
-
-    /* We delete the user data of every tuple of 'relS' */
-
-    for(i = 0; i < S_numOfTuples; i++)
-        delete ((int *) (relS->getTuples()[i]).getItem());
-
-    /* We delete the allocated memory for the relational
-     * arrays of both 'relR' and 'relS'
-     */
-    delete[] relR->getTuples();
-    delete[] relS->getTuples();
-
-    /* We delete the relations themselves */
-    delete relR;
-    delete relS;
 }
 
 /************************************************

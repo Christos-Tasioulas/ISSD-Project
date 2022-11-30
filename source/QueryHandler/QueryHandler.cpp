@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdio>
 #include <unistd.h>
 #include "QueryHandler.h"
 
@@ -118,7 +119,8 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
 {
     unsigned int relationsNum = query->getRelations()->getCounter();
 
-    unsigned int *currentRelations[relationsNum];
+    unsigned int *intermediateRelations[relationsNum];
+    unsigned int rowsNumOfIntermediateRelations[relationsNum];
     unsigned int i, j;
 
     // Initialization (implementing the FROM part of the query matching relations with indexes)
@@ -128,10 +130,12 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
         Table *currentTable = (Table *) tables->getItemInPos(currentRelationName + 1);
 
         unsigned int tuplesNum = currentTable->getNumOfTuples();
-        currentRelations[i] = new unsigned int[tuplesNum];
+        intermediateRelations[i] = new unsigned int[tuplesNum];
 
         for(j = 0; j < tuplesNum; j++)
-            currentRelations[i][j] = j;
+            intermediateRelations[i][j] = j;
+
+        rowsNumOfIntermediateRelations[i] = tuplesNum;
     }
 
     List *predicates = query->getPredicates();
@@ -151,13 +155,14 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
             unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
             Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
-            unsigned int leftTableTuplesNum = leftTable->getNumOfTuples();
+            unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
             Tuple *leftArrayTuples = new Tuple[leftTableTuplesNum];
 
             for(i = 0; i < leftTableTuplesNum; i++)
             {
-                leftArrayTuples[i].setItem(new unsigned long long(leftTable->getTable()[leftArrayColumn][i]));
-                leftArrayTuples[i].setRowId(i);
+                // Tuple = <RowIDa , A.C>
+                leftArrayTuples[i].setItem(new unsigned long long(leftTable->getTable()[leftArrayColumn][intermediateRelations[leftArrayNotation][i]]));
+                leftArrayTuples[i].setRowId(intermediateRelations[leftArrayNotation][i]);
             }
 
             Relation *leftRel = new Relation(leftArrayTuples, leftTableTuplesNum);
@@ -168,18 +173,19 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
             unsigned int rightArrayColumn = currentPredicate->getRightArrayColumn();
 
             Table *rightTable = (Table *) tables->getItemInPos(rightArray + 1);
-            unsigned int rightTableTuplesNum = rightTable->getNumOfTuples();
+            unsigned int rightTableTuplesNum = rowsNumOfIntermediateRelations[rightArrayNotation];
             Tuple *rightArrayTuples = new Tuple[rightTableTuplesNum];
 
             for(i = 0; i < rightTableTuplesNum; i++)
-            {
-                rightArrayTuples[i].setItem(new unsigned long long(rightTable->getTable()[rightArrayColumn][i]));
-                rightArrayTuples[i].setRowId(i);
+            {   
+                // Tuple = <RowIDb , B.C>
+                rightArrayTuples[i].setItem(new unsigned long long(rightTable->getTable()[rightArrayColumn][intermediateRelations[rightArrayNotation][i]]));
+                rightArrayTuples[i].setRowId(intermediateRelations[rightArrayNotation][i]);
             }
 
             Relation *rightRel = new Relation(rightArrayTuples, rightTableTuplesNum);
 
-            PartitionedHashJoin phj = PartitionedHashJoin(leftRel, rightRel, joinParameters);
+            PartitionedHashJoin phj = PartitionedHashJoin(rightRel, leftRel, joinParameters);
 
             RowIdRelation *join_result = phj.executeJoin();
 
@@ -187,61 +193,215 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
             leftHeap = new BinaryHeap(MINHEAP);
             rightHeap = new BinaryHeap(MINHEAP);
 
+            RedBlackTree *leftTree, *rightTree;
+            leftTree = new RedBlackTree();
+            rightTree = new RedBlackTree();
+
             unsigned int pairsNum = join_result->getNumOfRowIdPairs();
             RowIdPair *pairs = join_result->getRowIdPairs();
 
             for(i = 0; i < pairsNum; i++)
             {
-                leftHeap->insert(NULL, new unsigned int(pairs[i].getLeftRowId()), compareUnsignedInts);
-                rightHeap->insert(NULL, new unsigned int(pairs[i].getRightRowId()), compareUnsignedInts);
+                unsigned int leftRowId = pairs[i].getLeftRowId();
+                unsigned int rightRowId = pairs[i].getRightRowId();
+
+                if(!leftTree->search(&leftRowId, compareUnsignedInts))
+                {
+                    unsigned int *new_entry = new unsigned int(leftRowId);
+                    leftHeap->insert(new_entry, new_entry, compareUnsignedInts);
+                    leftTree->insert(new_entry, new_entry, compareUnsignedInts);
+                }
+
+                if(!rightTree->search(&rightRowId, compareUnsignedInts))
+                {
+                    unsigned int *new_entry = new unsigned int(rightRowId);
+                    rightHeap->insert(new_entry, new_entry, compareUnsignedInts);
+                    rightTree->insert(new_entry, new_entry, compareUnsignedInts);
+                }
             }
 
+            unsigned int leftPairsNum = leftTree->getCounter();
+            delete leftTree;
+
+            unsigned int rightPairsNum = rightTree->getCounter();
+            delete rightTree;
+
             // Replacing left array in main structure
-            delete[] currentRelations[leftArrayNotation];
-            currentRelations[leftArrayNotation] = new unsigned int[pairsNum];
-    
-            for(i = 0; i < pairsNum; i++)
+            delete[] intermediateRelations[leftArrayNotation];
+            intermediateRelations[leftArrayNotation] = new unsigned int[leftPairsNum];
+            rowsNumOfIntermediateRelations[leftArrayNotation] = leftPairsNum;
+
+            for(i = 0; i < leftPairsNum; i++)
             {
                 unsigned int *nextHighestPriority = (unsigned int *) leftHeap->getHighestPriorityKey();
                 unsigned int currentLowestRowId = *nextHighestPriority;
                 leftHeap->remove(compareUnsignedInts);
                 delete nextHighestPriority;
 
-                currentRelations[leftArrayNotation][i] = currentLowestRowId;
+                intermediateRelations[leftArrayNotation][i] = currentLowestRowId;
             }
 
             delete leftHeap;
 
             // Replacing right array in main structure
-            delete[] currentRelations[rightArrayNotation];
-            currentRelations[rightArrayNotation] = new unsigned int[pairsNum];
-    
-            for(i = 0; i < pairsNum; i++)
+            delete[] intermediateRelations[rightArrayNotation];
+            intermediateRelations[rightArrayNotation] = new unsigned int[rightPairsNum];
+            rowsNumOfIntermediateRelations[rightArrayNotation] = rightPairsNum;
+
+            for(i = 0; i < rightPairsNum; i++)
             {
                 unsigned int *nextHighestPriority = (unsigned int *) rightHeap->getHighestPriorityKey();
                 unsigned int currentLowestRowId = *nextHighestPriority;
                 rightHeap->remove(compareUnsignedInts);
                 delete nextHighestPriority;
 
-                currentRelations[rightArrayNotation][i] = currentLowestRowId;
+                intermediateRelations[rightArrayNotation][i] = currentLowestRowId;
             }
 
             delete rightHeap;
 
             phj.freeJoinResult(join_result);
+
+            for(i = 0; i < leftTableTuplesNum; i++)
+                delete (unsigned long long *) leftArrayTuples[i].getItem();
+
+            delete[] leftArrayTuples;
+
             delete leftRel;
-            delete leftArrayTuples;
+
+            for(i = 0; i < rightTableTuplesNum; i++)
+                delete (unsigned long long *) rightArrayTuples[i].getItem();
+
+            delete[] rightArrayTuples;
+
             delete rightRel;
-            delete rightArrayTuples;
         }
 
         else
         {
+            unsigned int leftArrayNotation = currentPredicate->getLeftArray();
+            unsigned int leftArray = *((unsigned int *) query->getRelations()->getItemInPos(leftArrayNotation + 1));
+            unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
+            Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
+            unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
+
+            unsigned int filterValue = currentPredicate->getFilterValue();
+            char filterOperator = currentPredicate->getFilterOperator();
+
+            List *results = new List();
+
+            for(i = 0; i < leftTableTuplesNum; i++)
+            {
+                unsigned long long currentTableItem = leftTable->getTable()[leftArrayColumn][intermediateRelations[leftArrayNotation][i]];
+
+                bool currentTableItemSatisfiesFilter = false;
+
+                switch(filterOperator)
+                {
+                    case '<':
+                    {
+                        if(currentTableItem < filterValue)
+                            currentTableItemSatisfiesFilter = true;
+
+                        break;
+                    }
+
+                    case '>':
+                    {
+                        if(currentTableItem > filterValue)
+                            currentTableItemSatisfiesFilter = true;
+
+                        break;
+                    }
+
+                    case '=':
+                    {
+                        if(currentTableItem == filterValue)
+                            currentTableItemSatisfiesFilter = true;
+
+                        break;
+                    }
+                }
+
+                if(currentTableItemSatisfiesFilter)
+                    results->insertLast(new unsigned int(intermediateRelations[leftArrayNotation][i]));
+            }
+
+            unsigned int resultsQuantity = results->getCounter();
+            rowsNumOfIntermediateRelations[leftArrayNotation] = resultsQuantity;
+
+            delete[] intermediateRelations[leftArrayNotation];
+            intermediateRelations[leftArrayNotation] = new unsigned int[resultsQuantity];
+
+            for(i = 0; i < resultsQuantity; i++)
+            {
+                unsigned int *addressOfNextRowId = (unsigned int *) results->getItemInPos(1);
+                unsigned int nextRowId = *addressOfNextRowId;
+                results->removeFront();
+                delete addressOfNextRowId;
+
+                intermediateRelations[leftArrayNotation][i] = nextRowId;
+            }
+
+            delete results;
         }
 
         currentNodeOfPredicate = currentNodeOfPredicate->getNext();
     }
+
+    std::cout << "======= Intermediate Array Info =======" << std::endl;
+    for(i = 0; i < relationsNum; i++)
+        std::cout << "Rows of Intermediate Array \"" << i << "\": " << rowsNumOfIntermediateRelations[i] << std::endl;
+    std::cout << "======================================" << std::endl;
+
+    List *projections = query->getProjections();
+    Listnode *currentNodeOfProjection = projections->getHead();
+
+    while(currentNodeOfProjection != NULL)
+    {
+        ProjectionsParser *currentProjection = (ProjectionsParser *) currentNodeOfProjection->getItem();
+
+        // e.g 0.1 => projectionArray = 0, projectionColumn = 1
+        unsigned int projectionArray = currentProjection->getArray();
+        unsigned int projectionColumn = currentProjection->getColumn();
+
+        unsigned int originalTablePos = *((unsigned int *) query->getRelations()->getItemInPos(projectionArray + 1));
+        Table *originalTable = (Table *) tables->getItemInPos(originalTablePos + 1);
+        unsigned int tableTuplesNum = rowsNumOfIntermediateRelations[projectionArray];
+
+        if(tableTuplesNum == 0)
+        {
+            std::cout << "NULL ";
+            currentNodeOfProjection = currentNodeOfProjection->getNext();
+            continue;
+        }
+
+        unsigned long long sum = 0;
+
+        //std::cout << "\n\nFor table \"" << originalTablePos << "\": (" << tableTuplesNum << " tuples)" << std::endl;
+        for(i = 0; i < tableTuplesNum; i++)
+        {
+            //std::cout << "table[" << projectionColumn << "][" << intermediateRelations[projectionArray][i] << "] = " << originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]] << ", ";
+            sum += originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]];
+        }
+
+        printf("%llu ", sum);
+
+        currentNodeOfProjection = currentNodeOfProjection->getNext();
+    }
+
+    std::cout << std::endl;
+/*
+    for(i = 0; i < relationsNum; i++)
+    {
+        for(j = 0; j < rowsNumOfIntermediateRelations[i]; j++)
+            std::cout << intermediateRelations[i][j] << ",";
+        std::cout << "end (" << rowsNumOfIntermediateRelations[i] << " rows)" << std::endl;
+    }
+*/
+    for(i = 0; i < relationsNum; i++)
+        delete[] intermediateRelations[i];
 }
 
 /**********************************************************
@@ -255,6 +415,7 @@ void QueryHandler::addressQueries(const char *result_file)
     // we open the result file here...
     int fd = 0;
 
+    std::cout << "============================== Results ==============================" << std::endl;
 
     Listnode *currentNodeOfBatch = queryBatches->getHead();
 

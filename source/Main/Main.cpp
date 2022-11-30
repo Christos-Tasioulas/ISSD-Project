@@ -10,5 +10,7 @@ int main(int argc, char const *argv[])
 	QueryHandler qh = QueryHandler("../input/small.init",
 		"../input/small.work", "../config.txt");
 
-	qh.print();
+	//qh.print();
+
+	qh.addressQueries("../results.txt");
 }
