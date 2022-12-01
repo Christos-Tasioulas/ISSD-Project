@@ -63,6 +63,17 @@ static void printTable(void *item)
 	table->print();
 }
 
+static void printTableInfo(void *item)
+{
+	Table *table = (Table *) item;
+
+	unsigned long long numRows = table->getNumOfTuples();
+    unsigned long long numCols = table->getNumOfColumns();
+
+    std::cout << "[" << numRows << " rows, "
+        << numCols << " columns]" << std::endl;
+}
+
 static void deleteTable(void *item)
 {
 	Table *table = (Table *) item;
@@ -96,8 +107,8 @@ static void deleteQuery(void *item)
 static void printBatch(void *item)
 {
 	List *batch = (List *) item;
-	std::cout << "=============== Next Batch ==============" << std::endl;
 	batch->printFromHead(printQuery);
+    std::cout << "============== End of Batch ==============" << std::endl;
 }
 
 static void deleteBatch(void *item)
@@ -162,12 +173,11 @@ QueryHandler::~QueryHandler()
     delete joinParameters;
 }
 
-/******************************************************
- * Addresses a single query and appends the result to *
- *  the file designated by the given file descriptor  *
- ******************************************************/
+/*************************************************************************
+ * Addresses a single query and prints the result in the standard output *
+ *************************************************************************/
 
-void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
+void QueryHandler::addressSingleQuery(Query *query)
 {
     /* We retrieve the amount of relations taking part in the query */
     unsigned int relationsNum = query->getRelations()->getCounter();
@@ -333,10 +343,13 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
              *
              * We create an object that will help us perform that operation.
              */
-            PartitionedHashJoin phj = PartitionedHashJoin(rightRel, leftRel, joinParameters);
+            PartitionedHashJoin phj = PartitionedHashJoin(leftRel, rightRel, joinParameters);
 
             /* We execute the 'JOIN' operation */
             RowIdRelation *join_result = phj.executeJoin();
+
+            //if(currentNodeOfPredicate == predicates->getHead())
+            //    phj.printJoinResult(join_result);
 
             /* The result of the 'JOIN' is an array of items of the form:
              *
@@ -382,6 +395,29 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
                     rightTree->insert(new_entry, new_entry, compareUnsignedInts);
                 }
             }
+
+            /* We free the result of the join operation */
+            phj.freeJoinResult(join_result);
+
+            /* We free the items we used to initialize the tuples of the left array */
+            for(i = 0; i < leftTableTuplesNum; i++)
+                delete (unsigned long long *) leftArrayTuples[i].getItem();
+
+            /* We free the tuples of the left array */
+            delete[] leftArrayTuples;
+
+            /* We free the relation that depicted the suggested column of the left array */
+            delete leftRel;
+
+            /* We free the items we used to initialize the tuples of the rightt array */
+            for(i = 0; i < rightTableTuplesNum; i++)
+                delete (unsigned long long *) rightArrayTuples[i].getItem();
+
+            /* We free the tuples of the right array */
+            delete[] rightArrayTuples;
+
+            /* We free the relation that depicted the suggested column of the right array */
+            delete rightRel;
 
             /* We retrieve the amount of unique left row IDs */
             unsigned int leftRowIdsNum = leftTree->getCounter();
@@ -468,53 +504,60 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
             // }
 
             // delete rightHeap;
-
-            /* We free the result of the join operation */
-            phj.freeJoinResult(join_result);
-
-            /* We free the items we used to initialize the tuples of the left array */
-            for(i = 0; i < leftTableTuplesNum; i++)
-                delete (unsigned long long *) leftArrayTuples[i].getItem();
-
-            /* We free the tuples of the left array */
-            delete[] leftArrayTuples;
-
-            /* We free the relation that depicted the suggested column of the left array */
-            delete leftRel;
-
-            /* We free the items we used to initialize the tuples of the rightt array */
-            for(i = 0; i < rightTableTuplesNum; i++)
-                delete (unsigned long long *) rightArrayTuples[i].getItem();
-
-            /* We free the tuples of the right array */
-            delete[] rightArrayTuples;
-
-            /* We free the relation that depicted the suggested column of the right array */
-            delete rightRel;
         }
 
         else
         {
+            /* This is the position in the query of the left array
+             *             ^^^^^^^^^^^^^^^^^^^^^
+             */
             unsigned int leftArrayNotation = currentPredicate->getLeftArray();
-            unsigned int leftArray = *((unsigned int *) query->getRelations()->getItemInPos(leftArrayNotation + 1));
+
+            /* This is the real position of the left array
+             *             ^^^^^^^^^^^^^
+             */
+            unsigned int leftArray = query->getRelationInPos(leftArrayNotation);
+
+            /* This is the suggested column of the left array for the predicate */
             unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
+            /* We retrieve the table with all the data of the left array */
             Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
+
+            /* We retrieve the amount of tuples of the array from the intermediate state */
             unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
 
+            /* We retrieve the constant integer value that will filter the table */
             unsigned int filterValue = currentPredicate->getFilterValue();
+
+            /* We retrieve the operator of the predicate ('<', '>', '=') */
             char filterOperator = currentPredicate->getFilterOperator();
 
+            /* A linked list with all the row IDs of the
+             * intermediate table that satisfy the filter
+             */
             List *results = new List();
 
+            /* For each row ID stored in the intermediate table that depicts
+             * the left array we examine if it satisfies the given filter
+             */
             for(i = 0; i < leftTableTuplesNum; i++)
             {
-                unsigned long long currentTableItem = leftTable->getTable()[leftArrayColumn][intermediateRelations[leftArrayNotation][i]];
+                /* We retrieve the value stored in the current row ID */
+                unsigned long long currentTableItem = leftTable->getTable()
+                    [leftArrayColumn][intermediateRelations[leftArrayNotation][i]];
 
+                /* A boolean flag that determines wheter
+                 * the above value satisfies the filter
+                 */
                 bool currentTableItemSatisfiesFilter = false;
+
+                /* Given the filter operator, we discern the following cases */
 
                 switch(filterOperator)
                 {
+                    /* Case the filter operator is '<' */
+
                     case '<':
                     {
                         if(currentTableItem < filterValue)
@@ -523,6 +566,8 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
                         break;
                     }
 
+                    /* Case the filter operator is '>' */
+
                     case '>':
                     {
                         if(currentTableItem > filterValue)
@@ -530,6 +575,8 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
 
                         break;
                     }
+
+                    /* Case the filter operator is '=' */
 
                     case '=':
                     {
@@ -540,73 +587,135 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
                     }
                 }
 
+                /* If the current table item satisfies the filter,
+                 * we insert its row ID in the list of results
+                 */
                 if(currentTableItemSatisfiesFilter)
-                    results->insertLast(new unsigned int(intermediateRelations[leftArrayNotation][i]));
+                {
+                    results->insertLast(new unsigned int(
+                        intermediateRelations[leftArrayNotation][i]));
+                }
             }
 
+            /* We retrieve the amount of elements in the result list */
             unsigned int resultsQuantity = results->getCounter();
+
+            /* We update the intermediate state with that amount of elements */
             rowsNumOfIntermediateRelations[leftArrayNotation] = resultsQuantity;
 
+            /* We update the corresponding table of the intermediate state */
             delete[] intermediateRelations[leftArrayNotation];
             intermediateRelations[leftArrayNotation] = new unsigned int[resultsQuantity];
 
+            /* We start updating each element of the table of the intermediate state */
+
             for(i = 0; i < resultsQuantity; i++)
             {
+                /* We retrieve the row ID of the head of the results list */
                 unsigned int *addressOfNextRowId = (unsigned int *) results->getItemInPos(1);
+
+                /* We store that content to a seperate variable */
                 unsigned int nextRowId = *addressOfNextRowId;
+
+                /* We remove the current head of the list */
                 results->removeFront();
+
+                /* We free the allocated memory for the row ID of the head we removed */
                 delete addressOfNextRowId;
 
+                /* We update the next item of the intermediate
+                 * state with the row ID we retrieved above
+                 */
                 intermediateRelations[leftArrayNotation][i] = nextRowId;
             }
 
+            /* We free the allocated memory for the list of results */
             delete results;
         }
 
+        /* We have finished addressing the current predicate.
+         *
+         * We proceed to the next predicate of the query.
+         */
         currentNodeOfPredicate = currentNodeOfPredicate->getNext();
     }
-
+/*
     std::cout << "======= Intermediate Array Info =======" << std::endl;
     for(i = 0; i < relationsNum; i++)
         std::cout << "Rows of Intermediate Array \"" << i << "\": " << rowsNumOfIntermediateRelations[i] << std::endl;
     std::cout << "======================================" << std::endl;
-
+*/
+    /* Now we will traverse the projections of
+     * the query to compute the suggested sums
+     */
     List *projections = query->getProjections();
+
+    /* We will start traversing the projections list from the head */
     Listnode *currentNodeOfProjection = projections->getHead();
 
+    /* As long as we have not finished traversing the list of projections,
+     * we do the following actions inside the 'while' loop below
+     */
     while(currentNodeOfProjection != NULL)
     {
+        /* We retrieve the projection in the current node */
         ProjectionsParser *currentProjection = (ProjectionsParser *) currentNodeOfProjection->getItem();
 
-        // e.g 0.1 => projectionArray = 0, projectionColumn = 1
+        /* We retrieve the suggested relation and column of that relation */
         unsigned int projectionArray = currentProjection->getArray();
         unsigned int projectionColumn = currentProjection->getColumn();
 
-        unsigned int originalTablePos = *((unsigned int *) query->getRelations()->getItemInPos(projectionArray + 1));
+        /* We retrieve the real position of the suggested relation */
+        unsigned int originalTablePos = query->getRelationInPos(projectionArray);
+
+        /* We retrieve the table with all the data of the suggested relation */    
         Table *originalTable = (Table *) tables->getItemInPos(originalTablePos + 1);
+
+        /* We retrieve the amount of rows of the intermediate table */
         unsigned int tableTuplesNum = rowsNumOfIntermediateRelations[projectionArray];
+
+        /* Case the intermediate table has no valid rows (sum = 0) */
 
         if(tableTuplesNum == 0)
         {
+            /* In this case we just print 'NULL' */
             std::cout << "NULL ";
+
+            /* We proceed to the next projection */
             currentNodeOfProjection = currentNodeOfProjection->getNext();
+
+            /* There is nothing else to do in this case */
             continue;
         }
 
+        /* Case the intermediate table has non-zero rows
+         *
+         * We initialize the sum to zero.
+         */
         unsigned long long sum = 0;
 
+        /* We sum all the integers in the requested position of the original
+         * table designated by the row IDs of the intermediate table
+         */
         //std::cout << "\n\nFor table \"" << originalTablePos << "\": (" << tableTuplesNum << " tuples)" << std::endl;
         for(i = 0; i < tableTuplesNum; i++)
         {
             //std::cout << "table[" << projectionColumn << "][" << intermediateRelations[projectionArray][i] << "] = " << originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]] << ", ";
-            sum += originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]];
+            sum += originalTable->getTable()[projectionColumn]
+                [intermediateRelations[projectionArray][i]];
         }
 
-        printf("%llu ", sum);
+        /* We print the sum */
+        std::cout << sum << " ";
 
+        /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();
     }
 
+    /* We have finished addressing the query.
+     *
+     * We print a new line to escape the line of the printed results.
+     */
     std::cout << std::endl;
 /*
     for(i = 0; i < relationsNum; i++)
@@ -616,21 +725,20 @@ void QueryHandler::addressSingleQuery(Query *query, int fileDescOfResultFile)
         std::cout << "end (" << rowsNumOfIntermediateRelations[i] << " rows)" << std::endl;
     }
 */
+    /* Finally we free the allocated memory for the intermediate state */
+
     for(i = 0; i < relationsNum; i++)
         delete[] intermediateRelations[i];
 }
 
 /**********************************************************
- * Addresses the queries from all the batches and stores  *
- * the results in the given file (the file may not exist) *
+ * Addresses the queries from all the batches and prints *
+ *          the results in the standard output           *
  **********************************************************/
 
-void QueryHandler::addressQueries(const char *result_file)
+void QueryHandler::addressQueries()
 {
-    // we open the result file here...
-    int fd = 0;
-
-    std::cout << "============================== Results ==============================" << std::endl;
+    std::cout << "================ Results =================" << std::endl;
 
     /* We will start traversing the list of batches from the head */
     Listnode *currentNodeOfBatch = queryBatches->getHead();
@@ -656,7 +764,7 @@ void QueryHandler::addressQueries(const char *result_file)
             Query *currentQuery = (Query *) currentNodeOfQuery->getItem();
 
             /* We address that query */
-            addressSingleQuery(currentQuery, fd);
+            addressSingleQuery(currentQuery);
 
             /* We proceed to the next query */
             currentNodeOfQuery = currentNodeOfQuery->getNext();
@@ -668,8 +776,6 @@ void QueryHandler::addressQueries(const char *result_file)
          */
         currentNodeOfBatch = currentNodeOfBatch->getNext();
     }
-
-    // we close the opened file here...
 }
 
 /************************************************
@@ -679,14 +785,23 @@ void QueryHandler::addressQueries(const char *result_file)
 void QueryHandler::print() const
 {
     /* We announce the printing of the input tables */
-    std::cout << "================ Tables ================ " << std::endl;
+    std::cout << "\n================ Tables ================ " << std::endl;
 
     /* We print the input tables */
     tables->printFromHead(printTable);
 
+    /* We announce the printing of the input tables info */
+    std::cout << "\n============== Table Info ============== " << std::endl;
+
+    /* We print the input tables (num rows, num columns) */
+    tables->printFromHead(printTableInfo);
+
     /* We announce the printing of the input query batches */
-    std::cout << "============= Query Batches ============= " << std::endl;
+    std::cout << "\n============ Query Batches ============= " << std::endl;
 
     /* We print the input batches of queries */
     queryBatches->printFromHead(printBatch);
+
+    /* We print the join parameters given of the handler */
+    joinParameters->print();
 }

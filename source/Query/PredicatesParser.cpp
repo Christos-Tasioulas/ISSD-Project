@@ -7,7 +7,7 @@
  * Converts a string to unsigned integer * 
  *****************************************/
 
-static unsigned int atou(char *arithmetic_string, unsigned int *read_bytes = NULL)
+static unsigned int atou(char *arithmetic_string,  unsigned int *read_bytes = NULL)
 {
 	/* We convert the given argument to unsigned long integer
 	 * by using the function 'strtoul'. Then we will cast that
@@ -297,9 +297,9 @@ void PredicatesParser::print() const
 	 * Case the right part is a constant
 	 */
 	if(rvalueIsConstant)
-		std::cout << filterValue << ", (Const)}";
+		std::cout << filterValue << ", (Filter)}";
 
 	/* Case the right part is an array column */
 	else
-		std::cout << rightArray << "." << rightArrayColumn << " (Array)}";
+		std::cout << rightArray << "." << rightArrayColumn << " (Join)}";
 }

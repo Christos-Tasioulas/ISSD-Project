@@ -124,7 +124,7 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
 	unsigned int newBucketsNum = 2 * bucketsNum;
 
 	/* In the new table the hop range will be also doubled */
-	hopInfoCapacity *= 2;
+	hopInfoCapacity++;
 
 	/* Here we create the new table in the heap */
 	HashTableEntry *newTable = new HashTableEntry[newBucketsNum];
@@ -178,8 +178,7 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
 			void *currentEntryKey = temporaryTable[i].getKey();
 
 			/* We insert the entry in the new table */
-			insert(currentEntryItem, currentEntryKey,
-				hash_function);
+			insert(currentEntryItem, currentEntryKey, hash_function);
 		}
 	}
 

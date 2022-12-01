@@ -20,9 +20,11 @@ private:
     /* The list of input batches of queries */
     List *queryBatches;
 
+    /* Parameters of every join operation that will be performed */
     PartitionedHashJoinInput *joinParameters;
 
-    void addressSingleQuery(Query *query, int fileDescOfResultFile);
+    /* Addresses a single query and prints the result in the standard output */
+    void addressSingleQuery(Query *query);
 
 public:
 
@@ -37,10 +39,10 @@ public:
     /* Getter - Returns the list of query batches */
     List *getQueryBatches() const;
 
-    /* Addresses the queries from all the batches and stores
-     * the results in the given file (the file may not exist)
+    /* Addresses the queries from all the batches and prints
+     * the results in the standard output
      */
-    void addressQueries(const char *result_file);
+    void addressQueries();
 
     /* Prints the tables and the batches of queries */
     void print() const;

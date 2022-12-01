@@ -10,7 +10,7 @@ class PartitionedHashJoin {
 public:
 
 /* Constructor */
-    PartitionedHashJoin(Relation *relS, Relation *relR,
+    PartitionedHashJoin(Relation *relR, Relation *relS,
         PartitionedHashJoinInput *inputStructure);
 
 /* Constructor for subrelations (used by this class only) */
@@ -121,20 +121,10 @@ private:
 /* Determines the maximum depth of partitions */
     unsigned int maxPartitionDepth;
 
-/* Determines when we must delete the tables of the
- * subrelations (only when we need to reorder them)
- */
-    bool alteredTables;
-
-/* Returns 'true' if both relational arrays are small enough
- * to fit in the level-2 cache and 'false' otherwise
- */
-    bool noPartitionRequired(long lvl_2_cache_size) const;
-
 /* Determines wheter a bucket of the relation 'rerR' or 'relS'
  * needs to be further partitioned to additional buckets
  */
-    bool multiplePartitionRequired(
+    bool partitionRequired(
         unsigned int R_numOfItemsInBucket,
         unsigned int S_numOfItemsInBucket,
         unsigned int item_size,
@@ -151,7 +141,7 @@ private:
 /* Hashes a given integer into the value of
  * its rightmost 'bitsNumForHashing' bits
  */
-    unsigned int bitReductionHash(int integer) const;
+    unsigned int bitReductionHash(unsigned long long integer) const;
 
 /* Given the address of a tuple, it hashes its
  * contents to a non-negative integer value

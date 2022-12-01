@@ -1,11 +1,11 @@
-n=1
+n=8
 [the number of bits of each integer that will be used for its hash code]
 
-showInitialRelations=yes
+showInitialRelations=
 [choose "yes" to see the contents of the initial relations before and
 after the reordering or choose "no" so these details are not printed]
 
-showAuxiliaryArrays=yes
+showAuxiliaryArrays=
 [choose "yes" to see the contents of the histograms and the prefix sums
 of both relations (and subrelations) or choose "no" to not display them]
 
@@ -13,7 +13,7 @@ showHashTable=
 [choose "yes" to see the contents of the hash table that was built to
 probe the two relational arrays]
 
-showSubrelations=yes
+showSubrelations=
 [choose "yes" to see the contents concerning the subrelations (initial
 contents, contents after reordering, histograms, prefix sums) or choose
 "no" to not display any information about the subrelations. In case the
@@ -27,11 +27,11 @@ showResult=yes
 [choose "yes" to see the contents of the result after the join operation
 has been performed]
 
-hopscotchBuckets=101
+hopscotchBuckets=19391
 [determines the amount of buckets that each hash table will have at the
 moment it is created. It may grow with the insertion of many elements]
 
-hopscotchRange=16
+hopscotchRange=512
 [determines the size of the neighborhood of each hash table entry when
 the hash table is created. It may grow when many elements are inserted]
 
@@ -43,7 +43,7 @@ matter the value of this option, but this option, if enabled, will make
 the table grow even in cases that the Hopscotch algorithm did not impose
 it, just when the amount of elements over buckets surpasses a limit]
 
-loadFactor=0.8
+loadFactor=0.9
 [the limit that, if surpassed by the amount elements/buckets, forces the
 table to grow even if it was not required by the Hopscotch algorithm]
 

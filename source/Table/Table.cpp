@@ -74,11 +74,11 @@ Table::Table(const char *binary_filename)
     /* We proceed to the next data of the header */
     pointerToMapping += sizeof(unsigned long long);
 
-    /* The next 4 bytes describe the number of columns */
-    this->numColumns = *((size_t *) pointerToMapping);
+    /* The next 8 bytes describe the number of columns */
+    this->numColumns = *((unsigned long long *) pointerToMapping);
 
     /* Now we proceed to the data of the table */
-    pointerToMapping += sizeof(size_t);
+    pointerToMapping += sizeof(unsigned long long);
 
     /* We allocate memory for the table */
     table = new unsigned long long *[numColumns];
@@ -122,7 +122,7 @@ Table::Table(const char *binary_filename)
 Table::~Table()
 {
     /* Auxiliary variable used for counting */
-    size_t i;
+    unsigned long long i;
 
     /* We delete all the contents of the table */
 
@@ -146,7 +146,7 @@ unsigned long long Table::getNumOfTuples() const
  * Getter - Returns the number of columns of the table *
  *******************************************************/
 
-size_t Table::getNumOfColumns() const
+unsigned long long Table::getNumOfColumns() const
 {
     return this->numColumns;
 }
@@ -167,15 +167,14 @@ unsigned long long **Table::getTable() const
 void Table::print() const
 {
     /* Auxiliary variables used for counting */
-    size_t i;
-    unsigned long long j;
+    unsigned long long i, j;
 
     /* For each column of the table we do the following */
 
     for(i = 0; i < numColumns; i++)
     {
         /* We announce the start of the column with a '[' */
-        std::cout << "[ " << std::endl;
+        std::cout << "[ ";
 
         /* We print the contents of that column */
 
@@ -183,6 +182,12 @@ void Table::print() const
             std::cout << table[i][j] << " ";
 
         /* We announce the end of the column with a ']' */
-        std::cout << "]" << std::endl;
+        std::cout << "] ";
     }
+
+    /* Finally, we print the number of
+     * rows and columns of the array
+     */
+    std::cout << "(" << numTuples << " rows, "
+        << numColumns << " columns)" << std::endl;
 }
