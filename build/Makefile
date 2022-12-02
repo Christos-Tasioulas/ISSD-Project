@@ -15,7 +15,7 @@ TARGET=phj
 VERBOSE=FALSE
 
 # Create the list of directories
-DIRS=BinaryTrees Bitmap Colors FileReader HashTable List Main Pairs PartitionedHashJoin PartitionedHashJoinInput Query QueryHandler Relation RowIdPair RowIdRelation Table Tuple
+DIRS=BinaryTrees Bitmap Colors FileReader HashTable IntermediateRepresentation List Main Pairs PartitionedHashJoin PartitionedHashJoinInput Query QueryHandler Relation RowIdPair RowIdRelation Table Tuple
 SOURCEDIRS=$(foreach dir, $(DIRS), $(addprefix $(SOURCEDIR)/, $(dir)))
 TARGETDIRS=$(foreach dir, $(DIRS), $(addprefix $(BUILDDIR)/, $(dir)))
 

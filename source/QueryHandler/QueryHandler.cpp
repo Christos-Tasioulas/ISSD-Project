@@ -182,52 +182,54 @@ void QueryHandler::addressSingleQuery(Query *query)
     /* We retrieve the amount of relations taking part in the query */
     unsigned int relationsNum = query->getRelations()->getCounter();
 
-    /* These two arrays below form the intermediate state of the query.
-     *                                 ^^^^^^^^^^^^^^^^^^
-     * The intermediate state of the query is a sequence of arrays.
-     * There are as many arrays as the amount of relations taking part
-     * in the query. If, for example, the relations 3, 5 and 7 are
-     * taking part in the query, then the intermediate representation
-     * will consist of three arrays, the first depicting the row IDs
-     * of relation 3 that satisfy the predicates, the second depicting
-     * the row IDs of relation 5 that satisfy the predicates and the
-     * the third depicting the row IDs of relation 7 that satisfy the
-     * predicates.
-     *
-     * The 'intermediateRelation' array is the above sequence of arrays.
-     * The 'rowsNumOfIntermediateRelations' array stores the amount of
-     * elements of each array in the sequence 'intermediateRelation'.
-     */
-    unsigned int *intermediateRelations[relationsNum];
-    unsigned int rowsNumOfIntermediateRelations[relationsNum];
+    // /* These two arrays below form the intermediate state of the query.
+    //  *                                 ^^^^^^^^^^^^^^^^^^
+    //  * The intermediate state of the query is a sequence of arrays.
+    //  * There are as many arrays as the amount of relations taking part
+    //  * in the query. If, for example, the relations 3, 5 and 7 are
+    //  * taking part in the query, then the intermediate representation
+    //  * will consist of three arrays, the first depicting the row IDs
+    //  * of relation 3 that satisfy the predicates, the second depicting
+    //  * the row IDs of relation 5 that satisfy the predicates and the
+    //  * the third depicting the row IDs of relation 7 that satisfy the
+    //  * predicates.
+    //  *
+    //  * The 'intermediateRelation' array is the above sequence of arrays.
+    //  * The 'rowsNumOfIntermediateRelations' array stores the amount of
+    //  * elements of each array in the sequence 'intermediateRelation'.
+    //  */
+    // unsigned int *intermediateRelations[relationsNum];
+    // unsigned int rowsNumOfIntermediateRelations[relationsNum];
 
-    /* Auxiliary variables used for counting */
-    unsigned int i, j;
+    //  Auxiliary variables used for counting 
+    // unsigned int i, j;
 
-    /* We initialize the intermediate structure with the initial state */
+    // /* We initialize the intermediate structure with the initial state */
 
-    for(i = 0; i < relationsNum; i++)
-    {
-        /* We retrieve the name of the current relation */
-        unsigned int currentRelationName = query->getRelationInPos(i);
+    // for(i = 0; i < relationsNum; i++)
+    // {
+    //     /* We retrieve the name of the current relation */
+    //     unsigned int currentRelationName = query->getRelationInPos(i);
 
-        /* We retrieve the table of that relation */
-        Table *currentTable = (Table *) tables->getItemInPos(currentRelationName + 1);
+    //     /* We retrieve the table of that relation */
+    //     Table *currentTable = (Table *) tables->getItemInPos(currentRelationName + 1);
 
-        /* We retrieve the amount of tuples of that table */
-        unsigned int tuplesNum = currentTable->getNumOfTuples();
+    //     /* We retrieve the amount of tuples of that table */
+    //     unsigned int tuplesNum = currentTable->getNumOfTuples();
 
-        /* This table will be the next table in the sequence of intermediate arrays */
-        intermediateRelations[i] = new unsigned int[tuplesNum];
+    //     /* This table will be the next table in the sequence of intermediate arrays */
+    //     intermediateRelations[i] = new unsigned int[tuplesNum];
 
-        /* Initially we store all the row IDs of the table in the intermediate array */
+    //     /* Initially we store all the row IDs of the table in the intermediate array */
 
-        for(j = 0; j < tuplesNum; j++)
-            intermediateRelations[i][j] = j;
+    //     for(j = 0; j < tuplesNum; j++)
+    //         intermediateRelations[i][j] = j;
 
-        /* We update the intermediate state with the amount of tuples of the array */
-        rowsNumOfIntermediateRelations[i] = tuplesNum;
-    }
+    //     /* We update the intermediate state with the amount of tuples of the array */
+    //     rowsNumOfIntermediateRelations[i] = tuplesNum;
+    // }
+
+    IntermediateRepresentation intermediateRepresentation = IntermediateRepresentation(tables, joinParameters);
 
     /* Now we will start traversing the predicates.
      *
@@ -272,33 +274,6 @@ void QueryHandler::addressSingleQuery(Query *query)
             /* This is the suggested column for 'JOIN' of the left array */
             unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
-            /* We retrieve the table with all the data of the left array */
-            Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
-
-            /* We retrieve the amount of tuples of the array from the intermediate state */
-            unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
-
-            /* We will create tuples of <RowId,value> for the left array */
-            Tuple *leftArrayTuples = new Tuple[leftTableTuplesNum];
-
-            /* We start creating the tuples */
-
-            for(i = 0; i < leftTableTuplesNum; i++)
-            {
-                /* We set the value of the tuple */
-                leftArrayTuples[i].setItem(new unsigned long long(leftTable->getTable()
-                    [leftArrayColumn][intermediateRelations[leftArrayNotation][i]]));
-
-                /* We set the row ID of the tuple */
-                leftArrayTuples[i].setRowId(intermediateRelations[leftArrayNotation][i]);
-            }
-
-            /* We have created all the tuples.
-             *
-             * Now we create the relation that will hold them together.
-             */
-            Relation *leftRel = new Relation(leftArrayTuples, leftTableTuplesNum);
-
             /* This is the position in the query of the right array
              *             ^^^^^^^^^^^^^^^^^^^^^
              */
@@ -312,198 +287,9 @@ void QueryHandler::addressSingleQuery(Query *query)
             /* This is the suggested column for 'JOIN' of the right array */
             unsigned int rightArrayColumn = currentPredicate->getRightArrayColumn();
 
-            /* We retrieve the table with all the data of the right array */
-            Table *rightTable = (Table *) tables->getItemInPos(rightArray + 1);
-
-            /* We retrieve the amount of tuples of the array from the intermediate state */
-            unsigned int rightTableTuplesNum = rowsNumOfIntermediateRelations[rightArrayNotation];
-
-            /* We will create tuples of <RowId,value> for the right array */
-            Tuple *rightArrayTuples = new Tuple[rightTableTuplesNum];
-
-            /* We start creating the tuples */
-
-            for(i = 0; i < rightTableTuplesNum; i++)
-            {   
-                /* We set the value of the tuple */
-                rightArrayTuples[i].setItem(new unsigned long long(rightTable->getTable()
-                    [rightArrayColumn][intermediateRelations[rightArrayNotation][i]]));
-
-                /* We set the row ID of the tuple */
-                rightArrayTuples[i].setRowId(intermediateRelations[rightArrayNotation][i]);
-            }
-
-            /* We have created all the tuples.
-             *
-             * Now we create the relation that will hold them together.
-             */
-            Relation *rightRel = new Relation(rightArrayTuples, rightTableTuplesNum);
-
-            /* We have built the relations that take part in the 'JOIN' operation.
-             *
-             * We create an object that will help us perform that operation.
-             */
-            PartitionedHashJoin phj = PartitionedHashJoin(leftRel, rightRel, joinParameters);
-
-            /* We execute the 'JOIN' operation */
-            RowIdRelation *join_result = phj.executeJoin();
-
-            //if(currentNodeOfPredicate == predicates->getHead())
-            //    phj.printJoinResult(join_result);
-
-            /* The result of the 'JOIN' is an array of items of the form:
-             *
-             *                  <RowId_1_Left,RowId_1_Right>
-             *                  <RowId_2_Left,RowId_2_Right>
-             *                  <RowId_3_Left,RowId_3_Right>
-             *                              ...
-             *                  <RowId_N_Left,RowId_N_Right>
-             */
-
-            //BinaryHeap *leftHeap, *rightHeap;
-            //leftHeap = new BinaryHeap(MINHEAP);
-            //rightHeap = new BinaryHeap(MINHEAP);
-
-            RowIdPair *pairs = join_result->getRowIdPairs();
-            unsigned int pairsNum = join_result->getNumOfRowIdPairs();
-
-            RedBlackTree *leftTree, *rightTree;
-            leftTree = new RedBlackTree();
-            rightTree = new RedBlackTree();
-
-            for(i = 0; i < pairsNum; i++)
-            {
-                /* We store the left & right row IDs in seperate variables */
-                unsigned int leftRowId = pairs[i].getLeftRowId();
-                unsigned int rightRowId = pairs[i].getRightRowId();
-
-                /* If the left row ID does not exist in the
-                 * left tree already, we insert it in the tree
-                 */
-                if(leftTree->search(&leftRowId, compareUnsignedInts) == false)
-                {
-                    unsigned int *new_entry = new unsigned int(leftRowId);
-                    leftTree->insert(new_entry, new_entry, compareUnsignedInts);
-                }
-
-                /* If the right row ID does not exist in the
-                 * right tree already, we insert it in the tree
-                 */
-                if(rightTree->search(&rightRowId, compareUnsignedInts) == false)
-                {
-                    unsigned int *new_entry = new unsigned int(rightRowId);
-                    rightTree->insert(new_entry, new_entry, compareUnsignedInts);
-                }
-            }
-
-            /* We free the result of the join operation */
-            phj.freeJoinResult(join_result);
-
-            /* We free the items we used to initialize the tuples of the left array */
-            for(i = 0; i < leftTableTuplesNum; i++)
-                delete (unsigned long long *) leftArrayTuples[i].getItem();
-
-            /* We free the tuples of the left array */
-            delete[] leftArrayTuples;
-
-            /* We free the relation that depicted the suggested column of the left array */
-            delete leftRel;
-
-            /* We free the items we used to initialize the tuples of the rightt array */
-            for(i = 0; i < rightTableTuplesNum; i++)
-                delete (unsigned long long *) rightArrayTuples[i].getItem();
-
-            /* We free the tuples of the right array */
-            delete[] rightArrayTuples;
-
-            /* We free the relation that depicted the suggested column of the right array */
-            delete rightRel;
-
-            /* We retrieve the amount of unique left row IDs */
-            unsigned int leftRowIdsNum = leftTree->getCounter();
-
-            /* We retrieve the amount of unique right row IDs */
-            unsigned int rightRowIdsNum = rightTree->getCounter();
-
-            /* We will transfer the elements of the tree
-             * to the auxiliary array in sorted order
-             */
-            auxiliaryArray = new unsigned int[leftRowIdsNum];
-            auxiliaryArrayCounter = 0;
-            leftTree->traverse(Inorder, transferItemToAuxiliaryArray);
-
-            //printAuxiliaryArray(leftRowIdsNum);
-
-            /* We update the intermediate representation with
-             * the new sequence of row IDs for the left array
-             */
-            delete[] intermediateRelations[leftArrayNotation];
-            intermediateRelations[leftArrayNotation] = auxiliaryArray;
-            rowsNumOfIntermediateRelations[leftArrayNotation] = leftRowIdsNum;
-
-            /* We free the items of the left tree and the left tree itself */
-            leftTree->traverse(Inorder, deleteUnsignedInteger);
-            delete leftTree;
-
-            /* We will transfer the elements of the tree
-             * to the auxiliary array in sorted order
-             */
-            auxiliaryArray = new unsigned int[rightRowIdsNum];
-            auxiliaryArrayCounter = 0;
-            rightTree->traverse(Inorder, transferItemToAuxiliaryArray);
-
-            //printAuxiliaryArray(rightRowIdsNum);
-
-            /* We update the intermediate representation with
-             * the new sequence of row IDs for the right array
-             */
-            delete[] intermediateRelations[rightArrayNotation];
-            intermediateRelations[rightArrayNotation] = auxiliaryArray;
-            rowsNumOfIntermediateRelations[rightArrayNotation] = rightRowIdsNum;
-
-            /* We free the items of the right tree and the right tree itself */
-            rightTree->traverse(Inorder, deleteUnsignedInteger);
-            delete rightTree;
-
-
-
-
-
-
-
-            // // Replacing left array in main structure
-            // delete[] intermediateRelations[leftArrayNotation];
-            // intermediateRelations[leftArrayNotation] = new unsigned int[leftRowIdsNum];
-            // rowsNumOfIntermediateRelations[leftArrayNotation] = leftRowIdsNum;
-
-            // for(i = 0; i < leftRowIdsNum; i++)
-            // {
-            //     unsigned int *nextHighestPriority = (unsigned int *) leftHeap->getHighestPriorityKey();
-            //     unsigned int currentLowestRowId = *nextHighestPriority;
-            //     leftHeap->remove(compareUnsignedInts);
-            //     delete nextHighestPriority;
-
-            //     intermediateRelations[leftArrayNotation][i] = currentLowestRowId;
-            // }
-
-            // delete leftHeap;
-
-            // // Replacing right array in main structure
-            // delete[] intermediateRelations[rightArrayNotation];
-            // intermediateRelations[rightArrayNotation] = new unsigned int[rightRowIdsNum];
-            // rowsNumOfIntermediateRelations[rightArrayNotation] = rightRowIdsNum;
-
-            // for(i = 0; i < rightRowIdsNum; i++)
-            // {
-            //     unsigned int *nextHighestPriority = (unsigned int *) rightHeap->getHighestPriorityKey();
-            //     unsigned int currentLowestRowId = *nextHighestPriority;
-            //     rightHeap->remove(compareUnsignedInts);
-            //     delete nextHighestPriority;
-
-            //     intermediateRelations[rightArrayNotation][i] = currentLowestRowId;
-            // }
-
-            // delete rightHeap;
+            /* We execute the 'JOIN' between the two relations */
+            intermediateRepresentation.executeJoin(leftArray, leftArrayColumn,
+                rightArray, rightArrayColumn);
         }
 
         else
@@ -521,116 +307,13 @@ void QueryHandler::addressSingleQuery(Query *query)
             /* This is the suggested column of the left array for the predicate */
             unsigned int leftArrayColumn = currentPredicate->getLeftArrayColumn();
 
-            /* We retrieve the table with all the data of the left array */
-            Table *leftTable = (Table *) tables->getItemInPos(leftArray + 1);
-
-            /* We retrieve the amount of tuples of the array from the intermediate state */
-            unsigned int leftTableTuplesNum = rowsNumOfIntermediateRelations[leftArrayNotation];
-
             /* We retrieve the constant integer value that will filter the table */
             unsigned int filterValue = currentPredicate->getFilterValue();
 
             /* We retrieve the operator of the predicate ('<', '>', '=') */
             char filterOperator = currentPredicate->getFilterOperator();
 
-            /* A linked list with all the row IDs of the
-             * intermediate table that satisfy the filter
-             */
-            List *results = new List();
-
-            /* For each row ID stored in the intermediate table that depicts
-             * the left array we examine if it satisfies the given filter
-             */
-            for(i = 0; i < leftTableTuplesNum; i++)
-            {
-                /* We retrieve the value stored in the current row ID */
-                unsigned long long currentTableItem = leftTable->getTable()
-                    [leftArrayColumn][intermediateRelations[leftArrayNotation][i]];
-
-                /* A boolean flag that determines wheter
-                 * the above value satisfies the filter
-                 */
-                bool currentTableItemSatisfiesFilter = false;
-
-                /* Given the filter operator, we discern the following cases */
-
-                switch(filterOperator)
-                {
-                    /* Case the filter operator is '<' */
-
-                    case '<':
-                    {
-                        if(currentTableItem < filterValue)
-                            currentTableItemSatisfiesFilter = true;
-
-                        break;
-                    }
-
-                    /* Case the filter operator is '>' */
-
-                    case '>':
-                    {
-                        if(currentTableItem > filterValue)
-                            currentTableItemSatisfiesFilter = true;
-
-                        break;
-                    }
-
-                    /* Case the filter operator is '=' */
-
-                    case '=':
-                    {
-                        if(currentTableItem == filterValue)
-                            currentTableItemSatisfiesFilter = true;
-
-                        break;
-                    }
-                }
-
-                /* If the current table item satisfies the filter,
-                 * we insert its row ID in the list of results
-                 */
-                if(currentTableItemSatisfiesFilter)
-                {
-                    results->insertLast(new unsigned int(
-                        intermediateRelations[leftArrayNotation][i]));
-                }
-            }
-
-            /* We retrieve the amount of elements in the result list */
-            unsigned int resultsQuantity = results->getCounter();
-
-            /* We update the intermediate state with that amount of elements */
-            rowsNumOfIntermediateRelations[leftArrayNotation] = resultsQuantity;
-
-            /* We update the corresponding table of the intermediate state */
-            delete[] intermediateRelations[leftArrayNotation];
-            intermediateRelations[leftArrayNotation] = new unsigned int[resultsQuantity];
-
-            /* We start updating each element of the table of the intermediate state */
-
-            for(i = 0; i < resultsQuantity; i++)
-            {
-                /* We retrieve the row ID of the head of the results list */
-                unsigned int *addressOfNextRowId = (unsigned int *) results->getItemInPos(1);
-
-                /* We store that content to a seperate variable */
-                unsigned int nextRowId = *addressOfNextRowId;
-
-                /* We remove the current head of the list */
-                results->removeFront();
-
-                /* We free the allocated memory for the row ID of the head we removed */
-                delete addressOfNextRowId;
-
-                /* We update the next item of the intermediate
-                 * state with the row ID we retrieved above
-                 */
-                intermediateRelations[leftArrayNotation][i] = nextRowId;
-            }
-
-            /* We free the allocated memory for the list of results */
-            delete results;
+            
         }
 
         /* We have finished addressing the current predicate.
@@ -668,45 +351,45 @@ void QueryHandler::addressSingleQuery(Query *query)
         /* We retrieve the real position of the suggested relation */
         unsigned int originalTablePos = query->getRelationInPos(projectionArray);
 
-        /* We retrieve the table with all the data of the suggested relation */    
-        Table *originalTable = (Table *) tables->getItemInPos(originalTablePos + 1);
+        // /* We retrieve the table with all the data of the suggested relation */    
+        // Table *originalTable = (Table *) tables->getItemInPos(originalTablePos + 1);
 
-        /* We retrieve the amount of rows of the intermediate table */
-        unsigned int tableTuplesNum = rowsNumOfIntermediateRelations[projectionArray];
+        // /* We retrieve the amount of rows of the intermediate table */
+        // unsigned int tableTuplesNum = rowsNumOfIntermediateRelations[projectionArray];
 
-        /* Case the intermediate table has no valid rows (sum = 0) */
+        // /* Case the intermediate table has no valid rows (sum = 0) */
 
-        if(tableTuplesNum == 0)
-        {
-            /* In this case we just print 'NULL' */
-            std::cout << "NULL ";
+        // if(tableTuplesNum == 0)
+        // {
+        //     /* In this case we just print 'NULL' */
+        //     std::cout << "NULL ";
 
-            /* We proceed to the next projection */
-            currentNodeOfProjection = currentNodeOfProjection->getNext();
+        //     /* We proceed to the next projection */
+        //     currentNodeOfProjection = currentNodeOfProjection->getNext();
 
-            /* There is nothing else to do in this case */
-            continue;
-        }
+        //     /* There is nothing else to do in this case */
+        //     continue;
+        // }
 
-        /* Case the intermediate table has non-zero rows
-         *
-         * We initialize the sum to zero.
-         */
-        unsigned long long sum = 0;
+        // /* Case the intermediate table has non-zero rows
+        //  *
+        //  * We initialize the sum to zero.
+        //  */
+        // unsigned long long sum = 0;
 
-        /* We sum all the integers in the requested position of the original
-         * table designated by the row IDs of the intermediate table
-         */
-        //std::cout << "\n\nFor table \"" << originalTablePos << "\": (" << tableTuplesNum << " tuples)" << std::endl;
-        for(i = 0; i < tableTuplesNum; i++)
-        {
-            //std::cout << "table[" << projectionColumn << "][" << intermediateRelations[projectionArray][i] << "] = " << originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]] << ", ";
-            sum += originalTable->getTable()[projectionColumn]
-                [intermediateRelations[projectionArray][i]];
-        }
+        // /* We sum all the integers in the requested position of the original
+        //  * table designated by the row IDs of the intermediate table
+        //  */
+        // //std::cout << "\n\nFor table \"" << originalTablePos << "\": (" << tableTuplesNum << " tuples)" << std::endl;
+        // for(i = 0; i < tableTuplesNum; i++)
+        // {
+        //     //std::cout << "table[" << projectionColumn << "][" << intermediateRelations[projectionArray][i] << "] = " << originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]] << ", ";
+        //     sum += originalTable->getTable()[projectionColumn]
+        //         [intermediateRelations[projectionArray][i]];
+        // }
 
-        /* We print the sum */
-        std::cout << sum << " ";
+        // /* We print the sum */
+        // std::cout << sum << " ";
 
         /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();
@@ -727,8 +410,8 @@ void QueryHandler::addressSingleQuery(Query *query)
 */
     /* Finally we free the allocated memory for the intermediate state */
 
-    for(i = 0; i < relationsNum; i++)
-        delete[] intermediateRelations[i];
+    // for(i = 0; i < relationsNum; i++)
+    //     delete[] intermediateRelations[i];
 }
 
 /**********************************************************
