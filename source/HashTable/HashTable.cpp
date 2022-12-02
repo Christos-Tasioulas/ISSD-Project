@@ -123,8 +123,8 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
 	/* We will create a new table with double number of buckets */
 	unsigned int newBucketsNum = 2 * bucketsNum;
 
-	/* In the new table the hop range will be also doubled */
-	hopInfoCapacity++;
+	/* In the new table the hop range will be also change */
+	hopInfoCapacity = 3*(hopInfoCapacity/2);
 
 	/* Here we create the new table in the heap */
 	HashTableEntry *newTable = new HashTableEntry[newBucketsNum];

@@ -182,54 +182,8 @@ void QueryHandler::addressSingleQuery(Query *query)
     /* We retrieve the amount of relations taking part in the query */
     unsigned int relationsNum = query->getRelations()->getCounter();
 
-    // /* These two arrays below form the intermediate state of the query.
-    //  *                                 ^^^^^^^^^^^^^^^^^^
-    //  * The intermediate state of the query is a sequence of arrays.
-    //  * There are as many arrays as the amount of relations taking part
-    //  * in the query. If, for example, the relations 3, 5 and 7 are
-    //  * taking part in the query, then the intermediate representation
-    //  * will consist of three arrays, the first depicting the row IDs
-    //  * of relation 3 that satisfy the predicates, the second depicting
-    //  * the row IDs of relation 5 that satisfy the predicates and the
-    //  * the third depicting the row IDs of relation 7 that satisfy the
-    //  * predicates.
-    //  *
-    //  * The 'intermediateRelation' array is the above sequence of arrays.
-    //  * The 'rowsNumOfIntermediateRelations' array stores the amount of
-    //  * elements of each array in the sequence 'intermediateRelation'.
-    //  */
-    // unsigned int *intermediateRelations[relationsNum];
-    // unsigned int rowsNumOfIntermediateRelations[relationsNum];
-
-    //  Auxiliary variables used for counting 
-    // unsigned int i, j;
-
-    // /* We initialize the intermediate structure with the initial state */
-
-    // for(i = 0; i < relationsNum; i++)
-    // {
-    //     /* We retrieve the name of the current relation */
-    //     unsigned int currentRelationName = query->getRelationInPos(i);
-
-    //     /* We retrieve the table of that relation */
-    //     Table *currentTable = (Table *) tables->getItemInPos(currentRelationName + 1);
-
-    //     /* We retrieve the amount of tuples of that table */
-    //     unsigned int tuplesNum = currentTable->getNumOfTuples();
-
-    //     /* This table will be the next table in the sequence of intermediate arrays */
-    //     intermediateRelations[i] = new unsigned int[tuplesNum];
-
-    //     /* Initially we store all the row IDs of the table in the intermediate array */
-
-    //     for(j = 0; j < tuplesNum; j++)
-    //         intermediateRelations[i][j] = j;
-
-    //     /* We update the intermediate state with the amount of tuples of the array */
-    //     rowsNumOfIntermediateRelations[i] = tuplesNum;
-    // }
-
-    IntermediateRepresentation intermediateRepresentation = IntermediateRepresentation(tables, joinParameters);
+    IntermediateRepresentation intermediateRepresentation =
+    IntermediateRepresentation(tables, joinParameters);
 
     /* Now we will start traversing the predicates.
      *
@@ -322,12 +276,7 @@ void QueryHandler::addressSingleQuery(Query *query)
          */
         currentNodeOfPredicate = currentNodeOfPredicate->getNext();
     }
-/*
-    std::cout << "======= Intermediate Array Info =======" << std::endl;
-    for(i = 0; i < relationsNum; i++)
-        std::cout << "Rows of Intermediate Array \"" << i << "\": " << rowsNumOfIntermediateRelations[i] << std::endl;
-    std::cout << "======================================" << std::endl;
-*/
+
     /* Now we will traverse the projections of
      * the query to compute the suggested sums
      */
@@ -351,46 +300,6 @@ void QueryHandler::addressSingleQuery(Query *query)
         /* We retrieve the real position of the suggested relation */
         unsigned int originalTablePos = query->getRelationInPos(projectionArray);
 
-        // /* We retrieve the table with all the data of the suggested relation */    
-        // Table *originalTable = (Table *) tables->getItemInPos(originalTablePos + 1);
-
-        // /* We retrieve the amount of rows of the intermediate table */
-        // unsigned int tableTuplesNum = rowsNumOfIntermediateRelations[projectionArray];
-
-        // /* Case the intermediate table has no valid rows (sum = 0) */
-
-        // if(tableTuplesNum == 0)
-        // {
-        //     /* In this case we just print 'NULL' */
-        //     std::cout << "NULL ";
-
-        //     /* We proceed to the next projection */
-        //     currentNodeOfProjection = currentNodeOfProjection->getNext();
-
-        //     /* There is nothing else to do in this case */
-        //     continue;
-        // }
-
-        // /* Case the intermediate table has non-zero rows
-        //  *
-        //  * We initialize the sum to zero.
-        //  */
-        // unsigned long long sum = 0;
-
-        // /* We sum all the integers in the requested position of the original
-        //  * table designated by the row IDs of the intermediate table
-        //  */
-        // //std::cout << "\n\nFor table \"" << originalTablePos << "\": (" << tableTuplesNum << " tuples)" << std::endl;
-        // for(i = 0; i < tableTuplesNum; i++)
-        // {
-        //     //std::cout << "table[" << projectionColumn << "][" << intermediateRelations[projectionArray][i] << "] = " << originalTable->getTable()[projectionColumn][intermediateRelations[projectionArray][i]] << ", ";
-        //     sum += originalTable->getTable()[projectionColumn]
-        //         [intermediateRelations[projectionArray][i]];
-        // }
-
-        // /* We print the sum */
-        // std::cout << sum << " ";
-
         /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();
     }
@@ -400,18 +309,6 @@ void QueryHandler::addressSingleQuery(Query *query)
      * We print a new line to escape the line of the printed results.
      */
     std::cout << std::endl;
-/*
-    for(i = 0; i < relationsNum; i++)
-    {
-        for(j = 0; j < rowsNumOfIntermediateRelations[i]; j++)
-            std::cout << intermediateRelations[i][j] << ",";
-        std::cout << "end (" << rowsNumOfIntermediateRelations[i] << " rows)" << std::endl;
-    }
-*/
-    /* Finally we free the allocated memory for the intermediate state */
-
-    // for(i = 0; i < relationsNum; i++)
-    //     delete[] intermediateRelations[i];
 }
 
 /**********************************************************

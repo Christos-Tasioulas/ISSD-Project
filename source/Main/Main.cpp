@@ -34,8 +34,8 @@ void test()
 {
 	unsigned int i;
 
-	Tuple *tuple_array_1 = new Tuple[100000];
-	unsigned int num_tuples_1 = 100000;
+	Tuple *tuple_array_1 = new Tuple[1000000];
+	unsigned int num_tuples_1 = 1000000;
 
 	for(i = 0; i < num_tuples_1; i++)
 	{
@@ -43,12 +43,12 @@ void test()
 		tuple_array_1[i].setRowId(i);
 	}
 
-	Tuple *tuple_array_2 = new Tuple[100000];
-	unsigned int num_tuples_2 = 100000;
+	Tuple *tuple_array_2 = new Tuple[1000000];
+	unsigned int num_tuples_2 = 1000000;
 
 	for(i = 0; i < num_tuples_2; i++)
 	{
-		tuple_array_2[i].setItem(new unsigned long long(i + 99980));
+		tuple_array_2[i].setItem(new unsigned long long(i + 999970));
 		tuple_array_2[i].setRowId(i);
 	}
 

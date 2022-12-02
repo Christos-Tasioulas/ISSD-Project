@@ -1,4 +1,4 @@
-n=2
+n=1
 [the number of bits of each integer that will be used for its hash code]
 
 showInitialRelations=
@@ -27,7 +27,7 @@ showResult=yes
 [choose "yes" to see the contents of the result after the join operation
 has been performed]
 
-hopscotchBuckets=5000
+hopscotchBuckets=19001
 [determines the amount of buckets that each hash table will have at the
 moment it is created. It may grow with the insertion of many elements]
 
@@ -35,7 +35,7 @@ hopscotchRange=128
 [determines the size of the neighborhood of each hash table entry when
 the hash table is created. It may grow when many elements are inserted]
 
-resizableByLoadFactor=yes
+resizableByLoadFactor=
 [determines whether or not the hash table may grow when the number of
 elements divided by the number of buckets surpasses a specified constant.
 The table will grow anyway when the Hopscotch algorithm imposes it, no
@@ -47,12 +47,12 @@ loadFactor=0.9
 [the limit that, if surpassed by the amount elements/buckets, forces the
 table to grow even if it was not required by the Hopscotch algorithm]
 
-maxArraySizeDividedByCacheSize=0.85
+maxArraySizeDividedByCacheSize=0.95
 [determines the maximum allowed size a relational array may have so as
 it does not need to be partitioned. This size is analogous to the cache
 size. For example, if this option has value 0.85, that means the max
 allowed size of any array so as it does not need to be partitioned is
 85% of the size of the cache]
 
-maxPartitionDepth=2
+maxPartitionDepth=100
 [Determines the maximum depth of the partitions that will be performed]
