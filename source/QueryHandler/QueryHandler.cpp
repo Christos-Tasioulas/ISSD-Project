@@ -3,54 +3,6 @@
 #include <unistd.h>
 #include "QueryHandler.h"
 
-/********************************************************************
- * An auxiliary global array that will help in various calculations *
- ********************************************************************/
-
-static unsigned int *auxiliaryArray;
-
-/********************************************************************************
- * A counter that will help in the insertion of elements in the auxiliary array *
- ********************************************************************************/
-
-static unsigned int auxiliaryArrayCounter;
-
-/*****************************************************
- * Places an unsigned integer in the auxiliary array *
- *****************************************************/
-
-static void transferItemToAuxiliaryArray(void *item, void *key)
-{
-    unsigned int my_uint = *((unsigned int *) item);
-    auxiliaryArray[auxiliaryArrayCounter++] = my_uint;
-}
-
-/*******************************
- * Deletes an unsigned integer *
- *******************************/
-
-static void deleteUnsignedInteger(void *item, void *key)
-{
-    unsigned int *my_uint = (unsigned int *) item;
-    delete my_uint;
-}
-
-/******************************
- * Prints the auxiliary array *
- ******************************/
-
-static void printAuxiliaryArray(unsigned int array_size)
-{
-    std::cout << "aux = [";
-
-    unsigned int i;
-
-    for(i = 0; i < array_size; i++)
-        std::cout << auxiliaryArray[i] << ",";
-
-    std::cout << "end]" << std::endl;
-}
-
 /*********************************
  * Operations used for the input *
  *            tables             *
@@ -118,24 +70,6 @@ static void deleteBatch(void *item)
 	delete batch;
 }
 
-/**********************************
- * Compares two unsigned integers *
- **********************************/
-
-static int compareUnsignedInts(void *item1, void *item2)
-{
-    unsigned int my_uint_1 = *((unsigned int *) item1);
-    unsigned int my_uint_2 = *((unsigned int *) item2);
-
-    if(my_uint_1 > my_uint_2)
-        return 1;
-
-    if(my_uint_1 < my_uint_2)
-        return -1;
-
-    return 0;
-}
-
 /***************
  * Constructor *
  ***************/
@@ -179,9 +113,7 @@ QueryHandler::~QueryHandler()
 
 void QueryHandler::addressSingleQuery(Query *query)
 {
-    /* We retrieve the amount of relations taking part in the query */
-    unsigned int relationsNum = query->getRelations()->getCounter();
-
+    /* We create the intermediate representation of this query */
     IntermediateRepresentation intermediateRepresentation =
     IntermediateRepresentation(tables, joinParameters);
 

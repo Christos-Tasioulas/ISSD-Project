@@ -41,15 +41,32 @@ private:
 
 public:
 
-	/* Constructor & Destructor */
+	/* Constructors & Destructor
+	 *
+	 * A constructor that initializes the array
+	 * with two relations that must be joined
+	 */
 	IntermediateArray(unsigned int leftRel, unsigned int leftRelColumn,
 		unsigned int rightRel, unsigned int rightRelColumn, List *tables,
 		PartitionedHashJoinInput *joinParameters);
+
+	/* A constructor that initializes the array
+	 * with one relation that must be filtered
+	 */
+	IntermediateArray(unsigned int relName, unsigned int relColumn,
+		unsigned int filterValue, char filterOperator, List *tables,
+		PartitionedHashJoinInput *joinParameters);
+
+	/* Destructor */
 	~IntermediateArray();
 
-	/* Getters */
+	/* Getter - Returns the list of relations of the intermediate array */
 	List *getRelations() const;
+
+	/* Getter - Returns the list of row ID arrays */
 	List *getRowIdArrays() const;
+
+	/* Getter - Returns the number of rows of the intermediate array */
 	unsigned int getRowsNum() const;
 
 	/* Searches whether the given relation
@@ -57,8 +74,8 @@ public:
 	 */
 	bool search(unsigned int foreignRelationName) const;
 
-	/* Executes 'JOIN' between the intermediate array and a
-	 * new relation given as argument along with its tuples
+	/* Executes 'JOIN' between a relation of the intermediate
+	 * array and a foreign relation given as argument
 	 */
 	void executeJoinWithForeignRelation(
 		unsigned int localRelationName,
@@ -66,10 +83,22 @@ public:
 		unsigned int foreignRelationName,
 		unsigned int foreignRelationColumn);
 
-	/* Executes 'JOIN' between this intermediate
-	 * array and another intermediate array
+	/* Executes 'JOIN' between two relations of this intermediate array */
+	void executeJoinWithTwoRelationsInTheArray(
+		unsigned int leftLocalRelationName,
+		unsigned int leftLocalRelationColumn,
+		unsigned int rightLocalRelationName,
+		unsigned int rightLocalRelationColumn);
+
+	/* Executes 'JOIN' between a relation of the intermediate
+	 * array and a relation of another intermediate array
 	 */
-	void executeJoinWithIntermediateArray(IntermediateArray *other);
+	void executeJoinWithRelationOfOtherArray(
+		IntermediateArray *other,
+		unsigned int localRelationName,
+		unsigned int localRelationColumn,
+		unsigned int foreignRelationName,
+		unsigned int foreignRelationColumn);
 
 	/* Applies the given filter to the implied local relation */
 	void executeFilter(unsigned int relationName, unsigned int relationColumn,

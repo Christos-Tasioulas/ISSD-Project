@@ -48,9 +48,10 @@ void IntermediateArray::deleteUnsignedIntegerArray(void *item)
 	delete[] (unsigned int *) item;
 }
 
-/***************
- * Constructor *
- ***************/
+/********************************************
+ * A constructor that initializes the array *
+ *  with two relations that must be joined  *
+ ********************************************/
 
 IntermediateArray::IntermediateArray(unsigned int leftRel, unsigned int leftRelColumn,
 	unsigned int rightRel, unsigned int rightRelColumn, List *tables,
@@ -170,6 +171,22 @@ IntermediateArray::IntermediateArray(unsigned int leftRel, unsigned int leftRelC
 
 	/* We insert the array of right row IDs in the list of arrays */
 	rowIdArrays->insertLast(rightRowIds);
+}
+
+/**********************************************
+ *  A constructor that initializes the array  *
+ *  with one relation that must be filtered   *
+ **********************************************/
+
+IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColumn,
+	unsigned int filterValue, char filterOperator, List *tables,
+	PartitionedHashJoinInput *joinParameters)
+{
+	/* We initialize all the fields of the class (apart from 'rowsNum' for now) */
+	this->tables = tables;
+	this->relations = new List();
+	this->rowIdArrays = new List();
+	this->joinParameters = joinParameters;
 }
 
 /**************
@@ -403,15 +420,32 @@ void IntermediateArray::executeJoinWithForeignRelation(
 	relations->insertLast(new unsigned int(foreignRelationName));
 }
 
-/*********************************************
- * Executes 'JOIN' between this intermediate *
- *   array and another intermediate array    *
- *********************************************/
+/********************************************************************
+ * Executes 'JOIN' between two relations of this intermediate array *
+ ********************************************************************/
 
-void IntermediateArray::executeJoinWithIntermediateArray(
-	IntermediateArray *other)
+void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
+	unsigned int leftLocalRelationName,
+	unsigned int leftLocalRelationColumn,
+	unsigned int rightLocalRelationName,
+	unsigned int rightLocalRelationColumn)
 {
-	
+
+}
+
+/**********************************************************
+ * Executes 'JOIN' between a relation of the intermediate *
+ *   array and a relation of another intermediate array   *
+ **********************************************************/
+
+void IntermediateArray::executeJoinWithRelationOfOtherArray(
+	IntermediateArray *other,
+	unsigned int localRelationName,
+	unsigned int localRelationColumn,
+	unsigned int foreignRelationName,
+	unsigned int foreignRelationColumn)
+{
+
 }
 
 /**********************************************************
