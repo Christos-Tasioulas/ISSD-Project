@@ -267,7 +267,9 @@ void QueryHandler::addressSingleQuery(Query *query)
             /* We retrieve the operator of the predicate ('<', '>', '=') */
             char filterOperator = currentPredicate->getFilterOperator();
 
-            
+            /* We apply the filter on the given relation */
+            intermediateRepresentation.executeFilter(leftArray, leftArrayColumn,
+                filterValue, filterOperator);
         }
 
         /* We have finished addressing the current predicate.
@@ -298,7 +300,10 @@ void QueryHandler::addressSingleQuery(Query *query)
         unsigned int projectionColumn = currentProjection->getColumn();
 
         /* We retrieve the real position of the suggested relation */
-        unsigned int originalTablePos = query->getRelationInPos(projectionArray);
+        unsigned int originalRelationPos = query->getRelationInPos(projectionArray);
+
+        /* We print the requested sum in the standard output */
+        intermediateRepresentation.produceSum(originalRelationPos, projectionColumn);
 
         /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();

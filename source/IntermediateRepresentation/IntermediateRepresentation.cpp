@@ -1,6 +1,12 @@
 #include <iostream>
 #include "IntermediateRepresentation.h"
 
+void IntermediateRepresentation::deleteIntermediateArray(void *item)
+{
+	IntermediateArray *array = (IntermediateArray *) item;
+	delete array;
+}
+
 /***************
  * Constructor *
  ***************/
@@ -19,6 +25,7 @@ IntermediateRepresentation::IntermediateRepresentation(List *tables,
 
 IntermediateRepresentation::~IntermediateRepresentation()
 {
+	intermediateArrays->traverseFromHead(deleteIntermediateArray);
 	delete intermediateArrays;
 }
 
@@ -79,7 +86,7 @@ IntermediateArray *IntermediateRepresentation::relationExists(unsigned int relat
 void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 	unsigned int leftRelColumn, unsigned int rightRel, unsigned rightRelColumn)
 {
-	/* We search both relation in the intermediate representation */
+	/* We search both relations in the intermediate representation */
 	IntermediateArray *leftIntermediateArray = relationExists(leftRel);
 	IntermediateArray *rightIntermediateArray = relationExists(rightRel);
 
@@ -95,7 +102,8 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 
 		else
 		{
-			std::cout << std::endl;
+			rightIntermediateArray->executeJoinWithForeignRelation(
+				rightRel, rightRelColumn, leftRel, leftRelColumn);
 		}
 	}
 
@@ -103,12 +111,72 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 	{
 		if(rightIntermediateArray == NULL)
 		{
-			std::cout << std::endl;
+			std::cout << "I'm there!" << std::endl;
+			leftIntermediateArray->executeJoinWithForeignRelation(
+				leftRel, leftRelColumn, rightRel, rightRelColumn);
 		}
 
 		else
 		{
 			std::cout << " " << std::endl;
 		}
+	}
+}
+
+/**************************************************
+ * Applies the given filter to the given relation *
+ **************************************************/
+
+void IntermediateRepresentation::executeFilter(unsigned int relName,
+	unsigned int relColumn, unsigned int filterValue, char filterOperator)
+{
+	/* We search the relation in the intermediate representation */
+	IntermediateArray *intermediateArray = relationExists(relName);
+
+	if(intermediateArray == NULL)
+	{
+		std::cout << std::endl;
+	}
+
+	else
+	{
+		std::cout << "I'm going to do the filter" << std::endl;
+		intermediateArray->executeFilter(relName, relColumn,
+			filterValue, filterOperator);
+	}
+}
+
+/*******************************************************
+ * Prints the sum of the items in the reserved row IDs *
+ *    of the given relation in the requested column    *
+ *******************************************************/
+
+void IntermediateRepresentation::produceSum(unsigned int relName, unsigned int relColumn)
+{
+	/* We search the relation in the intermediate representation */
+	IntermediateArray *intermediateArray = relationExists(relName);
+
+	if(intermediateArray == NULL)
+	{
+		unsigned long long sum = 0, i;
+
+		Table *table = (Table *) tables->getItemInPos(relName + 1);
+		unsigned long long numRows = table->getNumOfTuples();
+
+		if(numRows == 0)
+			std::cout << "NULL ";
+
+		else
+		{
+			for(i = 0; i < numRows; i++)
+				sum += table->getTable()[relColumn][i];
+
+			std::cout << sum << " ";
+		}
+	}
+
+	else
+	{
+		intermediateArray->produceSum(relName, relColumn);
 	}
 }

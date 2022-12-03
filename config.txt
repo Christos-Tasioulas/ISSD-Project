@@ -1,4 +1,4 @@
-n=1
+n=6
 [the number of bits of each integer that will be used for its hash code]
 
 showInitialRelations=
@@ -27,7 +27,7 @@ showResult=yes
 [choose "yes" to see the contents of the result after the join operation
 has been performed]
 
-hopscotchBuckets=19001
+hopscotchBuckets=13001
 [determines the amount of buckets that each hash table will have at the
 moment it is created. It may grow with the insertion of many elements]
 
@@ -54,5 +54,5 @@ size. For example, if this option has value 0.85, that means the max
 allowed size of any array so as it does not need to be partitioned is
 85% of the size of the cache]
 
-maxPartitionDepth=100
+maxPartitionDepth=2
 [Determines the maximum depth of the partitions that will be performed]

@@ -44,11 +44,11 @@ Table::Table(const char *binary_filename)
     unsigned int fileSize = fileInfo.st_size;
 
     /* We create a new mapping for the input binary file */
-    char *pointerToMapping = (char *) mmap(NULL, fileSize, PROT_READ, MAP_PRIVATE, fd, 0u);
+    char *mapping = (char *) mmap(NULL, fileSize, PROT_READ, MAP_PRIVATE, fd, 0u);
 
     /* We examine if the mapping was successful */
 
-    if(pointerToMapping == MAP_FAILED)
+    if(mapping == MAP_FAILED)
     {
         std::cout << "Could not mmap the file " << binary_filename
             << " of size " << fileSize << std::endl;
@@ -56,6 +56,9 @@ Table::Table(const char *binary_filename)
         perror("mmap");
         return;
     }
+
+    /* An auxiliary pointer that points to the start of the mapping */
+    char *pointerToMapping = mapping;
 
     /* If the size of the file is less than 16 bytes,
      * that means the file does not have a valid header
@@ -84,7 +87,7 @@ Table::Table(const char *binary_filename)
     table = new unsigned long long *[numColumns];
 
     /* Auxiliary variable used for counting */
-    size_t i;
+    unsigned long long i;
 
     /* We allocate memory for the rows of the table */
 
@@ -100,6 +103,18 @@ Table::Table(const char *binary_filename)
 
         /* We proceed to the base address of the next column */
         pointerToMapping += numTuples * sizeof(unsigned long long);
+    }
+
+    /* We delete the mapping of the binary file */
+
+    int mapping_deletion = munmap(mapping, fileSize);
+
+    /* We examine if the deletion was successful */
+
+    if(mapping_deletion != 0)
+    {
+        std::cout << "Error at freeing the mapping of " << binary_filename << std::endl;
+		perror("munmap");
     }
 
     /* Finally, we close the opened binary file */

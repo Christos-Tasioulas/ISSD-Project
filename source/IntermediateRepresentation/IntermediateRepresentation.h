@@ -17,6 +17,8 @@ private:
 	 */
 	IntermediateArray *relationExists(unsigned int relation) const;
 
+	static void deleteIntermediateArray(void *item);
+
 public:
 
 	/* Constructor & Destructor */
@@ -35,6 +37,15 @@ public:
 	/* Executes the 'JOIN' operation between the two given relations */
 	void executeJoin(unsigned int leftRel, unsigned int leftRelColumn,
 		unsigned int rightRel, unsigned rightRelColumn);
+
+	/* Applies the given filter to the given relation */
+	void executeFilter(unsigned int relName, unsigned int relColumn,
+		unsigned int filterValue, char filterOperator);
+
+	/* Prints the sum of the items in the reserved row IDs
+	 * of the given relation in the requested column
+	 */
+	void produceSum(unsigned int relName, unsigned int relColumn);
 
 };
 

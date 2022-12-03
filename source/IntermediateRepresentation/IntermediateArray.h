@@ -24,12 +24,19 @@ private:
 	/* The additional parameters for a 'JOIN' operation */
 	PartitionedHashJoinInput *joinParameters;
 
+	/* Finds and returns the position in the list of the given relation */
+	unsigned int posOfRelationInList(unsigned int relationName) const;
+
+	/* Prints the name of a relation - used to traverse the list of relation names */
 	static void printUnsignedInteger(void *item);
 
-	static void printUnsignedIntegerArray(void *item);
-
+	/* Deletes the name of a relation - used to traverse the list of relation names */
 	static void deleteUnsignedInteger(void *item);
 
+	/* Prints a row ID array - used to traverse the list of row ID arrays */
+	static void printUnsignedIntegerArray(void *item);
+
+	/* Deletes a row ID array - used to traverse the list of row ID arrays */
 	static void deleteUnsignedIntegerArray(void *item);
 
 public:
@@ -53,13 +60,25 @@ public:
 	/* Executes 'JOIN' between the intermediate array and a
 	 * new relation given as argument along with its tuples
 	 */
-	void executeJoinWithRelation(unsigned int foreignRelationName,
-		Relation *foreignRelationTuples);
+	void executeJoinWithForeignRelation(
+		unsigned int localRelationName,
+		unsigned int localRelationColumn,
+		unsigned int foreignRelationName,
+		unsigned int foreignRelationColumn);
 
 	/* Executes 'JOIN' between this intermediate
 	 * array and another intermediate array
 	 */
 	void executeJoinWithIntermediateArray(IntermediateArray *other);
+
+	/* Applies the given filter to the implied local relation */
+	void executeFilter(unsigned int relationName, unsigned int relationColumn,
+		unsigned int filterValue, char filterOperator);
+
+	/* Prints the sum of the items in the reserved row IDs
+	 * of the given relation in the requested column
+	 */
+	void produceSum(unsigned int relName, unsigned int relColumn);
 
 	/* Prints the intermediate array */
 	void print() const;
