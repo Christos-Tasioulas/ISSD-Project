@@ -17,6 +17,8 @@ private:
 	 */
 	IntermediateArray *relationExists(unsigned int relation) const;
 
+	unsigned int posOfIntermediateArray(IntermediateArray *array) const;
+
 	static void deleteIntermediateArray(void *item);
 
 public:

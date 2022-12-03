@@ -79,6 +79,35 @@ IntermediateArray *IntermediateRepresentation::relationExists(unsigned int relat
 	return NULL;
 }
 
+unsigned int IntermediateRepresentation::posOfIntermediateArray(IntermediateArray *array) const
+{
+	/* We will traverse the list of intermediate arrays from the head */
+	Listnode *currentNode = intermediateArrays->getHead();
+	unsigned int pos = 1;
+
+	/* As long as we have not finished traversing the list */
+
+	while(currentNode != NULL)
+	{
+		/* We retrieve the intermediate array of the current node */
+		IntermediateArray *arrayInCurrentNode = (IntermediateArray *) currentNode->getItem();
+
+		/* If the given relation exists in the array, we return the array */
+		if(arrayInCurrentNode == array)
+			return pos;
+
+		pos++;
+
+		/* Else we proceed to the next node */
+		currentNode = currentNode->getNext();
+	}
+
+	/* If this part is reached, the given relation does not exist in any
+	 * of the intermediate arrays of the list. In this case, we return 0.
+	 */
+	return 0;
+}
+
 /*****************************************************************
  * Executes the 'JOIN' operation between the two given relations *
  *****************************************************************/
@@ -92,6 +121,12 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 
 	if(leftIntermediateArray == NULL)
 	{
+		/** 
+		 * Case both relations are NULL.
+		 * This is the first case that happens by default in each query.
+		 * The constructor of the intermediate array executes by default 
+		 * the first join either it is a join or a filter operation.
+		 */
 		if(rightIntermediateArray == NULL)
 		{
 			IntermediateArray *newArray = new IntermediateArray(leftRel,
@@ -100,6 +135,9 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 			intermediateArrays->insertLast(newArray);
 		}
 
+		/**
+		 * Case the left relation is NULL
+		 */
 		else
 		{
 			rightIntermediateArray->executeJoinWithForeignRelation(
@@ -109,16 +147,40 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 
 	else
 	{
+		/**
+		 * Case the right relation is NULL
+		 */
 		if(rightIntermediateArray == NULL)
 		{
-			std::cout << "I'm there!" << std::endl;
 			leftIntermediateArray->executeJoinWithForeignRelation(
 				leftRel, leftRelColumn, rightRel, rightRelColumn);
 		}
 
 		else
 		{
-			std::cout << " " << std::endl;
+			/**
+			 * Case both relations come from the same intermediate array
+			 */
+			if(leftIntermediateArray == rightIntermediateArray)
+			{
+				leftIntermediateArray->executeJoinWithTwoRelationsInTheArray(
+					leftRel, leftRelColumn, rightRel, rightRelColumn);
+			}
+
+			/**
+			 * Case both relations come from different intermediate arrays
+			 */
+			else
+			{
+				std::cout << "Two relations in different arrays" << std::endl;
+
+				leftIntermediateArray->executeJoinWithRelationOfOtherArray(
+					rightIntermediateArray, leftRel, leftRelColumn, rightRel, rightRelColumn);
+
+				unsigned int posOfRightIntermediateArray = posOfIntermediateArray(rightIntermediateArray);
+				intermediateArrays->removePos(posOfRightIntermediateArray);
+				delete rightIntermediateArray;
+			}
 		}
 	}
 }
@@ -135,12 +197,14 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
 
 	if(intermediateArray == NULL)
 	{
-		std::cout << std::endl;
+		// IntermediateArray *newArray = new IntermediateArray(leftRel,
+		// 	leftRelColumn, rightRel, rightRelColumn, tables, joinParameters);
+
+		// intermediateArrays->insertLast(newArray);
 	}
 
 	else
 	{
-		std::cout << "I'm going to do the filter" << std::endl;
 		intermediateArray->executeFilter(relName, relColumn,
 			filterValue, filterOperator);
 	}
