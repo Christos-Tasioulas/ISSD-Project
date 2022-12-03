@@ -748,7 +748,7 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 			renewedRowIdArrays[j][i] = localRowIdArrays[j][currentLeftRowId];
 
 		for(j = localRelsCount; j < totalRelsCount; j++)
-			renewedRowIdArrays[j][i] = foreignRowIdArrays[j][currentRightRowId];
+			renewedRowIdArrays[j][i] = foreignRowIdArrays[j-localRelsCount][currentRightRowId];
 	}
 
 	rowIdArrays->traverseFromHead(deleteUnsignedIntegerArray);

@@ -120,6 +120,8 @@ unsigned int HashTable::getHopInfoCapacity() const
 
 void HashTable::rehash(unsigned int (*hash_function)(void *))
 {
+	std::cout << "Rehashing with " << elementsNum << " elements" << std::endl;
+
 	/* We will create a new table with double number of buckets */
 	unsigned int newBucketsNum = 2 * bucketsNum;
 
