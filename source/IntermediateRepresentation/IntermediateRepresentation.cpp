@@ -172,8 +172,6 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 			 */
 			else
 			{
-				std::cout << "Two relations in different arrays" << std::endl;
-
 				leftIntermediateArray->executeJoinWithRelationOfOtherArray(
 					rightIntermediateArray, leftRel, leftRelColumn, rightRel, rightRelColumn);
 
@@ -197,10 +195,10 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
 
 	if(intermediateArray == NULL)
 	{
-		// IntermediateArray *newArray = new IntermediateArray(leftRel,
-		// 	leftRelColumn, rightRel, rightRelColumn, tables, joinParameters);
+		IntermediateArray *newArray = new IntermediateArray(relName,
+			relColumn, filterValue, filterOperator, tables, joinParameters);
 
-		// intermediateArrays->insertLast(newArray);
+		intermediateArrays->insertLast(newArray);
 	}
 
 	else
