@@ -193,6 +193,8 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
 	/* We search the relation in the intermediate representation */
 	IntermediateArray *intermediateArray = relationExists(relName);
 
+	/* If the relation does not exist in any array, we create one */
+
 	if(intermediateArray == NULL)
 	{
 		IntermediateArray *newArray = new IntermediateArray(relName,
@@ -200,6 +202,8 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
 
 		intermediateArrays->insertLast(newArray);
 	}
+
+	/* Else we have the array apply the filter on the relation */
 
 	else
 	{
@@ -218,6 +222,9 @@ void IntermediateRepresentation::produceSum(unsigned int relName, unsigned int r
 	/* We search the relation in the intermediate representation */
 	IntermediateArray *intermediateArray = relationExists(relName);
 
+	/* If the relation does not exist in any intermediate array,
+	 * we just sum all the elements of the suggested column
+	 */
 	if(intermediateArray == NULL)
 	{
 		unsigned long long sum = 0, i;
@@ -237,6 +244,9 @@ void IntermediateRepresentation::produceSum(unsigned int relName, unsigned int r
 		}
 	}
 
+	/* If the relations exists in an intermediate array,
+	 * we invoke the array's operation to produce the sum
+	 */
 	else
 	{
 		intermediateArray->produceSum(relName, relColumn);

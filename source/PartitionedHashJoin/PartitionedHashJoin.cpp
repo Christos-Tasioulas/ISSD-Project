@@ -495,10 +495,31 @@ void PartitionedHashJoin::probeRelations(
         return;
     }
 
-    /* We will start building the index of relation 'R' */
+	unsigned int R_tuples_num = R_end_index - R_start_index;
+	unsigned int S_tuples_num = S_end_index - S_start_index;
+	char larger = (R_tuples_num > S_tuples_num) ? 'R' : 'S';
 
-    HashTable *R_tuples_table = new HashTable(hopscotchBuckets,
-        resizableByLoadFactor, loadFactor, hopscotchRange);
+/*
+	std::cout << "Probing: R(" << R_start_index << "," << R_end_index
+		<< ") S(" << S_start_index << "," << S_end_index << ")" << std::endl;
+*/
+    /* We will start building the index of one of the relations */
+	HashTable *hash_table;
+
+	if(((larger == 'R') && (R_tuples_num > 4000))
+	|| ((larger == 'S') && (S_tuples_num > 4000)))
+	{
+/*
+		std::cout << "Ignoring the configuration parameters because the indexed relation is huge" << std::endl;
+*/
+		hash_table = new HashTable(7000, false, 0.1, 512);
+	}
+
+	else
+	{
+	    hash_table = new HashTable(hopscotchBuckets,
+			resizableByLoadFactor, loadFactor, hopscotchRange);	
+	}
 
     /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
@@ -507,15 +528,31 @@ void PartitionedHashJoin::probeRelations(
     /* Helper variable for counting */
     unsigned int i;
 
-    /* Starting from the given starting index of 'R', we place
-     * every tuple of the 'R' table to the hash table. We keep
-     * inserting items until we reach the given end index of 'R'
-     */
-    for(i = R_start_index; i < R_end_index; i++)
-    {
-        R_tuples_table->insert(&R_table[i], &R_table[i],
-            PartitionedHashJoin::hashTuple);
-    }
+	if(R_tuples_num < S_tuples_num)
+	{
+	    /* Starting from the given starting index of 'R', we place
+		 * every tuple of the 'R' table to the hash table. We keep
+		 * inserting items until we reach the given end index of 'R'
+		 */
+		for(i = R_start_index; i < R_end_index; i++)
+		{
+			hash_table->insert(&R_table[i], &R_table[i],
+				PartitionedHashJoin::hashTuple);
+		}
+	}
+
+	else
+	{
+	    /* Starting from the given starting index of 'S', we place
+		 * every tuple of the 'S' table to the hash table. We keep
+		 * inserting items until we reach the given end index of 'S'
+		 */
+		for(i = S_start_index; i < S_end_index; i++)
+		{
+			hash_table->insert(&S_table[i], &S_table[i],
+				PartitionedHashJoin::hashTuple);
+		}
+	}
 
     /* We print the contents of the hash table if we need to */
 
@@ -525,7 +562,7 @@ void PartitionedHashJoin::probeRelations(
         {
             std::cout << "Hash Table of Subrelation" << std::endl;
 
-            R_tuples_table->print(
+            hash_table->print(
                 printTupleAndTuple,
                 colonContext,
                 lineContextWithNewLine,
@@ -540,7 +577,7 @@ void PartitionedHashJoin::probeRelations(
         {
             std::cout << "Hash Table of Relation" << std::endl;
 
-            R_tuples_table->print(
+            hash_table->print(
                 printTupleAndTuple,
                 colonContext,
                 lineContextWithNewLine,
@@ -549,53 +586,104 @@ void PartitionedHashJoin::probeRelations(
         }
     }
 
-    /* Starting from the given starting index of 'S', we search
-     * every tuple of the 'S' table in the hash table. If we
-     * find an item with the same value in the hash table, we
-     * include it in the final result of the 'join' operation
-     *
-     * We keep searching the tuples of 'S' in the hash
-     * table until we reach the given end index of 'S'
-     */
-    for(i = S_start_index; i < S_end_index; i++)
-    {
-        /* We search the current tuple of 'S' in the hash table */
+	if(R_tuples_num < S_tuples_num)
+	{
+		/* Starting from the given starting index of 'S', we search
+		 * every tuple of the 'S' table in the hash table. If we
+		 * find an item with the same value in the hash table, we
+		 * include it in the final result of the 'join' operation
+		 *
+		 * We keep searching the tuples of 'S' in the hash
+		 * table until we reach the given end index of 'S'
+		 */
+		for(i = S_start_index; i < S_end_index; i++)
+		{
+			/* We search the current tuple of 'S' in the hash table */
 
-        List *matchingKeys = R_tuples_table->bulkSearch(&S_table[i],
-            PartitionedHashJoin::hashTuple, compareTupleUserData);
+			List *matchingKeys = hash_table->bulkSearch(&S_table[i],
+				PartitionedHashJoin::hashTuple, compareTupleUserData);
 
-        /* As long as the list is not empty, we do the following */
+			/* As long as the list is not empty, we do the following */
 
-        while(!matchingKeys->isEmpty())
-        {
-            /* We retrieve the current content of the head of the list */
-            Tuple *current_tuple = (Tuple *) matchingKeys->getItemInPos(1);
+			while(!matchingKeys->isEmpty())
+			{
+				/* We retrieve the current content of the head of the list */
+				Tuple *current_tuple = (Tuple *) matchingKeys->getItemInPos(1);
 
-            /* The current content of the head is removed from the list
-             *
-             * The next node of the head becomes the new head
-             */
-            matchingKeys->removeFront();
+				/* The current content of the head is removed from the list
+				 *
+				 * The next node of the head becomes the new head
+				 */
+				matchingKeys->removeFront();
 
-            /* Now we have found a tuple of 'S' and a tuple of 'R'
-             * that have the same user data. We retrieve the row
-             * IDs of these two tuples
-             */
-            unsigned int R_tuple_rowId = current_tuple->getRowId();
-            unsigned int S_tuple_rowId = S_table[i].getRowId();
+				/* Now we have found a tuple of 'S' and a tuple of 'R'
+				 * that have the same user data. We retrieve the row
+				 * IDs of these two tuples
+				 */
+				unsigned int R_tuple_rowId = current_tuple->getRowId();
+				unsigned int S_tuple_rowId = S_table[i].getRowId();
 
-            /* We create an item that stores the pair of the above
-            * two row IDs and we insert that item in the list
-            */
-            result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
-        }
+				/* We create an item that stores the pair of the above
+				* two row IDs and we insert that item in the list
+				*/
+				result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
+			}
 
-        /* Finally, we terminate the list of matching keys */
-        HashTable::terminateBulkSearchList(matchingKeys);
-    }
+			/* Finally, we terminate the list of matching keys */
+			HashTable::terminateBulkSearchList(matchingKeys);
+		}
+	}
+
+	else
+	{
+		/* Starting from the given starting index of 'R', we search
+		 * every tuple of the 'R' table in the hash table. If we
+		 * find an item with the same value in the hash table, we
+		 * include it in the final result of the 'join' operation
+		 *
+		 * We keep searching the tuples of 'R' in the hash
+		 * table until we reach the given end index of 'R'
+		 */
+		for(i = R_start_index; i < R_end_index; i++)
+		{
+			/* We search the current tuple of 'R' in the hash table */
+
+			List *matchingKeys = hash_table->bulkSearch(&R_table[i],
+				PartitionedHashJoin::hashTuple, compareTupleUserData);
+
+			/* As long as the list is not empty, we do the following */
+
+			while(!matchingKeys->isEmpty())
+			{
+				/* We retrieve the current content of the head of the list */
+				Tuple *current_tuple = (Tuple *) matchingKeys->getItemInPos(1);
+
+				/* The current content of the head is removed from the list
+				 *
+				 * The next node of the head becomes the new head
+				 */
+				matchingKeys->removeFront();
+
+				/* Now we have found a tuple of 'S' and a tuple of 'R'
+				 * that have the same user data. We retrieve the row
+				 * IDs of these two tuples
+				 */
+				unsigned int S_tuple_rowId = current_tuple->getRowId();
+				unsigned int R_tuple_rowId = R_table[i].getRowId();
+
+				/* We create an item that stores the pair of the above
+				* two row IDs and we insert that item in the list
+				*/
+				result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
+			}
+
+			/* Finally, we terminate the list of matching keys */
+			HashTable::terminateBulkSearchList(matchingKeys);
+		}
+	}
 
     /* We free the allocated memory for the hash table */
-    delete R_tuples_table;
+    delete hash_table;
 }
 
 /************************************************
@@ -641,7 +729,12 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
 
     /* This is the array itself of the relation 'relS' */
     Tuple *S_table = relS->getTuples();
-
+/*
+	if(hasSubrelations)
+		std::cout << "Subrelation with " << R_numOfTuples << " R tuples and " << S_numOfTuples << " S tuples" << std::endl;
+	else
+		std::cout << "Relation with " << R_numOfTuples << " R tuples and " << S_numOfTuples << " S tuples" << std::endl;
+*/
     /* Case 1: Partition is required
      * ^^^^^^
      */
