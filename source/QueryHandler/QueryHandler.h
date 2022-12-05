@@ -1,8 +1,6 @@
 #ifndef _QUERY_HANDLER_H_
 #define _QUERY_HANDLER_H_
 
-#include "BinaryHeap.h"
-#include "RedBlackTree.h"
 #include "PartitionedHashJoin.h"
 #include "PartitionedHashJoinInput.h"
 #include "IntermediateRepresentation.h"
