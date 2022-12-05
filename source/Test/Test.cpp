@@ -197,14 +197,14 @@ void read_config_test()
 
     // Tests to see if the function can read the CURRENT configuration settings
     // The test must be updated along with the configuration file 
-    TEST_ASSERT(bitsNumForHashing == 6);
+    TEST_ASSERT(bitsNumForHashing == 8);
     TEST_ASSERT(showInitialRelations == false);
     TEST_ASSERT(showAuxiliaryArrays == false);
     TEST_ASSERT(showHashTable == false);
     TEST_ASSERT(showSubrelations == false);
     TEST_ASSERT(showResult == true);
-    TEST_ASSERT(hopscotchBuckets == 80001);
-    TEST_ASSERT(hopscotchRange == 20000);
+    TEST_ASSERT(hopscotchBuckets == 1001);
+    TEST_ASSERT(hopscotchRange == 64);
     TEST_ASSERT(resizableByLoadFactor == false);
     TEST_ASSERT(loadFactor == 0.9);
     TEST_ASSERT(maxAllowedSizeModifier == 0.95);
