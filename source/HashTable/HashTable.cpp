@@ -120,11 +120,13 @@ unsigned int HashTable::getHopInfoCapacity() const
 
 void HashTable::rehash(unsigned int (*hash_function)(void *))
 {
-	std::cout << "Rehashing with " << elementsNum << " elements" << std::endl;
-
 	/* We will create a new table with double number of buckets */
 	unsigned int newBucketsNum = 2 * bucketsNum;
-
+/*
+	std::cout << "Rehashing with " << elementsNum << " elements (buckets: "
+		<< bucketsNum << " -> " << newBucketsNum << ", range: " << hopInfoCapacity
+		<< " -> " << 3*(hopInfoCapacity/2) << ")" << std::endl;
+*/
 	/* In the new table the hop range will be also change */
 	hopInfoCapacity = 3*(hopInfoCapacity/2);
 
@@ -595,7 +597,7 @@ bool HashTable::search(void *key, unsigned int (*hash_function)(void *),
 		/* We retrieve the key of the next candidate
 		 * entry where the given key could be
 		 */
-		void *keyOfNextBucket = table[hash_value + posOfNextAce - 1].getKey();
+		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
 
 		/* If that key is equal to the given one, the key exists */
 
@@ -652,7 +654,7 @@ void *HashTable::searchItem(void *key, unsigned int (*hash_function)(void *),
 		/* We retrieve the key of the next candidate
 		 * entry where the given key could be
 		 */
-		void *keyOfNextBucket = table[hash_value + posOfNextAce - 1].getKey();
+		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
 
 		/* If that key is equal to the given one, the key exists */
 
@@ -716,7 +718,7 @@ List *HashTable::bulkSearch(void *key, unsigned int (*hash_function)(void *),
 		/* We retrieve the key of the next candidate
 		 * entry where the given key could be
 		 */
-		void *keyOfNextBucket = table[hash_value + posOfNextAce - 1].getKey();
+		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
 
 		/* If that key is equal to the given one, the key exists */
 

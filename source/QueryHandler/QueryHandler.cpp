@@ -255,8 +255,6 @@ void QueryHandler::addressSingleQuery(Query *query)
 
 void QueryHandler::addressQueries()
 {
-    std::cout << "================ Results =================" << std::endl;
-
     /* We will start traversing the list of batches from the head */
     Listnode *currentNodeOfBatch = queryBatches->getHead();
 

@@ -1,4 +1,4 @@
-n=6
+n=8
 [the number of bits of each integer that will be used for its hash code]
 
 showInitialRelations=
@@ -27,11 +27,11 @@ showResult=yes
 [choose "yes" to see the contents of the result after the join operation
 has been performed]
 
-hopscotchBuckets=80001
+hopscotchBuckets=1001
 [determines the amount of buckets that each hash table will have at the
 moment it is created. It may grow with the insertion of many elements]
 
-hopscotchRange=20000
+hopscotchRange=64
 [determines the size of the neighborhood of each hash table entry when
 the hash table is created. It may grow when many elements are inserted]
 

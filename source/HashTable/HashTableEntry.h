@@ -6,7 +6,7 @@
 /* The default bit capacity of the bitmap of the entry, used
  * in case the user does not give their own bit capacity
  */
-#define DEFAULT_BIT_CAPACITY 16
+#define DEFAULT_BIT_CAPACITY 64
 
 /* The Hash Table Entry (which is the content of a bucket) */
 

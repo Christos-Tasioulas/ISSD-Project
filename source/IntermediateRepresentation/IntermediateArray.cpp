@@ -63,7 +63,65 @@ IntermediateArray::IntermediateArray(unsigned int leftRel, unsigned int leftRelC
 	this->rowIdArrays = new List();
 	this->joinParameters = joinParameters;
 
-	/* We retrieve pointers to the original left and right tables with all the data */
+	/* Case the two given relations are equal (in other words it is the same relation) */
+	if(leftRel == rightRel)
+	{
+		/* We retrieve a pointer to the original table of the relation */
+		Table *table = (Table *) tables->getItemInPos(leftRel + 1);
+
+		/* We retrieve the amount of rows of the table */ 
+		unsigned long long tuplesNum = table->getNumOfTuples();
+
+		/* Auxiliary variable (used for counting) */
+		unsigned long long i;
+
+		/* A list that will be storing the row IDs of the relation
+		 * where the elements of the given columns are equal
+		 */
+		List *results = new List();
+
+		for(i = 0; i < tuplesNum; i++)
+		{
+			unsigned long long currentLeftElement = table->getTable()[leftRelColumn][i];
+			unsigned long long currentRightElement = table->getTable()[rightRelColumn][i];
+
+			if(currentLeftElement == currentRightElement)
+				results->insertLast(new unsigned int(i));
+		}
+
+		/* We store the amount of valid row IDs in 'rowsNum', which is the
+		 * field that indicates the amount of rows of the intermediate array
+		 */
+		this->rowsNum = results->getCounter();
+
+		/* This is the array that will hold the correct row IDs */
+		unsigned int *rowIds = new unsigned int[this->rowsNum];
+
+		/* We move every row ID from the list to the array */
+
+		for(i = 0; i < rowsNum; i++)
+		{
+			unsigned int *currentRowIdAddress = (unsigned int *) results->getItemInPos(1);
+			unsigned int currentRowId = (*currentRowIdAddress);
+			delete currentRowIdAddress;
+			results->removeFront();
+			rowIds[i] = currentRowId;
+		}
+
+		/* We insert the relation name in the list of relations */
+		relations->insertLast(new unsigned int(leftRel));
+
+		/* We insert the array of row IDs in the list of arrays */
+		rowIdArrays->insertLast(rowIds);
+
+		/* There is nothing else to do in this case */
+		return;
+	}
+
+	/* Case the two relations are not equal (normal case)
+	 *
+	 * We retrieve pointers to the original left and right tables with all the data
+	 */
 	Table *leftTable = (Table *) tables->getItemInPos(leftRel + 1);
 	Table *rightTable = (Table *) tables->getItemInPos(rightRel + 1);
 
@@ -136,6 +194,18 @@ IntermediateArray::IntermediateArray(unsigned int leftRel, unsigned int leftRelC
 		rightRowIds[i] = resultPairs[i].getRightRowId();
 	}
 
+	/* We insert the left relation name in the list of relations */
+	relations->insertLast(new unsigned int(leftRel));
+
+	/* We insert the right relation name in the list of relations */
+	relations->insertLast(new unsigned int(rightRel));
+
+	/* We insert the array of left row IDs in the list of arrays */
+	rowIdArrays->insertLast(leftRowIds);
+
+	/* We insert the array of right row IDs in the list of arrays */
+	rowIdArrays->insertLast(rightRowIds);
+
 	/* We free the result of join */
 	join->freeJoinResult(joinResult);
 	delete join;
@@ -159,18 +229,6 @@ IntermediateArray::IntermediateArray(unsigned int leftRel, unsigned int leftRelC
 	/* We free the arrays of tuples for the left and right relation */
 	delete[] rightTuples;
 	delete[] leftTuples;
-
-	/* We insert the left relation name in the list of relations */
-	relations->insertLast(new unsigned int(leftRel));
-
-	/* We insert the right relation name in the list of relations */
-	relations->insertLast(new unsigned int(rightRel));
-
-	/* We insert the array of left row IDs in the list of arrays */
-	rowIdArrays->insertLast(leftRowIds);
-
-	/* We insert the array of right row IDs in the list of arrays */
-	rowIdArrays->insertLast(rightRowIds);
 }
 
 /**********************************************
@@ -204,12 +262,18 @@ IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColum
 
 	for(i = 0; i < numOfRows; i++)
 	{
+		/* We retrieve the value of the current element */
 		unsigned long long currentElement = table->getTable()[relColumn][i];
 
+		/* We initialize an auxiliary boolean flag to 'false' */
 		bool elementSatisfiesFilter = false;
+
+		/* Depending on the filter operator we take one of the actions below */
 
 		switch(filterOperator)
 		{
+			/* Case the filter operator is '<' */
+
 			case '<':
 			{
 				if(currentElement < filterValue)
@@ -218,6 +282,8 @@ IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColum
 				break;
 			}
 
+			/* Case the filter operator is '>' */
+
 			case '>':
 			{
 				if(currentElement > filterValue)
@@ -225,6 +291,8 @@ IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColum
 
 				break;
 			}
+
+			/* Case the filter operator is '=' */
 
 			case '=':
 			{
@@ -235,15 +303,23 @@ IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColum
 			}
 		}
 
+		/* If the current element satisfies the filter, we
+		 * insert the row ID of that element in the list
+		 */
 		if(elementSatisfiesFilter)
 			resultRowIds->insertLast(new unsigned int(i));
 	}
 
+	/* We update the amount of row IDs of the intermediate array */
 	this->rowsNum = resultRowIds->getCounter();
 
+	/* We will move each row ID from the list to the intermediate array */
 	i = 0;
 
+	/* Here we create the array that will be stored in the structure */
 	unsigned int *resultRowIdArray = new unsigned int[rowsNum];
+
+	/* We move every element from the list to the above array */
 
 	while(!resultRowIds->isEmpty())
 	{
@@ -251,15 +327,17 @@ IntermediateArray::IntermediateArray(unsigned int relName, unsigned int relColum
 		unsigned int currentRowId = (*currentRowIdAddress);
 		resultRowIds->removeFront();
 		delete currentRowIdAddress;
-
 		resultRowIdArray[i] = currentRowId;
-
 		i++;
 	}
 
+	/* We insert the relation name in the list of relations */
 	relations->insertLast(new unsigned int(relName));
+
+	/* We insert the array of row IDs in the list of row ID arrays */
 	rowIdArrays->insertLast(resultRowIdArray);
 
+	/* We free the allocated memory for the temporary list */
 	delete resultRowIds;
 }
 
@@ -316,18 +394,28 @@ unsigned int IntermediateArray::getRowsNum() const
 
 bool IntermediateArray::search(unsigned int foreignRelationName) const
 {
+	/* We will start looking for the relation name from the head of the list */
 	Listnode *currentNode = relations->getHead();
+
+	/* As long as we have not reached the end of the list, we do the following */
 
 	while(currentNode != NULL)
 	{
+		/* We retrieve the name of the relation in the current node */
 		unsigned int relationOfCurrentNode = *((unsigned int *) currentNode->getItem());
 
+		/* If the relation name in the node matches the
+		 * given one, we just found the given relation
+		 * in the list. Consequently, we return 'true'
+		 */
 		if(relationOfCurrentNode == foreignRelationName)
 			return true;
 
+		/* We proceed to the next node */
 		currentNode = currentNode->getNext();
 	}
 
+	/* If this part is reached, that means we didn't find the give relation */
 	return false;
 }
 
@@ -337,21 +425,40 @@ bool IntermediateArray::search(unsigned int foreignRelationName) const
 
 unsigned int IntermediateArray::posOfRelationInList(unsigned int relationName) const
 {
+	/* A counter of positions. The position '1'
+	 * is the position of the head of the list
+	 */
 	unsigned int pos = 1;
 
+	/* We will traverse the list from the head */
 	Listnode *current = relations->getHead();
+
+	/* As long as we have not finished traversing the list */
 
 	while(current != NULL)
 	{
+		/* We retrieve the relation name stored in the current node */
 		unsigned int currentRelationName = *((unsigned int *) current->getItem());
 
+		/* If it matches the given name, we return the
+		 * position in the list where we found it
+		 */
 		if(currentRelationName == relationName)
 			return pos;
 
+		/* Else we increase the positions counter by 1,
+		 * since we did not find the name in this position
+		 */
 		pos++;
+
+		/* We proceed to the next node */
 		current = current->getNext();
 	}
 
+	/* If this part is reached, that means the
+	 * given relation name does not exist in
+	 * the list. In this case we return zero.
+	 */
 	return 0;
 }
 
@@ -387,9 +494,15 @@ void IntermediateArray::executeJoinWithForeignRelation(
 	 */
 	Tuple *localTuples = new Tuple[localTableRows];
 
+	/* We find the position of the local relation in the relations list */
 	unsigned int posOfLocalRelInList = posOfRelationInList(localRelationName);
 
+	/* We use the position we found just above to retrieve
+	 * the array of reserved row IDs of the local relation
+	 */
 	unsigned int *localRowIds = (unsigned int *) rowIdArrays->getItemInPos(posOfLocalRelInList);
+
+	/* We fill the tuples of the local relation with contents */
 
 	for(i = 0; i < localTableRows; i++)
 	{
@@ -397,7 +510,8 @@ void IntermediateArray::executeJoinWithForeignRelation(
 		localTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the intermediate table to the current tuple */
-		localTuples[i].setItem(new unsigned long long(localTable->getTable()[localRelationColumn][localRowIds[i]]));
+		localTuples[i].setItem(new unsigned long long(localTable->getTable()
+			[localRelationColumn][localRowIds[i]]));
 	}
 
 	/* We create the array of tuples for the right array
@@ -412,7 +526,8 @@ void IntermediateArray::executeJoinWithForeignRelation(
 		foreignTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the table to the current tuple */
-		foreignTuples[i].setItem(new unsigned long long(foreignTable->getTable()[foreignRelationColumn][i]));
+		foreignTuples[i].setItem(new unsigned long long(foreignTable->getTable()
+			[foreignRelationColumn][i]));
 	}
 
 	/* We use the tuples we made above to create the input
@@ -457,6 +572,8 @@ void IntermediateArray::executeJoinWithForeignRelation(
 		foreignRowIds[i] = resultPairs[i].getRightRowId();
 	}
 
+	/* We delete the old row ID arrays and remove them from the list */
+
 	rowIdArrays->traverseFromHead(deleteUnsignedIntegerArray);
 
 	while(!rowIdArrays->isEmpty())
@@ -486,11 +603,20 @@ void IntermediateArray::executeJoinWithForeignRelation(
 	delete[] foreignTuples;
 	delete[] localTuples;
 
+	/* We insert the renewed arrays of reserved row IDs in the structure */
+
 	for(i = 0; i < localRelsCount; i++)
 		rowIdArrays->insertLast(renewedLocalRowIdArrays[i]);
 
+	/* We insert the array of valid row IDs of the
+	 * foreign relation in the intermediate array
+	 */
 	rowIdArrays->insertLast(foreignRowIds);
 
+	/* The foreign relation is not foreign anymore.
+	 *
+	 * We insert its name in the list of relations.
+	 */
 	relations->insertLast(new unsigned int(foreignRelationName));
 }
 
@@ -525,8 +651,14 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 	 */
 	Tuple *leftLocalTuples = new Tuple[leftLocalTableRows];
 
+	/* We find the position of the local relation in the relations list */
 	unsigned int posOfLeftLocalRelInList = posOfRelationInList(leftLocalRelationName);
-	unsigned int *leftLocalRowIds = (unsigned int *) rowIdArrays->getItemInPos(posOfLeftLocalRelInList);
+
+	/* We use the position we found just above to retrieve
+	 * the array of reserved row IDs of the local relation
+	 */
+	unsigned int *leftLocalRowIds = (unsigned int *) rowIdArrays->
+		getItemInPos(posOfLeftLocalRelInList);
 
 	for(i = 0; i < leftLocalTableRows; i++)
 	{
@@ -534,7 +666,8 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 		leftLocalTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the intermediate table to the current tuple */
-		leftLocalTuples[i].setItem(new unsigned long long(leftLocalTable->getTable()[leftLocalRelationColumn][leftLocalRowIds[i]]));
+		leftLocalTuples[i].setItem(new unsigned long long(leftLocalTable->getTable()
+			[leftLocalRelationColumn][leftLocalRowIds[i]]));
 	}
 
 	/* We create the array of tuples for the right array
@@ -552,7 +685,8 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 		rightLocalTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the table to the current tuple */
-		rightLocalTuples[i].setItem(new unsigned long long(rightLocalTable->getTable()[rightLocalRelationColumn][rightLocalRowIds[i]]));
+		rightLocalTuples[i].setItem(new unsigned long long(rightLocalTable->getTable()
+			[rightLocalRelationColumn][rightLocalRowIds[i]]));
 	}
 
 	/* We use the tuples we made above to create the input
@@ -682,18 +816,23 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 		localTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the intermediate table to the current tuple */
-		localTuples[i].setItem(new unsigned long long(localTable->getTable()[localRelationColumn][localRowIds[i]]));
+		localTuples[i].setItem(new unsigned long long(localTable->getTable()
+			[localRelationColumn][localRowIds[i]]));
 	}
 
 	/* We create the array of tuples for the right array
 	 *
 	 * Each tuple will have the form <RowIdForeignIntermediateArray (Ig), ForeignValue>
-	 * (g is an index to an intermediate result different from Ih outside of the current Intermediate Array)
+	 *
+	 * (g is an index to an intermediate result different
+	 * from Ih outside of the current Intermediate Array)
 	 */
 	Tuple *foreignTuples = new Tuple[foreignTableRows];
 
 	unsigned int posOfForeignRelInList = other->posOfRelationInList(foreignRelationName);
-	unsigned int *foreignRowIds = (unsigned int *) other->rowIdArrays->getItemInPos(posOfForeignRelInList);
+
+	unsigned int *foreignRowIds = (unsigned int *) other->rowIdArrays->
+		getItemInPos(posOfForeignRelInList);
 
 	for(i = 0; i < foreignTableRows; i++)
 	{
@@ -701,7 +840,8 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 		foreignTuples[i].setRowId(i);
 
 		/* We place the corresponding value of the table to the current tuple */
-		foreignTuples[i].setItem(new unsigned long long(foreignTable->getTable()[foreignRelationColumn][foreignRowIds[i]]));
+		foreignTuples[i].setItem(new unsigned long long(foreignTable->getTable()
+			[foreignRelationColumn][foreignRowIds[i]]));
 	}
 
 	/* We use the tuples we made above to create the input
@@ -801,7 +941,8 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 	unsigned int relationPosInList = posOfRelationInList(relationName);
 
 	/* We retrieve a pointer to the table with the reserved row IDs for this relation */
-	unsigned int *reservedRowIdsOfRel = (unsigned int *) rowIdArrays->getItemInPos(relationPosInList);
+	unsigned int *reservedRowIdsOfRel = (unsigned int *) rowIdArrays->
+		getItemInPos(relationPosInList);
 
 	/* A list with the row IDs of the intermediate array that contain
 	 * row IDs of the given relation that satisfy the filter
@@ -813,12 +954,19 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 
 	for(i = 0; i < rowsNum; i++)
 	{
-		unsigned long long currentElement = table->getTable()[relationColumn][reservedRowIdsOfRel[i]];
+		/* We retrieve the value of the current element */
+		unsigned long long currentElement = table->getTable()
+			[relationColumn][reservedRowIdsOfRel[i]];
 
+		/* We initialize an auxiliary boolean flag to 'false' */
 		bool elementSatisfiesFilter = false;
+
+		/* Depending on the filter operator we take one of the actions below */
 
 		switch(filterOperator)
 		{
+			/* Case the filter operator is '<' */
+
 			case '<':
 			{
 				if(currentElement < filterValue)
@@ -827,6 +975,8 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 				break;
 			}
 
+			/* Case the filter operator is '>' */
+
 			case '>':
 			{
 				if(currentElement > filterValue)
@@ -834,6 +984,8 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 
 				break;
 			}
+
+			/* Case the filter operator is '=' */
 
 			case '=':
 			{
@@ -844,10 +996,14 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 			}
 		}
 
+		/* If the current element satisfies the filter, we
+		 * insert the row ID of that element in the list
+		 */
 		if(elementSatisfiesFilter)
 			resultRowIds->insertLast(new unsigned int(i));
 	}
 
+	/* We update the amount of row IDs of the intermediate array */
 	this->rowsNum = resultRowIds->getCounter();
 
 	/* We retrieve the amount of relations in the intermediate array */
@@ -855,35 +1011,56 @@ void IntermediateArray::executeFilter(unsigned int relationName,
 	unsigned int *localRowIdArrays[localRelsCount];
 	unsigned int *renewedLocalRowIdArrays[localRelsCount];
 
+	/* We retrieve the current row ID arrays
+	 * and allocate memory for the new ones
+	 */
 	for(i = 0; i < localRelsCount; i++)
 	{
 		localRowIdArrays[i] = (unsigned int *) rowIdArrays->getItemInPos(i+1);
 		renewedLocalRowIdArrays[i] = new unsigned int[rowsNum];
 	}
 
+	/* We will update the arrays of reserved row IDs */
 	i = 0;
+
+	/* As long as the list is not empty, we do the following */
 
 	while(!resultRowIds->isEmpty())
 	{
+		/* We retrieve the row ID of the current head of the list */
 		unsigned int *currentRowIdAddress = (unsigned int *) resultRowIds->getItemInPos(1);
+
+		/* We retrieve the row ID value stored in the address */
 		unsigned int currentRowId = (*currentRowIdAddress);
+
+		/* We remove the current head of the list */
 		resultRowIds->removeFront();
+
+		/* We free the allocated memory for the row ID */
 		delete currentRowIdAddress;
+
+		/* We update the row ID arrays  with the row IDs indicated by the list */
 
 		for(j = 0; j < localRelsCount; j++)
 			renewedLocalRowIdArrays[j][i] = localRowIdArrays[j][currentRowId];
 
+		/* We increase the offset for the arrays */
 		i++;
 	}
+
+	/* We delete the old row ID arrays and remove them from the list */
 
 	rowIdArrays->traverseFromHead(deleteUnsignedIntegerArray);
 
 	while(!rowIdArrays->isEmpty())
 		rowIdArrays->removeFront();
 
+	/* We insert the renewed row ID arrays in the structure */
+
 	for(i = 0; i < localRelsCount; i++)
 		rowIdArrays->insertLast(renewedLocalRowIdArrays[i]);
 
+	/* We free the allocated memory for the temporary list */
 	delete resultRowIds;
 }
 
