@@ -339,6 +339,7 @@ void read_init_file_test()
         i++;
         current = current->getNext();
     }
+    
 
     tables->traverseFromHead(deleteTable);
 
