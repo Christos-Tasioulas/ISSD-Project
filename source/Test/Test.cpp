@@ -4,6 +4,7 @@
 #include <sstream>
 #include "acutest.h"
 #include "PartitionedHashJoin.h"
+#include "Query.h"
 
 using namespace std;
 
@@ -978,7 +979,41 @@ void partitionedHashJoinTest()
     
 }
 
+/**************************************************************************
+ *                                  Query                                 *
+ **************************************************************************/
 
+void predicatesParserTest()
+{
+    char predicate[10] = "2.0 = 3.4";
+
+    PredicatesParser pp(predicate);
+
+    TEST_ASSERT(pp.getLeftArray() == 2);
+    TEST_ASSERT(pp.getLeftArrayColumn() == 0);
+    TEST_ASSERT(pp.getRightArray() == 3);
+    TEST_ASSERT(pp.getRightArrayColumn() == 4);
+    TEST_ASSERT(pp.hasConstant() == false);
+
+    char predicate1[9] = "1.1 < 69";
+    PredicatesParser pp1(predicate1);
+
+    TEST_ASSERT(pp1.getLeftArray() == 1);
+    TEST_ASSERT(pp1.getLeftArrayColumn() == 1);
+    TEST_ASSERT(pp1.getFilterOperator() == '<');
+    TEST_ASSERT(pp1.getFilterValue() == 69);
+    TEST_ASSERT(pp1.hasConstant() == true);
+
+}
+
+void projectionsParserTest()
+{
+    char projection[4] = "1.5";
+    ProjectionsParser pp(projection);
+
+    TEST_ASSERT(pp.getArray() == 1);
+    TEST_ASSERT(pp.getColumn() == 5);
+}
 
 
 /**************************************************************************
@@ -1014,5 +1049,8 @@ TEST_LIST = {
     { "List Append", testAppend},
     // Partitioned Hash Join Testing
     { "Partitioned Hash Join", partitionedHashJoinTest},
+    // Query
+    { "Predicates Parser Test", predicatesParserTest},
+    { "Projections Parser Test", projectionsParserTest},
     { NULL, NULL }
 };
