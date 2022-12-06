@@ -21,7 +21,7 @@ void readInputFile(
 
 /* Reads the "init" file that contains all the relation names that
  * will take part in the follow-up queries. Then it reads the binary
- * input file of each relation. Retuns a lined list that stores a
+ * input file of each relation. Returns a linked list that stores a
  * (Table *) in each node. Each 'Table' object stores all the rows
  * and columns of a relation.
  */

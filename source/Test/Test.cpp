@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include "acutest.h"
 #include "PartitionedHashJoin.h"
 
@@ -23,6 +25,35 @@ static int compare_ints(void *i1, void* i2)
     if(i2 != NULL) myInt2 = *((int *) i2);
     else return 1;
     return myInt1 - myInt2;
+}
+
+int count_char(string s, char mychar) {
+  int count = 0;
+
+  for (unsigned int i = 0; i < s.size(); i++)
+    if (s[i] == mychar) count++;
+
+  return count;
+}
+
+static void deleteTable(void *item)
+{
+	Table *table = (Table *) item;
+	delete table;
+}
+
+static void print_table(unsigned long long** table, unsigned long long numTuples, unsigned long long numColumns)
+{
+    unsigned long long i,j;
+    for(j=0; j<numTuples; j++)
+    {
+        for(i=0; i<numColumns; i++)
+        {
+            cout<<table[i][j];
+            if(i<(numColumns-1)) cout << "|";
+        }
+        cout << endl;
+    }
 }
 
 /*******************************************************************
@@ -86,6 +117,86 @@ static int compare_results(RowIdRelation* r1, RowIdRelation* r2)
 
     }
     return 1;
+}
+
+static bool compareTable(Table *table, string filename)
+{
+    unsigned long long **tbl;
+    unsigned long long numTuples = 1;
+    
+    ifstream counter(filename);
+
+    string tuple;
+    getline(counter, tuple);
+
+    unsigned long long numColumns = (unsigned long long) count_char(tuple, '|');
+
+    while(getline(counter, tuple))
+    {
+        numTuples++;   
+    }
+    counter.close();
+
+    if(table->getNumOfColumns() != numColumns)
+    {
+        return false;
+    } 
+    else if(table->getNumOfTuples() != numTuples)
+    {
+        return false;
+    }
+
+    tbl = new unsigned long long*[numColumns];
+    for(unsigned long long i = 0; i < numColumns; i++)
+    {
+        tbl[i] = new unsigned long long[numTuples];
+    }
+
+    ifstream rntbl(filename);
+    unsigned long long i,j = 0;
+    while(getline(rntbl, tuple))
+    {
+        
+        stringstream tuple_stream(tuple);
+        string element;
+        i = 0;
+        while(getline(tuple_stream, element, '|'))
+        {
+            stringstream ss(element);
+            unsigned long long data;
+            ss >> data;
+            tbl[i][j] = data; 
+            i++;
+        }
+        j++;
+    } 
+
+    //print_table(tbl, numTuples, numColumns);
+
+    unsigned long long ** r_table = table->getTable();
+
+    for(unsigned long long j=0; j<numTuples; j++)
+    {
+        for(unsigned long long i=0; i<numColumns; i++)
+        {
+            if(tbl[i][j] != r_table[i][j])
+            {
+                for(unsigned long long i = 0; i < numColumns; i++)
+                {
+                    delete[] tbl[i];
+                }
+                delete[] tbl;
+                return false;
+            }
+        }
+    }
+
+    for(unsigned long long i = 0; i < numColumns; i++)
+    {
+        delete[] tbl[i];
+    }
+    delete[] tbl;
+    return true;
 }
 
 /**************************************************************************
@@ -209,6 +320,29 @@ void read_config_test()
     TEST_ASSERT(loadFactor == 0.9);
     TEST_ASSERT(maxAllowedSizeModifier == 0.95);
     TEST_ASSERT(maxPartitionDepth == 2);
+}
+
+void read_init_file_test()
+{
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    Listnode *current = tables->getHead();
+    int i = 0;
+
+    while(current != NULL)
+    {
+        string filename = "../input/r" + to_string(i) + ".tbl";
+        Table *item = (Table *) current->getItem();
+
+        TEST_ASSERT(compareTable(item, filename) == true);
+
+        i++;
+        current = current->getNext();
+    }
+
+    tables->traverseFromHead(deleteTable);
+
+    delete tables;
 }
 
 /**************************************************************************
@@ -843,6 +977,9 @@ void partitionedHashJoinTest()
     
 }
 
+
+
+
 /**************************************************************************
  *                                  Main                                  *
  **************************************************************************/
@@ -854,6 +991,7 @@ TEST_LIST = {
     { "Reset and resize Bitmap", test_reset_and_resize},
     // Filereader testing
     { "Reading Configuration File", read_config_test},
+    { "Reading Init File", read_init_file_test},
     // Hash Table Test
     { "Hash Insert",  insertWithoutRehashTest},
     // { "Hash Rehash",  rehashTest},
