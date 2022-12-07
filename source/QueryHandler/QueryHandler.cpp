@@ -164,8 +164,8 @@ void QueryHandler::addressSingleQuery(Query *query)
      */
     List *predicates = query->getPredicates();
 
-    /* We will start traversing the list of predicates from the head */
-    Listnode *currentNodeOfPredicate = predicates->getHead();
+    /* We will start traversing the list of predicates from the tail */
+    Listnode *currentNodeOfPredicate = predicates->getTail();
 
     /* As long as we have not finished traversing the list of predicates,
      * we do the following actions inside the 'while' loop below
@@ -258,7 +258,7 @@ void QueryHandler::addressSingleQuery(Query *query)
          *
          * We proceed to the next predicate of the query.
          */
-        currentNodeOfPredicate = currentNodeOfPredicate->getNext();
+        currentNodeOfPredicate = currentNodeOfPredicate->getPrevious();
     }
 
     /* Now we will traverse the projections of

@@ -951,6 +951,13 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 	while(!rowIdArrays->isEmpty())
 		rowIdArrays->removeFront();
 
+	/* We remove the local arrays from the foreign structure */
+
+	other->rowIdArrays->traverseFromHead(deleteUnsignedIntegerArray);
+
+	while(!other->rowIdArrays->isEmpty())
+		other->rowIdArrays->removeFront();
+
 	/* We free the result of join */
 	join->freeJoinResult(joinResult);
 	delete join;
@@ -979,7 +986,25 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 	 *
 	 * We append the relations of the foreign array to this array.
 	 */
-	this->relations->append(other->relations);
+	Listnode *currentNode = other->relations->getHead();
+
+	/* As long as we have not finished traversing the list
+	 * of relation of the foreign array, we do the following
+	 */
+	while(currentNode != NULL)
+	{
+		/* We retrieve the relation stored in the current node */
+		IntermediateRelation *currentRelation = (IntermediateRelation *) currentNode->getItem();
+
+		/* We append a copy of that relation in the list
+		 * of relations of the current intermediate array
+		 */
+		this->relations->insertLast(new IntermediateRelation(
+			currentRelation->getName(), currentRelation->getPriority()));
+
+		/* We proceed to the next node */
+		currentNode = currentNode->getNext();
+	}
 
 	/* We update the amount of reserved row IDs of each local array */
 	this->rowsNum = resultRowsNum;
