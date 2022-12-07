@@ -107,6 +107,44 @@ QueryHandler::~QueryHandler()
     delete joinParameters;
 }
 
+/******************************************************************
+ * Returns the priority of the relation at the specified position *
+ ******************************************************************/
+
+unsigned int QueryHandler::getPriorityOfRelation(List *queryRelations,
+    unsigned int relName, unsigned int relPosInQuery) const
+{
+    /* An auxiliary counter used to count how many nodes
+     * we have traversed in the list of query relations
+     */
+    unsigned int posCounter = 0;
+
+    /* We initialize the priority of the given relation with 1 */
+    unsigned int priority = 1;
+
+    /* We will start traversing the list of query relations from the head */
+    Listnode *currentNode = queryRelations->getHead();
+
+    while(posCounter < relPosInQuery)
+    {
+        /* We retrieve the relation name stored in the current node */
+        unsigned int currentRelName = *((unsigned int *) currentNode->getItem());
+
+        /* If we encountered the same relation in a previous
+         * position in the list, we increase the priority by 1
+         */
+        if(currentRelName == relName)
+            priority++;
+
+        /* We increase the counter by 1 and proceed to the next node */
+        posCounter++;
+        currentNode = currentNode->getNext();
+    }
+
+    /* Finally we return the priority of the given relation */
+    return priority;
+}
+
 /*************************************************************************
  * Addresses a single query and prints the result in the standard output *
  *************************************************************************/
@@ -116,6 +154,9 @@ void QueryHandler::addressSingleQuery(Query *query)
     /* We create the intermediate representation of this query */
     IntermediateRepresentation intermediateRepresentation =
     IntermediateRepresentation(tables, joinParameters);
+
+    /* We retrieve the list of the relations taking part in the query */
+    List *queryRels = query->getRelations();
 
     /* Now we will start traversing the predicates.
      *
@@ -174,8 +215,13 @@ void QueryHandler::addressSingleQuery(Query *query)
             unsigned int rightArrayColumn = currentPredicate->getRightArrayColumn();
 
             /* We execute the 'JOIN' between the two relations */
-            intermediateRepresentation.executeJoin(leftArray, leftArrayColumn,
-                rightArray, rightArrayColumn);
+            intermediateRepresentation.executeJoin(
+                leftArray,
+                leftArrayColumn,
+                getPriorityOfRelation(queryRels, leftArray, leftArrayNotation),
+                rightArray,
+                rightArrayColumn,
+                getPriorityOfRelation(queryRels, rightArray, rightArrayNotation));
         }
 
         else
@@ -200,8 +246,12 @@ void QueryHandler::addressSingleQuery(Query *query)
             char filterOperator = currentPredicate->getFilterOperator();
 
             /* We apply the filter on the given relation */
-            intermediateRepresentation.executeFilter(leftArray, leftArrayColumn,
-                filterValue, filterOperator);
+            intermediateRepresentation.executeFilter(
+                leftArray,
+                leftArrayColumn,
+                getPriorityOfRelation(queryRels, leftArray, leftArrayNotation),
+                filterValue,
+                filterOperator);
         }
 
         /* We have finished addressing the current predicate.
@@ -235,7 +285,10 @@ void QueryHandler::addressSingleQuery(Query *query)
         unsigned int originalRelationPos = query->getRelationInPos(projectionArray);
 
         /* We print the requested sum in the standard output */
-        intermediateRepresentation.produceSum(originalRelationPos, projectionColumn);
+        intermediateRepresentation.produceSum(
+            originalRelationPos,
+            projectionColumn,
+            getPriorityOfRelation(queryRels, originalRelationPos, projectionArray));
 
         /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();

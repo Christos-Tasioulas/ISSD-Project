@@ -22,6 +22,10 @@ private:
     /* Parameters of every join operation that will be performed */
     PartitionedHashJoinInput *joinParameters;
 
+    /* Returns the priority of the relation at the specified position */
+    unsigned int getPriorityOfRelation(List *queryRelations,
+        unsigned int relName, unsigned int relPosInQuery) const;
+
     /* Addresses a single query and prints the result in the standard output */
     void addressSingleQuery(Query *query);
 

@@ -53,7 +53,8 @@ PartitionedHashJoinInput *IntermediateRepresentation::getJoinParameters() const
  *   If it exists, that intermediate array is returned    *
  **********************************************************/
 
-IntermediateArray *IntermediateRepresentation::relationExists(unsigned int relation) const
+IntermediateArray *IntermediateRepresentation::relationExists(
+	unsigned int relationName, unsigned int relationPriority) const
 {
 	/* We will traverse the list of intermediate arrays from the head */
 	Listnode *currentNode = intermediateArrays->getHead();
@@ -66,7 +67,7 @@ IntermediateArray *IntermediateRepresentation::relationExists(unsigned int relat
 		IntermediateArray *arrayInCurrentNode = (IntermediateArray *) currentNode->getItem();
 
 		/* If the given relation exists in the array, we return the array */
-		if(arrayInCurrentNode->search(relation))
+		if(arrayInCurrentNode->search(relationName, relationPriority))
 			return arrayInCurrentNode;
 
 		/* Else we proceed to the next node */
@@ -78,6 +79,10 @@ IntermediateArray *IntermediateRepresentation::relationExists(unsigned int relat
 	 */
 	return NULL;
 }
+
+/********************************************************************
+ * Returns the position in the list of the given intermediate array *
+ ********************************************************************/
 
 unsigned int IntermediateRepresentation::posOfIntermediateArray(IntermediateArray *array) const
 {
@@ -96,14 +101,17 @@ unsigned int IntermediateRepresentation::posOfIntermediateArray(IntermediateArra
 		if(arrayInCurrentNode == array)
 			return pos;
 
+		/* We increase the position counter by 1 because
+		 * we didn't find the given array in this node
+		 */ 
 		pos++;
 
 		/* Else we proceed to the next node */
 		currentNode = currentNode->getNext();
 	}
 
-	/* If this part is reached, the given relation does not exist in any
-	 * of the intermediate arrays of the list. In this case, we return 0.
+	/* If this part is reached, the intermediate array does
+	 * not exist in the list. In this case, we return 0.
 	 */
 	return 0;
 }
@@ -112,12 +120,17 @@ unsigned int IntermediateRepresentation::posOfIntermediateArray(IntermediateArra
  * Executes the 'JOIN' operation between the two given relations *
  *****************************************************************/
 
-void IntermediateRepresentation::executeJoin(unsigned int leftRel,
-	unsigned int leftRelColumn, unsigned int rightRel, unsigned rightRelColumn)
+void IntermediateRepresentation::executeJoin(
+	unsigned int leftRel,
+	unsigned int leftRelColumn,
+	unsigned int leftRelPriority,
+	unsigned int rightRel,
+	unsigned int rightRelColumn,
+	unsigned int rightRelPriority)
 {
 	/* We search both relations in the intermediate representation */
-	IntermediateArray *leftIntermediateArray = relationExists(leftRel);
-	IntermediateArray *rightIntermediateArray = relationExists(rightRel);
+	IntermediateArray *leftIntermediateArray = relationExists(leftRel, leftRelPriority);
+	IntermediateArray *rightIntermediateArray = relationExists(rightRel, rightRelPriority);
 
 	if(leftIntermediateArray == NULL)
 	{
@@ -129,8 +142,15 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 		 */
 		if(rightIntermediateArray == NULL)
 		{
-			IntermediateArray *newArray = new IntermediateArray(leftRel,
-				leftRelColumn, rightRel, rightRelColumn, tables, joinParameters);
+			IntermediateArray *newArray = new IntermediateArray(
+				leftRel,
+				leftRelColumn,
+				leftRelPriority,
+				rightRel,
+				rightRelColumn,
+				rightRelPriority,
+				tables,
+				joinParameters);
 
 			intermediateArrays->insertLast(newArray);
 		}
@@ -141,7 +161,12 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 		else
 		{
 			rightIntermediateArray->executeJoinWithForeignRelation(
-				rightRel, rightRelColumn, leftRel, leftRelColumn);
+				rightRel,
+				rightRelColumn,
+				rightRelPriority,
+				leftRel,
+				leftRelColumn,
+				leftRelPriority);
 		}
 	}
 
@@ -153,7 +178,12 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 		if(rightIntermediateArray == NULL)
 		{
 			leftIntermediateArray->executeJoinWithForeignRelation(
-				leftRel, leftRelColumn, rightRel, rightRelColumn);
+				leftRel,
+				leftRelColumn,
+				leftRelPriority,
+				rightRel,
+				rightRelColumn,
+				rightRelPriority);
 		}
 
 		else
@@ -164,7 +194,12 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 			if(leftIntermediateArray == rightIntermediateArray)
 			{
 				leftIntermediateArray->executeJoinWithTwoRelationsInTheArray(
-					leftRel, leftRelColumn, rightRel, rightRelColumn);
+					leftRel,
+					leftRelColumn,
+					leftRelPriority,
+					rightRel,
+					rightRelColumn,
+					rightRelPriority);
 			}
 
 			/**
@@ -173,10 +208,27 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
 			else
 			{
 				leftIntermediateArray->executeJoinWithRelationOfOtherArray(
-					rightIntermediateArray, leftRel, leftRelColumn, rightRel, rightRelColumn);
+					rightIntermediateArray,
+					leftRel,
+					leftRelColumn,
+					leftRelPriority,
+					rightRel,
+					rightRelColumn,
+					rightRelPriority);
 
-				unsigned int posOfRightIntermediateArray = posOfIntermediateArray(rightIntermediateArray);
+				/* Since the two intermediate arrays became one, we remove
+				 * the now useless intermediate array object from the list
+				 *
+				 * First we find the position of the intermediate array we
+				 * want to remove.
+				 */
+				unsigned int posOfRightIntermediateArray = posOfIntermediateArray(
+					rightIntermediateArray);
+
+				/* We remove the item of the list in that position */
 				intermediateArrays->removePos(posOfRightIntermediateArray);
+
+				/* We free the allocated memory for the intermediate array object */
 				delete rightIntermediateArray;
 			}
 		}
@@ -187,18 +239,28 @@ void IntermediateRepresentation::executeJoin(unsigned int leftRel,
  * Applies the given filter to the given relation *
  **************************************************/
 
-void IntermediateRepresentation::executeFilter(unsigned int relName,
-	unsigned int relColumn, unsigned int filterValue, char filterOperator)
+void IntermediateRepresentation::executeFilter(
+	unsigned int relName,
+	unsigned int relColumn,
+	unsigned int relPriority,
+	unsigned int filterValue,
+	char filterOperator)
 {
 	/* We search the relation in the intermediate representation */
-	IntermediateArray *intermediateArray = relationExists(relName);
+	IntermediateArray *intermediateArray = relationExists(relName, relPriority);
 
 	/* If the relation does not exist in any array, we create one */
 
 	if(intermediateArray == NULL)
 	{
-		IntermediateArray *newArray = new IntermediateArray(relName,
-			relColumn, filterValue, filterOperator, tables, joinParameters);
+		IntermediateArray *newArray = new IntermediateArray(
+			relName,
+			relColumn,
+			relPriority,
+			filterValue,
+			filterOperator,
+			tables,
+			joinParameters);
 
 		intermediateArrays->insertLast(newArray);
 	}
@@ -207,8 +269,12 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
 
 	else
 	{
-		intermediateArray->executeFilter(relName, relColumn,
-			filterValue, filterOperator);
+		intermediateArray->executeFilter(
+			relName,
+			relColumn,
+			relPriority,
+			filterValue,
+			filterOperator);
 	}
 }
 
@@ -217,24 +283,36 @@ void IntermediateRepresentation::executeFilter(unsigned int relName,
  *    of the given relation in the requested column    *
  *******************************************************/
 
-void IntermediateRepresentation::produceSum(unsigned int relName, unsigned int relColumn)
+void IntermediateRepresentation::produceSum(
+	unsigned int relName,
+	unsigned int relColumn,
+	unsigned int relPriority)
 {
 	/* We search the relation in the intermediate representation */
-	IntermediateArray *intermediateArray = relationExists(relName);
+	IntermediateArray *intermediateArray = relationExists(relName, relPriority);
 
 	/* If the relation does not exist in any intermediate array,
 	 * we just sum all the elements of the suggested column
 	 */
 	if(intermediateArray == NULL)
 	{
+		/* The sum (initialized with zero) and an auxiliary counter */
 		unsigned long long sum = 0, i;
 
+		/* We retrieve the table pointed by the relation name */
 		Table *table = (Table *) tables->getItemInPos(relName + 1);
+
+		/* We retrieve the number of rows of the above table */
 		unsigned long long numRows = table->getNumOfTuples();
+
+		/* If the table has no rows, we print 'NULL' */
 
 		if(numRows == 0)
 			std::cout << "NULL ";
 
+		/* Else we sum the elements of each row in the
+		 * designated column and print the final sum
+		 */
 		else
 		{
 			for(i = 0; i < numRows; i++)
@@ -249,6 +327,6 @@ void IntermediateRepresentation::produceSum(unsigned int relName, unsigned int r
 	 */
 	else
 	{
-		intermediateArray->produceSum(relName, relColumn);
+		intermediateArray->produceSum(relName, relColumn, relPriority);
 	}
 }
