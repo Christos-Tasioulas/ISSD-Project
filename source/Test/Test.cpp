@@ -405,54 +405,62 @@ void insertWithoutRehashTest()
 
 void rehashTest()
 {
-    HashTable *ht = new HashTable(16, true, 0.7, 3);
+    HashTable *ht = new HashTable(16, true, 0.7, 4);
 
     TEST_ASSERT(ht->getBucketsNum() == 16);
-    TEST_ASSERT(ht->getHopInfoCapacity() == 3);
+    TEST_ASSERT(ht->getHopInfoCapacity() == 4);
+
+    int key_0 = 5;
+    ht->insert(&key_0, &key_0, hash_int);
 
     int key_1 = 5;
-    cout << "Inserting 1" << endl;
     ht->insert(&key_1, &key_1, hash_int);
 
     int key_2 = 5;
-    cout << "Inserting 2" << endl;
     ht->insert(&key_2, &key_2, hash_int);
 
+    // A rehash will happen
     int key_3 = 5;
-    cout << "Inserting 3" << endl;
     ht->insert(&key_3, &key_3, hash_int);
 
     // A rehash will happen
     int key_4 = 5;
-    cout << "Inserting 4" << endl;
     ht->insert(&key_4, &key_4, hash_int);
 
     // Testing the effects of the rehash
     TEST_ASSERT(ht->getBucketsNum() == 32);
     TEST_ASSERT(ht->getHopInfoCapacity() == 6);
-    TEST_ASSERT(*((int *) ht->getTable()[8].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[5].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[6].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[7].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[8].getKey()) == 5);
+    TEST_ASSERT(*((int *) ht->getTable()[9].getKey()) == 5);
 
     int key_5 = 6;
-    cout << "Inserting 5" << endl;
     ht->insert(&key_5, &key_5, hash_int);
 
     int key_6 = 6;
-    cout << "Inserting 6" << endl;
     ht->insert(&key_6, &key_6, hash_int);
 
     int key_7 = 6;
-    cout << "Inserting 7" << endl;
     ht->insert(&key_7, &key_7, hash_int);
 
     // A rehash will happen
     int key_8 = 6;
-    cout << "Inserting 8" << endl;
     ht->insert(&key_8, &key_8, hash_int);
 
     // Testing the effects of the rehash
     TEST_ASSERT(ht->getBucketsNum() == 64);
-    TEST_ASSERT(ht->getHopInfoCapacity() == 12);
+    TEST_ASSERT(ht->getHopInfoCapacity() == 9);
+	TEST_ASSERT(*((int *) ht->getTable()[5].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[6].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[7].getKey()) == 5);
+	TEST_ASSERT(*((int *) ht->getTable()[8].getKey()) == 5);
+    TEST_ASSERT(*((int *) ht->getTable()[9].getKey()) == 5);
+    TEST_ASSERT(*((int *) ht->getTable()[10].getKey()) == 6);
+    TEST_ASSERT(*((int *) ht->getTable()[11].getKey()) == 6);
     TEST_ASSERT(*((int *) ht->getTable()[12].getKey()) == 6);
+    TEST_ASSERT(*((int *) ht->getTable()[13].getKey()) == 6);
 
     // filling the hash table till the rehash is triggered 64*0.7 = 44.8 which is about 45
     // 8 + 37 = 45
@@ -460,20 +468,19 @@ void rehashTest()
     for(unsigned int i = 0; i < 37; i++)
     {
         key[i] = i;
-        cout << "Inserting " << i << endl;
         ht->insert(&key[i], &key[i], hash_int);
     }
-
-    // ht->print(
-    //     printIntAndInt,
-    //     colonContext,
-    //     lineContextWithNewLine,
-    //     emptyHashEntryPrinting
-    // );
-
+/*
+	ht->print(
+		printIntAndInt,
+		colonContext,
+		lineContextWithNewLine,
+		emptyHashEntryPrinting
+	);
+*/
     // Testing the effects of the rehash
     TEST_ASSERT(ht->getBucketsNum() == 128);
-    TEST_ASSERT(ht->getHopInfoCapacity() == 24);
+    TEST_ASSERT(ht->getHopInfoCapacity() == 12);
 
     delete ht;
 }
@@ -1030,7 +1037,7 @@ TEST_LIST = {
     { "Reading Init File", read_init_file_test},
     // Hash Table Test
     { "Hash Insert",  insertWithoutRehashTest},
-    // { "Hash Rehash",  rehashTest},
+    { "Hash Rehash",  rehashTest},
     { "Hash Search",  searchTest},
     { "Hash Search Item",  searchItemTest},
     { "Hash Bulk Search",  bulkSearchTest},
