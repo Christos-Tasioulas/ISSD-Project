@@ -90,3 +90,21 @@ list_all: list list_test
 # Removes all the temporary files of both programs
 # (*.o, *.d, the executable and the temporary directories)
 clean_all: clean clean_test
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # #
+#       Commands associated with the harness        #
+# # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# Compiles the harness program and creates its executable
+# The harness program is used to test our main program
+harness:
+	@cd build && g++ -o harness harness.cpp
+
+# Runs the harness executable with the small input files
+# and our main program as command line arguments
+run_harness:
+	@cd build && ./harness ../input/small.init ../input/small.work ../input/small.result phj
+
+# Removes the harness executable from the 'build' directory
+clean_harness:
+	@cd build && rm harness

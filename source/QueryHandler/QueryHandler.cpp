@@ -292,6 +292,10 @@ void QueryHandler::addressSingleQuery(Query *query)
 
         /* We proceed to the next projection */
         currentNodeOfProjection = currentNodeOfProjection->getNext();
+
+		/* We print a white space if there are more sums to print for this query */
+		if(currentNodeOfProjection != NULL)
+			std::cout << " ";
     }
 
     /* We have finished addressing the query.

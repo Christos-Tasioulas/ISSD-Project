@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include "acutest.h"
-#include "PartitionedHashJoin.h"
+#include "QueryHandler.h"
 #include "Query.h"
 
 using namespace std;
@@ -130,14 +130,17 @@ static bool compareTable(Table *table, string filename)
     string tuple;
     getline(counter, tuple);
 
+    // NumColumns = number of times the character '|' appears in the line
     unsigned long long numColumns = (unsigned long long) count_char(tuple, '|');
 
+    // Count tuples
     while(getline(counter, tuple))
     {
         numTuples++;   
     }
     counter.close();
 
+    // The result is wrong if the tuples and the columns number are different between tables
     if(table->getNumOfColumns() != numColumns)
     {
         return false;
@@ -147,12 +150,14 @@ static bool compareTable(Table *table, string filename)
         return false;
     }
 
+    // Allocating space
     tbl = new unsigned long long*[numColumns];
     for(unsigned long long i = 0; i < numColumns; i++)
     {
         tbl[i] = new unsigned long long[numTuples];
     }
 
+    // Adding the elemets of the file inside the array we made
     ifstream rntbl(filename);
     unsigned long long i,j = 0;
     while(getline(rntbl, tuple))
@@ -161,6 +166,7 @@ static bool compareTable(Table *table, string filename)
         stringstream tuple_stream(tuple);
         string element;
         i = 0;
+        // every element is tokenized by the characters '|', '\n'
         while(getline(tuple_stream, element, '|'))
         {
             stringstream ss(element);
@@ -172,16 +178,16 @@ static bool compareTable(Table *table, string filename)
         j++;
     } 
 
-    //print_table(tbl, numTuples, numColumns);
-
     unsigned long long ** r_table = table->getTable();
-
+    
+    // Comparing each element of the .tbl file with the table we got
     for(unsigned long long j=0; j<numTuples; j++)
     {
         for(unsigned long long i=0; i<numColumns; i++)
         {
             if(tbl[i][j] != r_table[i][j])
             {
+                // Delete if there is an error for valgrind's sake
                 for(unsigned long long i = 0; i < numColumns; i++)
                 {
                     delete[] tbl[i];
@@ -192,11 +198,14 @@ static bool compareTable(Table *table, string filename)
         }
     }
 
+    // Deleting table 
     for(unsigned long long i = 0; i < numColumns; i++)
     {
         delete[] tbl[i];
     }
     delete[] tbl;
+
+    // Both tables are the same
     return true;
 }
 
@@ -330,8 +339,10 @@ void read_init_file_test()
     Listnode *current = tables->getHead();
     int i = 0;
 
+    // comparing each table we created with the corresponding .tbl file
     while(current != NULL)
     {
+        // Filename: ../input/ri.tbl
         string filename = "../input/r" + to_string(i) + ".tbl";
         Table *item = (Table *) current->getItem();
 
@@ -341,7 +352,7 @@ void read_init_file_test()
         current = current->getNext();
     }
     
-
+    // Deleting table
     tables->traverseFromHead(deleteTable);
 
     delete tables;
@@ -534,6 +545,157 @@ void bulkSearchTest()
     ht->terminateBulkSearchList(fives);
 
     delete ht;
+}
+
+/**************************************************************************
+ *                          Intermediate Array                            *
+ **************************************************************************/
+
+void testIntermediateArraySearch()
+{
+    // Reading initialization file
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
+
+    IntermediateArray *ia = new IntermediateArray(4, 0, 1, 3, 1, 2, tables, phji);
+
+    // Testing the case we have an Intermediate Array with two relations at the start
+    TEST_ASSERT(ia->search(4, 1) == true);
+    TEST_ASSERT(ia->search(3, 2) == true);
+    TEST_ASSERT(ia->search(4, 2) == false);
+
+    // Testing the case we have an Intermediate Array with one relation and a Filter operation
+    IntermediateArray *ia1 = new IntermediateArray(4, 1, 2, 3000, '<', tables, phji);
+
+    TEST_ASSERT(ia1->search(4, 1) == false);
+    TEST_ASSERT(ia1->search(3, 2) == false);
+    TEST_ASSERT(ia1->search(4, 2) == true);
+
+    
+    delete phji;
+    delete ia;
+    delete ia1;
+    delete tables;
+}
+
+void testExecuteJoinWithForeignRelation()
+{
+    /*******************************************************************
+     *  It is impossible to compare every result of the join operation *
+     *  So in these tests we will compare the number of rowIDs before  *
+     *                  with the number of rowIDs after                *
+     *******************************************************************/
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
+
+    IntermediateArray *ia = new IntermediateArray(4, 0, 1, 3, 1, 2, tables, phji);
+
+    unsigned int prev_rowsNum = ia->getRowsNum();
+
+    ia->executeJoinWithForeignRelation(4, 0, 1, 2, 0, 0);
+
+    unsigned int rowsNum = ia->getRowsNum();
+
+    List *relations = ia->getRelations();
+    
+    IntermediateRelation *ir2 = (IntermediateRelation *) relations->getItemInPos(3);
+
+    // Testing if the foreign relation is inside that Intermediate Array
+    TEST_ASSERT(ir2->getName() == 2);
+    TEST_ASSERT(ir2->getPriority() == 0);
+    // The new number of rows will be smaller than 
+    // or equal to the starting number because of the filter
+    TEST_ASSERT(prev_rowsNum >= rowsNum);
+
+    delete tables;
+    delete phji;
+
+}
+
+void testExecuteJoinWithTwoRelationsInTheArray()
+{
+    /*******************************************************************
+     *  It is impossible to compare every result of the join operation *
+     *  So in these tests we will compare the number of rowIDs before  *
+     *                  with the number of rowIDs after                *
+     *******************************************************************/
+     
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
+
+    IntermediateArray *ia = new IntermediateArray(4, 0, 1, 3, 1, 2, tables, phji);
+
+    unsigned int prev_rowsNum = ia->getRowsNum();
+
+    ia->executeJoinWithTwoRelationsInTheArray(4, 1, 1, 3, 0, 2);
+
+    unsigned int rowsNum = ia->getRowsNum();
+
+    // The new number of rows will be smaller than 
+    // or equal to the starting number because of the filter
+    TEST_ASSERT(prev_rowsNum >= rowsNum);
+
+    delete tables;
+    delete phji;
+}
+
+void testExecuteJoinWithRelationOfOtherArray()
+{
+    /*******************************************************************
+     *  It is impossible to compare every result of the join operation *
+     *  So in these tests we will compare the number of rowIDs before  *
+     *                  with the number of rowIDs after                *
+     *******************************************************************/
+     
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
+
+    IntermediateArray *ia1 = new IntermediateArray(4, 0, 1, 3, 1, 2, tables, phji);
+    IntermediateArray *ia2 = new IntermediateArray(2, 2, 0, 3000, '<', tables, phji);
+
+    unsigned int prev_rowsNum = ia2->getRowsNum();
+
+    ia1->executeJoinWithRelationOfOtherArray(ia2, 4, 0, 1, 2, 2, 0);
+
+    unsigned int rowsNum = ia1->getRowsNum();
+
+    // The new number of rows will be smaller than 
+    // or equal to the starting number because of the filter
+    TEST_ASSERT(prev_rowsNum >= rowsNum);
+
+    delete tables;
+    delete phji;
+}
+
+void testExecuteFilter()
+{
+    /*******************************************************************
+     *  It is impossible to compare every result of the join operation *
+     *  So in these tests we will compare the number of rowIDs before  *
+     *                  with the number of rowIDs after                *
+     *******************************************************************/
+     
+    List *tables = FileReader::readInitFile("../input/small.init");
+
+    PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
+    IntermediateArray *ia = new IntermediateArray(2, 2, 0, 3000, '<', tables, phji);
+
+    unsigned int prev_rowsNum = ia->getRowsNum();
+
+    ia->executeFilter(4, 0, 1, 5000, '>');
+
+    unsigned int rowsNum = ia->getRowsNum();
+
+    // The new number of rows will be smaller than 
+    // or equal to the starting number because of the filter
+    TEST_ASSERT(prev_rowsNum >= rowsNum);
+
+    delete tables;
+    delete phji;
 }
 
 /**************************************************************************
@@ -1041,6 +1203,12 @@ TEST_LIST = {
     { "Hash Search",  searchTest},
     { "Hash Search Item",  searchItemTest},
     { "Hash Bulk Search",  bulkSearchTest},
+    // Intermediate Array
+    { "Intermediate Array Search", testIntermediateArraySearch},
+    { "Intermediate Array Execute Join With Foreign Relation", testExecuteJoinWithForeignRelation},
+    { "Intermediate Array Execute Join With Two Relations In The Array", testExecuteJoinWithTwoRelationsInTheArray},
+    { "Intermediate Array Execute Join With Relation Of Other Array", testExecuteJoinWithRelationOfOtherArray},
+    { "Intermediate Array Execute Filter" , testExecuteFilter},
     // List Test
     { "List Insert Front", testInsertFront},
     { "List Insert Last", testInsertLast},

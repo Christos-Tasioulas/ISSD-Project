@@ -1172,7 +1172,7 @@ void IntermediateArray::produceSum(
 	 */
 	if(rowsNum == 0)
 	{
-		std::cout << "NULL ";
+		std::cout << "NULL";
 		return;
 	}
 
@@ -1197,7 +1197,7 @@ void IntermediateArray::produceSum(
 		sum += table->getTable()[relColumn][reservedRowIds[i]];
 
 	/* We print the sum in the standard output */
-	std::cout << sum << " ";
+	std::cout << sum;
 }
 
 /*********************************

@@ -308,7 +308,7 @@ void IntermediateRepresentation::produceSum(
 		/* If the table has no rows, we print 'NULL' */
 
 		if(numRows == 0)
-			std::cout << "NULL ";
+			std::cout << "NULL";
 
 		/* Else we sum the elements of each row in the
 		 * designated column and print the final sum
@@ -318,7 +318,7 @@ void IntermediateRepresentation::produceSum(
 			for(i = 0; i < numRows; i++)
 				sum += table->getTable()[relColumn][i];
 
-			std::cout << sum << " ";
+			std::cout << sum;
 		}
 	}
 
