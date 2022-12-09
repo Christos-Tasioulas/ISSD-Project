@@ -19,9 +19,9 @@
 - make (test/all/harness)          (μεταγλώττιση)
 - make run(_test/all/harness)      (εκτέλεση)
 - make clean(_test/all/harness)    (αφαίρεση)
-- make valgrind(_test/all/harness) (εκτέλεση με valgrind)
-- make count(_test/all/harness)    (μέτρηση λέξεων και ποσότητάς τους σε κάθε αρχείο)
-- make list(_test/all/harness)     (καταγραφή αρχείων)
+- make valgrind(_test/all)         (εκτέλεση με valgrind)
+- make count(_test/all)            (μέτρηση λέξεων και ποσότητάς τους σε κάθε αρχείο)
+- make list(_test/all)             (καταγραφή αρχείων)
 
 Άμα θέλουμε να εκτελέσουμε εντολές για όλα τα εκτελέσιμα αρκεί να γράψουμε την εντολή που θέλουμε και μετά να γράψουμε all (πχ. make all, make run_all κ.ο.κ). Το ίδιο ισχύει και για το test αρχείο και για το harness (make test, make run_test). 
 
