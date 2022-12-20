@@ -1,0 +1,11 @@
+- name: Install Valgrind
+  run: |
+    sudo apt install valgrind
+    echo "Valgrind installed"
+
+- name: Valgrind Memory check
+   run: |
+       pip install ValgrindCI
+       echo "Summary report of errors"
+       valgrind-ci /path/to/output_file.xml --summary
+       valgrind-ci /path/to/output_file.xml --abort-on-errors # abort on errors
