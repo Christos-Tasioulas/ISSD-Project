@@ -87,16 +87,6 @@ QueryHandler::QueryHandler(const char *init_file, const char *work_file,
 
     /* We initialize the configurations of each join that will be performed */
     joinParameters = new PartitionedHashJoinInput(config_file);
-/*
-    unsigned int i;
-    unsigned int tablesNum = tables->getCounter();
-
-    for(i = 0; i < tablesNum; i++)
-    {
-        Table *currentTable = (Table *) tables->getItemInPos(i+1);
-        currentTable->print();
-    }
-*/
 }
 
 /**************
@@ -165,17 +155,17 @@ void QueryHandler::addressSingleQuery(Query *query)
     IntermediateRepresentation intermediateRepresentation =
     IntermediateRepresentation(tables, joinParameters);
 
+    /* We create a query optimizer for this query */
+    QueryOptimizer queryOptimizer = QueryOptimizer(tables, query);
+
     /* We retrieve the list of the relations taking part in the query */
     List *queryRels = query->getRelations();
 
-    /* Now we will start traversing the predicates.
-     *
-     * We retrieve the list of predicates.
-     */
-    List *predicates = query->getPredicates();
+    /* We retrieve the predicates in the order that was estimated most optimal */
+    List *optimalPredicatesOrder = queryOptimizer.getOptimalPredicatesOrder();
 
-    /* We will start traversing the list of predicates from the tail */
-    Listnode *currentNodeOfPredicate = predicates->getTail();
+    /* We will start traversing the list of predicates from the head */
+    Listnode *currentNodeOfPredicate = optimalPredicatesOrder->getHead();
 
     /* As long as we have not finished traversing the list of predicates,
      * we do the following actions inside the 'while' loop below
@@ -268,8 +258,14 @@ void QueryHandler::addressSingleQuery(Query *query)
          *
          * We proceed to the next predicate of the query.
          */
-        currentNodeOfPredicate = currentNodeOfPredicate->getPrevious();
+        currentNodeOfPredicate = currentNodeOfPredicate->getNext();
     }
+
+    /* We do not need the list with the optimal predicates order anymore.
+     *
+     * We free the allocated memory for that list.
+     */
+    queryOptimizer.deleteOptimalPredicatesOrder(optimalPredicatesOrder);
 
     /* Now we will traverse the projections of
      * the query to compute the suggested sums
