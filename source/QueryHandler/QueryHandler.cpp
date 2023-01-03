@@ -87,6 +87,16 @@ QueryHandler::QueryHandler(const char *init_file, const char *work_file,
 
     /* We initialize the configurations of each join that will be performed */
     joinParameters = new PartitionedHashJoinInput(config_file);
+/*
+    unsigned int i;
+    unsigned int tablesNum = tables->getCounter();
+
+    for(i = 0; i < tablesNum; i++)
+    {
+        Table *currentTable = (Table *) tables->getItemInPos(i+1);
+        currentTable->print();
+    }
+*/
 }
 
 /**************

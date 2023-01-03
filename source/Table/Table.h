@@ -2,6 +2,7 @@
 #define _TABLE_H_
 
 #include "List.h"
+#include "ColumnStatistics.h"
 
 /* A structure that will be storing the contents of all
  * rows and columns of a relation. Storing "by columns"
@@ -20,6 +21,9 @@ private:
     /* The amount of columns of the table */
     unsigned long long numColumns;
 
+    /* Statistic data stored for each column of the table */
+    ColumnStatistics **columnStatistics;
+
 public:
 
     /* Constructor & Destructor */
@@ -34,6 +38,9 @@ public:
 
     /* Getter - Returns a pointer to the table itself */
     unsigned long long **getTable() const;
+
+    /* Getter - Returns the array of statistics for each column */
+    ColumnStatistics **getColumnStatistics() const;
 
     /* Prints the information stored in the table */
     void print() const;

@@ -128,6 +128,13 @@ Table::Table(const char *binary_filename)
 		std::cout << "Error closing " << binary_filename << std::endl;
 		perror("close");
 	}
+
+    /* We initialize the statistics structure of each column of the table */
+
+    columnStatistics = new ColumnStatistics *[numColumns];
+
+    for(i = 0; i < numColumns; i++)
+        columnStatistics[i] = new ColumnStatistics(table[i], numTuples, 50000000);
 }
 
 /**************
@@ -138,6 +145,14 @@ Table::~Table()
 {
     /* Auxiliary variable used for counting */
     unsigned long long i;
+
+    /* We delete the column statistics of each column */
+
+    for(i = 0; i < numColumns; i++)
+        delete columnStatistics[i];
+
+    /* We delete the array of column statistics for each column */
+    delete[] columnStatistics;
 
     /* We delete all the contents of the table */
 
@@ -175,6 +190,15 @@ unsigned long long **Table::getTable() const
     return this->table;
 }
 
+/***********************************************************
+ * Getter - Returns the array of statistics for each colum *
+ ***********************************************************/
+
+ColumnStatistics **Table::getColumnStatistics() const
+{
+    return columnStatistics;
+}
+
 /**********************************************
  * Prints the information stored in the table *
  **********************************************/
@@ -200,9 +224,17 @@ void Table::print() const
         std::cout << "] ";
     }
 
-    /* Finally, we print the number of
-     * rows and columns of the array
+    /* Next, we print the number of
+    * rows and columns of the array
      */
     std::cout << "(" << numTuples << " rows, "
         << numColumns << " columns)" << std::endl;
+
+    /* Finally, we print the statistics of each column */
+
+    for(i = 0; i < numColumns; i++)
+    {
+        std::cout << "Column #" << i << " - ";
+        columnStatistics[i]->print();
+    }
 }
