@@ -17,7 +17,8 @@ private:
     /* Returns the most optimal cost of addressing
      * only the predicates in the given linked list
      */
-    unsigned long long getOptimalPredicatesOrderRec(List *chosenPredicates) const;    
+    List *getOptimalPredicatesOrderRec(List *chosenPredicates,
+        unsigned long long *cost = NULL) const;
 
 public:
 

@@ -22,29 +22,30 @@ QueryOptimizer::~QueryOptimizer() {}
  * only the predicates in the given linked list *
  ************************************************/
 
-unsigned long long QueryOptimizer::getOptimalPredicatesOrderRec(
-    List *chosenPredicates) const
+List *QueryOptimizer::getOptimalPredicatesOrderRec(
+    List *chosenPredicates,
+    unsigned long long *cost) const
 {
-    return 0;
-}
+    // /* We retrieve the amount of predicates in the query */
+    // unsigned int predicatesNum = chosenPredicates->getCounter();
 
-/****************************************************************************
- * Returns a list of predicates in the order that is estimated most optimal *
- ****************************************************************************/
+    // /* Case there is only one predicate */
 
-List *QueryOptimizer::getOptimalPredicatesOrder() const
-{
-    /* We retrieve the amount of predicates in the query */
-    // unsigned int predicatesNum = queryPredicates->getCounter();
-
-    // if(predicatesNum == 1 || predicatesNum == 2)
+    // if(predicatesNum == 1)
     // {
+    //     /* We will return the given list itself */
     //     List *result = new List();
-    //     result->append(queryPredicates);
+    //     result->append(chosenPredicates);
+
+    //     /* We update the cost if the user wants */
+    //     if(cost != NULL)
+    //         (*cost) = 0;
+
     //     return result;
     // }
 
     // unsigned int i;
+
     // for(i = 1; i <= predicatesNum; i++)
     // {
     //     PredicatesParser *ith_predicate = (PredicatesParser *) queryPredicates->getItemInPos(i);
@@ -54,7 +55,17 @@ List *QueryOptimizer::getOptimalPredicatesOrder() const
 
     //     queryPredicates->insertBeforePos(ith_predicate, i);
     // }
+    List *result = new List();
+    result->append(chosenPredicates);
+    return result;
+}
 
+/****************************************************************************
+ * Returns a list of predicates in the order that is estimated most optimal *
+ ****************************************************************************/
+
+List *QueryOptimizer::getOptimalPredicatesOrder() const
+{
     /* This is the list of the final result that we will return */
     List *result = new List();
 
@@ -98,7 +109,15 @@ List *QueryOptimizer::getOptimalPredicatesOrder() const
         currentNode = currentNode->getNext();
     }
 
-    result->append(joinPredicatesOnly);
+    /* We find the optimal order among the given join predicates */
+    List *joinPredicatesInOptimalOrder =
+        getOptimalPredicatesOrderRec(joinPredicatesOnly);
+
+    /* We concatenate that order to the filter predicates */
+    result->append(joinPredicatesInOptimalOrder);
+
+    /* We free the allocated memory for the temporary lists */
+    delete joinPredicatesInOptimalOrder;
     delete joinPredicatesOnly;
 
     /* We return the final result */
