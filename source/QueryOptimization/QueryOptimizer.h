@@ -2,7 +2,7 @@
 #define _QUERY_OPTIMIZER_H_
 
 #include "Table.h"
-#include "Query.h"
+#include "ColumnSubset.h"
 
 class QueryOptimizer {
 
