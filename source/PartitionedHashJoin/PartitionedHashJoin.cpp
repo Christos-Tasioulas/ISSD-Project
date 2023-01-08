@@ -497,29 +497,13 @@ void PartitionedHashJoin::probeRelations(
 
 	unsigned int R_tuples_num = R_end_index - R_start_index;
 	unsigned int S_tuples_num = S_end_index - S_start_index;
-	char larger = (R_tuples_num > S_tuples_num) ? 'R' : 'S';
-
 /*
 	std::cout << "Probing: R(" << R_start_index << "," << R_end_index
 		<< ") S(" << S_start_index << "," << S_end_index << ")" << std::endl;
 */
     /* We will start building the index of one of the relations */
-	HashTable *hash_table;
-
-	if(((larger == 'R') && (R_tuples_num > 4000))
-	|| ((larger == 'S') && (S_tuples_num > 4000)))
-	{
-/*
-		std::cout << "Ignoring the configuration parameters because the indexed relation is huge" << std::endl;
-*/
-		hash_table = new HashTable(7000, false, 0.1, 512);
-	}
-
-	else
-	{
-	    hash_table = new HashTable(hopscotchBuckets,
-			resizableByLoadFactor, loadFactor, hopscotchRange);	
-	}
+	HashTable *hash_table = new HashTable(hopscotchBuckets,
+		resizableByLoadFactor, loadFactor, hopscotchRange);	
 
     /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
@@ -690,7 +674,11 @@ void PartitionedHashJoin::probeRelations(
  * Executes the Partitioned Hash Join Algorithm *
  ************************************************/
 
-RowIdRelation *PartitionedHashJoin::executeJoin()
+RowIdRelation *PartitionedHashJoin::executeJoin(
+    bool deleteInnerItemsDuringPartition,
+    bool *partitionWasNeeded,
+    Tuple **new_R_Tuples,
+    Tuple **new_S_Tuples)
 {
     /* We print the initial contents of the relations */
 
@@ -956,8 +944,18 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         }
 
         /* We assign the reordered array to 'relR' and discard the previous array */
-        memcpy(relR->getTuples(), reordered_R, R_numOfTuples * sizeof(Tuple));
-        delete[] reordered_R;
+        //memcpy(relR->getTuples(), reordered_R, R_numOfTuples * sizeof(Tuple));
+        //delete[] reordered_R;
+////////////////////////////////////////
+        Tuple *old_R_Tuples = NULL;
+
+        if(!hasSubrelations)
+            old_R_Tuples = relR->getTuples();
+
+        relR->setTuples(reordered_R);
+
+        if(new_R_Tuples != NULL)
+            (*new_R_Tuples) = relR->getTuples();
 
         /* We reset the contents of 'elementCounter' to zero,
          * because we want to repeat the process for 'relS'
@@ -986,8 +984,24 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         }
 
         /* We assign the reordered array to 'relS' and discard the previous array */
-        memcpy(relS->getTuples(), reordered_S, S_numOfTuples * sizeof(Tuple));
-        delete[] reordered_S;
+        //memcpy(relS->getTuples(), reordered_S, S_numOfTuples * sizeof(Tuple));
+        //delete[] reordered_S;
+////////////////////////////////////////
+        Tuple *old_S_Tuples = NULL;
+
+        if(!hasSubrelations)
+            old_S_Tuples = relS->getTuples();
+
+        relS->setTuples(reordered_S);
+
+        if(new_S_Tuples != NULL)
+            (*new_S_Tuples) = relS->getTuples();
+
+        /* We update the user's address for whether a partition
+         * was needed or not in case such an address has been given
+         */
+        if(partitionWasNeeded != NULL)
+            (*partitionWasNeeded) = true;
 
         /* We create the list that will be storing all the contents
          * of the result. We are using a list because we do not know
@@ -1174,6 +1188,28 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         delete[] prefixSum_R;
         delete[] prefixSum_S;
 
+        if(old_R_Tuples != NULL)
+        {
+            if(deleteInnerItemsDuringPartition == true)
+            {
+                for(i = 0; i < R_numOfTuples; i++)
+                    delete (unsigned long long *) old_R_Tuples[i].getItem();
+            }
+
+            delete[] old_R_Tuples;
+        }
+
+        if(old_S_Tuples != NULL)
+        {
+            if(deleteInnerItemsDuringPartition == true)
+            {
+                for(i = 0; i < S_numOfTuples; i++)
+                    delete (unsigned long long *) old_S_Tuples[i].getItem();
+            }
+
+            delete[] old_S_Tuples;
+        }
+
         /* We return the final result */
         return result;
     }
@@ -1183,6 +1219,10 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
      */
     else
     {
+        /* We update the user's variable */
+        if(partitionWasNeeded != NULL)
+            (*partitionWasNeeded) = false;
+
         /* We create the list that will be storing all the contents
          * of the result. We are using a list because we do not know
          * the size of the result beforehand (we don't know the num
