@@ -120,8 +120,7 @@ IntermediateArray::IntermediateArray(
 
 	/* We execute the Partitioned Hash Join Algorithm */
 	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
-	bool partitionTookPlace;
-	RowIdRelation *joinResult = join->executeJoin(true, &partitionTookPlace, &leftTuples, &rightTuples);
+	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
 	RowIdPair *resultPairs = joinResult->getRowIdPairs();
@@ -165,20 +164,17 @@ IntermediateArray::IntermediateArray(
 	delete right;
 	delete left;
 
-	if(partitionTookPlace == false)
-	{
-		/* We free the allocated memory for the copies
-		 * of each data value of the right array
-		 */
-		for(i = 0; i < rightTableRows; i++)
-			delete (unsigned long long *) rightTuples[i].getItem();
+	/* We free the allocated memory for the copies
+	 * of each data value of the right array
+	 */
+	for(i = 0; i < rightTableRows; i++)
+		delete (unsigned long long *) rightTuples[i].getItem();
 
-		/* We free the allocated memory for the copies
-		 * of each data value of the left array
-		 */
-		for(i = 0; i < leftTableRows; i++)
-			delete (unsigned long long *) leftTuples[i].getItem();
-	}
+	/* We free the allocated memory for the copies
+	 * of each data value of the left array
+	 */
+	for(i = 0; i < leftTableRows; i++)
+		delete (unsigned long long *) leftTuples[i].getItem();
 
 	/* We free the arrays of tuples for the left and right relation */
 	delete[] rightTuples;
@@ -507,8 +503,7 @@ void IntermediateArray::executeJoinWithForeignRelation(
 
 	/* We execute the Partitioned Hash Join Algorithm */
 	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
-	bool partitionTookPlace;
-	RowIdRelation *joinResult = join->executeJoin(true, &partitionTookPlace, &localTuples, &foreignTuples);
+	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
 	RowIdPair *resultPairs = joinResult->getRowIdPairs();
@@ -557,20 +552,17 @@ void IntermediateArray::executeJoinWithForeignRelation(
 	delete right;
 	delete left;
 
-	if(partitionTookPlace == false)
-	{
-		/* We free the allocated memory for the copies
-		 * of each data value of the foreign array
-		 */
-		for(i = 0; i < foreignTableRows; i++)
-			delete (unsigned long long *) foreignTuples[i].getItem();
+	/* We free the allocated memory for the copies
+	 * of each data value of the foreign array
+	 */
+	for(i = 0; i < foreignTableRows; i++)
+		delete (unsigned long long *) foreignTuples[i].getItem();
 
-		/* We free the allocated memory for the copies
-		 * of each data value of the local array
-		 */
-		for(i = 0; i < localTableRows; i++)
-			delete (unsigned long long *) localTuples[i].getItem();
-	}
+	/* We free the allocated memory for the copies
+	 * of each data value of the local array
+	 */
+	for(i = 0; i < localTableRows; i++)
+		delete (unsigned long long *) localTuples[i].getItem();
 
 	/* We free the arrays of tuples for the local and foreign relation */
 	delete[] foreignTuples;
@@ -685,8 +677,7 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 
 	/* We execute the Partitioned Hash Join Algorithm */
 	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
-	bool partitionTookPlace;
-	RowIdRelation *joinResult = join->executeJoin(true, &partitionTookPlace, &leftLocalTuples, &rightLocalTuples);
+	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
 	RowIdPair *resultPairs = joinResult->getRowIdPairs();
@@ -784,20 +775,17 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 	delete right;
 	delete left;
 
-	if(partitionTookPlace == false)
-	{
-		/* We free the allocated memory for the copies
-		 * of each data value of the foreign array
-		 */
-		for(i = 0; i < leftLocalTableRows; i++)
-			delete (unsigned long long *) leftLocalTuples[i].getItem();
+	/* We free the allocated memory for the copies
+	 * of each data value of the foreign array
+	 */
+	for(i = 0; i < leftLocalTableRows; i++)
+		delete (unsigned long long *) leftLocalTuples[i].getItem();
 
-		/* We free the allocated memory for the copies
-		 * of each data value of the local array
-		 */
-		for(i = 0; i < rightLocalTableRows; i++)
-			delete (unsigned long long *) rightLocalTuples[i].getItem();
-	}
+	/* We free the allocated memory for the copies
+	 * of each data value of the local array
+	 */
+	for(i = 0; i < rightLocalTableRows; i++)
+		delete (unsigned long long *) rightLocalTuples[i].getItem();
 
 	/* We free the arrays of tuples for the local and foreign relation */
 	delete[] rightLocalTuples;
@@ -900,8 +888,7 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 
 	/* We execute the Partitioned Hash Join Algorithm */
 	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
-	bool partitionTookPlace;
-	RowIdRelation *joinResult = join->executeJoin(true, &partitionTookPlace, &localTuples, &foreignTuples);
+	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
 	RowIdPair *resultPairs = joinResult->getRowIdPairs();
@@ -979,20 +966,17 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 	delete right;
 	delete left;
 
-	if(partitionTookPlace == false)
-	{
-		/* We free the allocated memory for the copies
-		 * of each data value of the foreign array
-		 */
-		for(i = 0; i < localTableRows; i++)
-			delete (unsigned long long *) localTuples[i].getItem();
+	/* We free the allocated memory for the copies
+	 * of each data value of the foreign array
+	 */
+	for(i = 0; i < localTableRows; i++)
+		delete (unsigned long long *) localTuples[i].getItem();
 
-		/* We free the allocated memory for the copies
-		 * of each data value of the local array
-		 */
-		for(i = 0; i < foreignTableRows; i++)
-			delete (unsigned long long *) foreignTuples[i].getItem();
-	}
+	/* We free the allocated memory for the copies
+	 * of each data value of the local array
+	 */
+	for(i = 0; i < foreignTableRows; i++)
+		delete (unsigned long long *) foreignTuples[i].getItem();
 
 	/* We free the arrays of tuples for the local and foreign relation */
 	delete[] localTuples;

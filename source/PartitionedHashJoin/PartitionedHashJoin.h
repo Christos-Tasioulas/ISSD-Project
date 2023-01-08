@@ -9,7 +9,7 @@ class PartitionedHashJoin {
 
 public:
 
-/* Constructor */
+/* Constructor (used by the user) */
     PartitionedHashJoin(Relation *relR, Relation *relS,
         PartitionedHashJoinInput *inputStructure);
 
@@ -43,11 +43,7 @@ public:
     unsigned int getBitsNumForHashing() const;
 
 /* Executes the Partitioned Hash Join Algorithm */
-    RowIdRelation *executeJoin(
-        bool deleteInnerItemsDuringPartition = false,
-        bool *partitionWasNeeded = NULL,
-        Tuple **new_R_Tuples = NULL,
-        Tuple **new_S_Tuples = NULL);
+    RowIdRelation *executeJoin();
 
 /* Displays in the screen the result returned by 'executeJoin' */
     void printJoinResult(RowIdRelation *resultOfExecuteJoin);
