@@ -992,7 +992,7 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         /* We create the list that will be storing all the contents
          * of the result. We are using a list because we do not know
          * the size of the result beforehand (we don't know the num
-         * of tuples that the result will have)
+         * of tuples that the result will have).
          */
         List *resultAsList = new List();
 
