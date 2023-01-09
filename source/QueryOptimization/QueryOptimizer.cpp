@@ -101,13 +101,14 @@ List *QueryOptimizer::getOptimalPredicatesOrder() const
         /* Case the current predicate is a join predicate.
          *                                 ^^^^
          * We insert it in the new list containing only join predicates.
-         */
-        else
+         */     
             joinPredicatesOnly->insertLast(currentPredicate);
 
         /* We proceed to the next node */
         currentNode = currentNode->getNext();
     }
+
+    
 
     /* We find the optimal order among the given join predicates */
     List *joinPredicatesInOptimalOrder =

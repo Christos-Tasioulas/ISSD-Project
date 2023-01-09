@@ -1,4 +1,5 @@
 #include <iostream>
+#include <climits>
 #include "ColumnStatistics.h"
 
 /***************
@@ -20,7 +21,7 @@ ColumnStatistics::ColumnStatistics(
      * is initialized with the highest possible value and the variable
      * storing the current maximum is initialized with the lowest possible value
      */
-    minElement = 18446744073709551615U;
+    minElement = ULLONG_MAX; //18446744073709551615U
     maxElement = 0;
 
     /* We will traverse the column to build our statistic fields */
