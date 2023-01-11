@@ -118,7 +118,7 @@ unsigned int HashTable::getHopInfoCapacity() const
  *     large amounts of input are inserted in the table      *
  *************************************************************/
 
-void HashTable::rehash(unsigned int (*hash_function)(void *))
+void HashTable::rehash(unsigned int (*hash_function)(void *), int (*compare)(void *, void*))
 {
 	/* We will create a new table with double number of buckets */
 	unsigned int newBucketsNum = 2 * bucketsNum;
@@ -133,7 +133,7 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
 	/* Here we create the new table in the heap */
 	HashTableEntry *newTable = new HashTableEntry[newBucketsNum];
 
-	/* Initially the new table has no elements */
+	/* Initially the new table has no occupied entries */
 	this->elementsNum = 0;
 
 	/* We store the old number of buckets to a seperate variable */
@@ -175,14 +175,21 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
 		 */
 		if(!temporaryTable[i].isAvailable())
 		{
-			/* We retrieve the item of the current entry */
-			void *currentEntryItem = temporaryTable[i].getItem();
+			/* We retrieve the items of the current entry */
+			List *items = temporaryTable[i].getItems();
+			Listnode *currentNode = items->getHead();
 
-			/* We retrieve the key of the current entry */
-			void *currentEntryKey = temporaryTable[i].getKey();
+			while(currentNode != NULL)
+			{
+				/* We retrieve the item & key stored in the current node */
+				HashEntryItem *entryItem = (HashEntryItem *) currentNode->getItem();
 
-			/* We insert the entry in the new table */
-			insert(currentEntryItem, currentEntryKey, hash_function);
+				/* We insert the current pair of item & key in the new table */
+				insert(entryItem->getItem(), entryItem->getKey(), hash_function, compare);
+
+				/* We proceed to the next node */
+				currentNode = currentNode->getNext();
+			}
 		}
 	}
 
@@ -194,13 +201,32 @@ void HashTable::rehash(unsigned int (*hash_function)(void *))
  * Inserts a new pair of item and key in the hash table *
  ********************************************************/
 
-void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void *))
+void HashTable::insert(void *item, void *key,
+	unsigned int (*hash_function)(void *), int (*compare)(void *, void *))
 {
 	/* First we hash the key to find out the bucket where
 	 * the pair is supposed to go. We always take care so
 	 * as the hash value is lower than the num of buckets
 	 */
 	unsigned int hash_value = hash_function(key) % bucketsNum;
+
+	/* We search if there is already an existing key in the
+	 * table which is compared as equal with the given key.
+	 *
+	 * The amount of buckets is returned in case of unsuccessful search.
+	 */
+	unsigned int identicalElementsPos = searchPos(key, hash_function, compare);
+
+	/* Case the search was successful */
+
+	if(identicalElementsPos != bucketsNum)
+	{
+		/* We insert the item in the same entry as those with identical key */
+		table[identicalElementsPos].insertItem(item, key);
+
+		/* There is nothing else to do in this case */
+		return;
+	}
 
 	/* If the hop information bitmap of the targeted entry
 	 * indicates that the neighborhood is full, we need
@@ -211,10 +237,10 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 	if(table[hash_value].isFull())
 	{
 		/* We grow the table and rehash every key */
-		rehash(hash_function);
+		rehash(hash_function, compare);
 
 		/* We try to insert the element in the new table */
-		insert(item, key, hash_function);
+		insert(item, key, hash_function, compare);
 
 		/* When the insertion ends, we return immediatelly */
 		return;
@@ -256,10 +282,10 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 	if(i == bucketsNum)
 	{
 		/* We grow the table and rehash every key */
-		rehash(hash_function);
+		rehash(hash_function, compare);
 
 		/* We try to insert the element in the new table */
-		insert(item, key, hash_function);
+		insert(item, key, hash_function, compare);
 
 		/* When the insertion ends, we return immediatelly */
 		return;
@@ -440,10 +466,10 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 		if(displacementTarget == bucketsNum)
 		{
 			/* We grow the table and rehash every key */
-			rehash(hash_function);
+			rehash(hash_function, compare);
 
 			/* We try to insert the element in the new table */
-			insert(item, key, hash_function);
+			insert(item, key, hash_function, compare);
 
 			/* When the insertion ends, we return immediatelly */
 			return;
@@ -451,10 +477,7 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 
 		/* We transfer the data of the displacement target to 'j' */
 
-		table[j].updateData(table[displacementTarget].getItem(),
-			table[displacementTarget].getKey());
-
-		table[displacementTarget].removeData();
+		table[j].swap(&table[displacementTarget]);
 
 		/* This is the distance between 'j' and the displacement
 		 * target. We will use it to make 'j' point to that entry
@@ -531,7 +554,7 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 	}
 
 	/* We insert the new element in the entry 'j' */
-	table[j].updateData(item, key);
+	table[j].insertItem(item, key);
 
 	/* We retrieve the bitmap of the bucket where the
 	 * new key was originally hashed to and we set
@@ -552,120 +575,8 @@ void HashTable::insert(void *item, void *key, unsigned int (*hash_function)(void
 	if(isResizable)
 	{
 		if(((double) elementsNum) / ((double) bucketsNum) >= loadFactor)
-			rehash(hash_function);
+			rehash(hash_function, compare);
 	}
-}
-
-/*******************************************************
- *      Searches the given key in the hash table       *
- *                                                     *
- * Returns 'true' if the given key exists in the table *
- *   Returns 'false' if the given key does not exist   *
- *******************************************************/
-
-bool HashTable::search(void *key, unsigned int (*hash_function)(void *),
-	int (*compare)(void *, void *)) const
-{
-	/* First we hash the key to find its neighborhood */
-	unsigned int hash_value = hash_function(key) % bucketsNum;
-
-	/* We retrieve the bitmap of the bucket
-	 * where the given key was hashed to
-	 */
-	Bitmap *bitmap = table[hash_value].getHopInformation();
-
-	/* Since the given key was hashed to the bucket with
-	 * index 'hash_value', the bitmap of this bucket
-	 * indicates the position of the given key for search,
-	 * if the key exists. So, we only need to look at the
-	 * positions of the table where the bitmap implies
-	 * the given key could be. These positions are
-	 * represented by the bits of the bitmap with value 1
-	 */
-	unsigned int posOfNextAce = 0;
-
-	while(1)
-	{
-		/* We find the position of the next ace */
-		posOfNextAce = bitmap->posOfFirstAceFromPos(posOfNextAce + 1);
-
-		/* If there are no more aces, the given key does not exist */
-
-		if(posOfNextAce == 0)
-			return false;
-
-		/* We retrieve the key of the next candidate
-		 * entry where the given key could be
-		 */
-		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
-
-		/* If that key is equal to the given one, the key exists */
-
-		if(compare(key, keyOfNextBucket) == 0)
-			return true;
-	}
-
-	/* The control should not reach this place.
-	 * However, we just return arbitrarily 'false'
-	 */
-	return false;
-}
-
-/**************************************************
- *    Searches the given key in the hash table    *
- *                                                *
- *  Returns the item that accompanies the given   *
- *       key if the key exists in the table       *
- *                                                *
- * Returns 'NULL' if the given key does not exist *
- **************************************************/
-
-void *HashTable::searchItem(void *key, unsigned int (*hash_function)(void *),
-	int (*compare)(void *, void *)) const
-{
-	/* First we hash the key to find its neighborhood */
-	unsigned int hash_value = hash_function(key) % bucketsNum;
-
-	/* We retrieve the bitmap of the bucket
-	 * where the given key was hashed to
-	 */
-	Bitmap *bitmap = table[hash_value].getHopInformation();
-
-	/* Since the given key was hashed to the bucket with
-	 * index 'hash_value', the bitmap of this bucket
-	 * indicates the position of the given key for search,
-	 * if the key exists. So, we only need to look at the
-	 * positions of the table where the bitmap implies
-	 * the given key could be. These positions are
-	 * represented by the bits of the bitmap with value 1
-	 */
-	unsigned int posOfNextAce = 0;
-
-	while(1)
-	{
-		/* We find the position of the next ace */
-		posOfNextAce = bitmap->posOfFirstAceFromPos(posOfNextAce + 1);
-
-		/* If there are no more aces, the given key does not exist */
-
-		if(posOfNextAce == 0)
-			return NULL;
-
-		/* We retrieve the key of the next candidate
-		 * entry where the given key could be
-		 */
-		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
-
-		/* If that key is equal to the given one, the key exists */
-
-		if(compare(key, keyOfNextBucket) == 0)
-			return table[hash_value + posOfNextAce - 1].getItem();
-	}
-
-	/* The control should not reach this place.
-	 * However, we just return arbitrarily 'NULL'
-	 */
-	return NULL;
 }
 
 /************************************************
@@ -681,7 +592,7 @@ void *HashTable::searchItem(void *key, unsigned int (*hash_function)(void *),
  *     terminated using the same operation.     *
  ************************************************/
 
-List *HashTable::bulkSearch(void *key, unsigned int (*hash_function)(void *),
+List *HashTable::bulkSearchKeys(void *key, unsigned int (*hash_function)(void *),
 	int (*compare)(void *, void *))
 {
 	/* We initialize the list with the results (the matching keys) */
@@ -715,19 +626,90 @@ List *HashTable::bulkSearch(void *key, unsigned int (*hash_function)(void *),
 		if(posOfNextAce == 0)
 			break;
 
-		/* We retrieve the key of the next candidate
-		 * entry where the given key could be
+		/* We retrieve the key of the next candidate entry where the given key
+		 * could be. If the key is equal to the key of the first element, this
+		 * is enough for us to understand the key exists. All the elements of
+		 * a single entry have keys that are compared as equal.
 		 */
-		void *keyOfNextBucket = table[(hash_value + posOfNextAce - 1) % bucketsNum].getKey();
+		List *entryItems = table[(hash_value + posOfNextAce - 1) % bucketsNum].getItems();
+		HashEntryItem *firstItem = (HashEntryItem *) entryItems->getItemInPos(1);
+		void *keyOfNextBucket = firstItem->getKey();
 
 		/* If that key is equal to the given one, the key exists */
 
 		if(compare(key, keyOfNextBucket) == 0)
-			result->insertLast(keyOfNextBucket);
+		{
+			Listnode *currentNode = entryItems->getHead();
+
+			while(currentNode != NULL)
+			{
+				HashEntryItem *nextEntryItem = (HashEntryItem *) currentNode->getItem();
+
+				result->insertLast(nextEntryItem->getKey());
+
+				currentNode = currentNode->getNext();
+			}
+		}
 	}
 
 	/* Finally, we return the list of all matching keys */
 	return result;
+}
+
+unsigned int HashTable::searchPos(void *key,
+	unsigned int (*hash_function)(void *),
+	int (*compare)(void *, void *))
+{
+	/* First we hash the key to find its neighborhood */
+	unsigned int hash_value = hash_function(key) % bucketsNum;
+
+	/* We retrieve the bitmap of the bucket
+	 * where the given key was hashed to
+	 */
+	Bitmap *bitmap = table[hash_value].getHopInformation();
+
+	/* Since the given key was hashed to the bucket with
+	 * index 'hash_value', the bitmap of this bucket
+	 * indicates the position of the given key for search,
+	 * if the key exists. So, we only need to look at the
+	 * positions of the table where the bitmap implies
+	 * the given key could be. These positions are
+	 * represented by the bits of the bitmap with value 1
+	 */
+	unsigned int posOfNextAce = 0;
+
+	while(1)
+	{
+		/* We find the position of the next ace */
+		posOfNextAce = bitmap->posOfFirstAceFromPos(posOfNextAce + 1);
+
+		/* If there are no more aces, the given key does not exist
+		 * In this case we return the number of buckets of the table
+		 */
+		if(posOfNextAce == 0)
+			return bucketsNum;
+
+		/* We retrieve the key of the next candidate entry where the given key
+		 * could be. If the key is equal to the key of the first element, this
+		 * is enough for us to understand the key exists. All the elements of
+		 * a single entry have keys that are compared as equal.
+		 */
+		List *entryItems = table[(hash_value + posOfNextAce - 1) % bucketsNum].getItems();
+		HashEntryItem *firstItem = (HashEntryItem *) entryItems->getItemInPos(1);
+		void *keyOfNextBucket = firstItem->getKey();
+
+		/* If that key is equal to the given one, the key exists */
+
+		if(compare(key, keyOfNextBucket) == 0)
+			return (hash_value + posOfNextAce - 1) % bucketsNum;
+	}
+
+	/* The control should not reach this place.
+	 *
+	 * However, we just return arbitrarily the buckets num,
+	 * which is the return value of an unsuccessful search.
+	 */
+	return bucketsNum;
 }
 
 /**************************************************
@@ -744,6 +726,7 @@ void HashTable::terminateBulkSearchList(List *bulkSearchResult)
  *********************************************/
 
 void HashTable::print(void (*visitItemAndKey)(void *, void *),
+	void (*contextBetweenItems)(),
 	void (*contextBetweenDataAndBitmap)(),
 	void (*contextBetweenHashEntries)(),
 	void (*emptyEntryPrinting)()) const
@@ -768,8 +751,11 @@ void HashTable::print(void (*visitItemAndKey)(void *, void *),
 		 */
 		if(!table[i].isAvailable())
 		{
-			table[i].print(visitItemAndKey,
-				contextBetweenDataAndBitmap);
+			table[i].print(
+				visitItemAndKey,
+				contextBetweenItems,
+				contextBetweenDataAndBitmap
+			);
 		}
 
 		/* Case the current entry is empty

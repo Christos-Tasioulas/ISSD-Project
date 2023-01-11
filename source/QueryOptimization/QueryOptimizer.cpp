@@ -204,13 +204,13 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
                 leftColId = new ColumnIdentity(leftArray, leftArrayColumn);
 
                 /* The indirect result of searching will be stored in this variable */
-                ColumnIdentity *retrievedColId;
+                ColumnIdentity *leftRetrievedColId;
 
                 /* Since we couldn't insert the column identity in the tree
                  * (because it already exists), the search of it should be successful.
                  */
                 if(columnIdentitiesTree->searchAndRetrieve(leftColId,
-                    compareColumnIdentities, (void **) &retrievedColId))
+                    compareColumnIdentities, (void **) &leftRetrievedColId))
                 {
                     /* We delete the temporary dummy column identity */
                     delete leftColId;
@@ -218,7 +218,7 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
                     /* We store in the outer variable
                      * the retrieved one from the tree
                      */
-                    leftColId = retrievedColId;
+                    leftColId = (ColumnIdentity *) leftRetrievedColId;
                 }
 
                 /* This part should never be reached, but typically
@@ -238,13 +238,13 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
                 rightColId = new ColumnIdentity(rightArray, rightArrayColumn);
 
                 /* The indirect result of searching will be stored in this variable */
-                ColumnIdentity *retrievedColId;
+                ColumnIdentity *rightRetrievedColId;
 
                 /* Since we couldn't insert the column identity in the tree
                  * (because it already exists), the search of it should be successful.
                  */
                 if(columnIdentitiesTree->searchAndRetrieve(rightColId,
-                    compareColumnIdentities, (void **) &retrievedColId))
+                    compareColumnIdentities, (void **) &rightRetrievedColId))
                 {
                     /* We delete the temporary dummy column identity */
                     delete rightColId;
@@ -252,7 +252,7 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
                     /* We store in the outer variable
                      * the retrieved one from the tree
                      */
-                    rightColId = retrievedColId;
+                    rightColId = (ColumnIdentity *) rightRetrievedColId;
                 }
 
                 /* This part should never be reached, but typically

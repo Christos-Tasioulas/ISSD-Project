@@ -2,11 +2,15 @@
 #define _HASH_TABLE_ENTRY_H_
 
 #include "Bitmap.h"
+#include "List.h"
+#include "ComplexItem.h"
 
 /* The default bit capacity of the bitmap of the entry, used
  * in case the user does not give their own bit capacity
  */
 #define DEFAULT_BIT_CAPACITY 64
+
+typedef ComplexItem HashEntryItem;
 
 /* The Hash Table Entry (which is the content of a bucket) */
 
@@ -14,11 +18,10 @@ class HashTableEntry {
 
 private:
 
-/* The primary data the user wants to store in the hash table */
-	void *item;
-
-/* A key that accompanies the user data, used for hashing */
-	void *key;
+/* A list of all the items inserted in this entry.
+ * Items with equal keys are inserted in the same entry.
+ */
+	List *items;
 
 /* An array of bits used to implement the Hopscotch Hashing
  * Collision Resolution Policy
@@ -27,6 +30,12 @@ private:
 
 /* The capacity of bits of the hop information bitmap */
 	unsigned int bitCapacity;
+
+/* Prints a 'HashEntryItem' */
+	static void printHashEntryItem(void *item);
+
+/* Deletes a 'HashEntryItem' */
+	static void deleteHashEntryItem(void *item);
 
 public:
 
@@ -37,11 +46,8 @@ public:
 /* Destructor */
 	~HashTableEntry();
 
-/* Getter - Returns the item stored in the entry */
-	void *getItem() const;
-
-/* Getter - Returns the key stored in the entry */
-	void *getKey() const;
+/* Getter - Returns the list of items stored in the entry */
+	List *getItems() const;
 
 /* Getter - Returns the bitmap of the entry */
 	Bitmap *getHopInformation() const;
@@ -49,11 +55,11 @@ public:
 /* Getter - Returns the capacity of bits of the bitmap */
 	unsigned int getBitCapacity() const;
 
-/* Stores the user's item and key in its corresponding fields */
-	void updateData(void *item, void *key);
+/* Inserts a new pair of item and key in the entry */
+	void insertItem(void *item, void *key);
 
-/* Removes the item and the key that are being stored in the entry */
-	void removeData();
+/* Swaps the items of this entry with the items of another entry */
+	void swap(HashTableEntry *other);
 
 /* Returns 'true' if this entry is empty (not occupied by any data) */
 	bool isAvailable() const;
@@ -62,8 +68,11 @@ public:
 	bool isFull() const;
 
 /* Prints the contents of the entry */
-	void print(void (*visitItemAndKey)(void *, void *),
-		void (*contextBetweenDataAndBitmap)() = NULL) const;
+	void print(
+		void (*visitItemAndKey)(void *, void *),
+		void (*contextBetweenItems)() = NULL,
+		void (*contextBetweenItemsAndBitmap)() = NULL
+	) const;
 
 /* Destroys the current bitmap and recreates it with a new capacity */
 	void resetBitmap(unsigned int newBitCapacity);

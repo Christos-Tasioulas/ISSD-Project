@@ -57,6 +57,15 @@ static void printTupleAndTuple(void *item1, void *item2)
  * Used to call the printing operation of the Hopscotch Hash Table *
  *******************************************************************/
 
+static void spaceContext()
+{
+    std::cout << " ";
+}
+
+/*******************************************************************
+ * Used to call the printing operation of the Hopscotch Hash Table *
+ *******************************************************************/
+
 static void colonContext()
 {
     std::cout << " : ";
@@ -523,7 +532,7 @@ void PartitionedHashJoin::probeRelations(
 		for(i = R_start_index; i < R_end_index; i++)
 		{
 			hash_table->insert(&R_table[i], &R_table[i],
-				PartitionedHashJoin::hashTuple);
+				hashTuple, compareTupleUserData);
 		}
 	}
 
@@ -536,7 +545,7 @@ void PartitionedHashJoin::probeRelations(
 		for(i = S_start_index; i < S_end_index; i++)
 		{
 			hash_table->insert(&S_table[i], &S_table[i],
-				PartitionedHashJoin::hashTuple);
+				hashTuple, compareTupleUserData);
 		}
 	}
 
@@ -550,6 +559,7 @@ void PartitionedHashJoin::probeRelations(
 
             hash_table->print(
                 printTupleAndTuple,
+                spaceContext,
                 colonContext,
                 lineContextWithNewLine,
                 emptyHashEntryPrinting
@@ -565,6 +575,7 @@ void PartitionedHashJoin::probeRelations(
 
             hash_table->print(
                 printTupleAndTuple,
+                spaceContext,
                 colonContext,
                 lineContextWithNewLine,
                 emptyHashEntryPrinting
@@ -586,8 +597,8 @@ void PartitionedHashJoin::probeRelations(
 		{
 			/* We search the current tuple of 'S' in the hash table */
 
-			List *matchingKeys = hash_table->bulkSearch(&S_table[i],
-				PartitionedHashJoin::hashTuple, compareTupleUserData);
+			List *matchingKeys = hash_table->bulkSearchKeys(
+				&S_table[i], hashTuple, compareTupleUserData);
 
 			/* As long as the list is not empty, we do the following */
 
@@ -634,8 +645,8 @@ void PartitionedHashJoin::probeRelations(
 		{
 			/* We search the current tuple of 'R' in the hash table */
 
-			List *matchingKeys = hash_table->bulkSearch(&R_table[i],
-				PartitionedHashJoin::hashTuple, compareTupleUserData);
+			List *matchingKeys = hash_table->bulkSearchKeys(
+                &R_table[i], hashTuple, compareTupleUserData);
 
 			/* As long as the list is not empty, we do the following */
 

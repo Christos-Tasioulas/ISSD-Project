@@ -99,7 +99,7 @@ ColumnIdentity::ColumnIdentity(
  * Destructor *
  **************/
 
-ColumnIdentity::~ColumnIdentity() 
+ColumnIdentity::~ColumnIdentity()
 {
     delete neighbors;
     delete neighborPredicates;
@@ -112,6 +112,24 @@ ColumnIdentity::~ColumnIdentity()
 unsigned int ColumnIdentity::getId() const
 {
     return id;
+}
+
+/*********************************************************
+ * Getter - Returns the neighbors of the column identity *
+ *********************************************************/
+
+List *ColumnIdentity::getNeighbors() const
+{
+    return neighbors;
+}
+
+/********************************************
+ * Getter - Returns the column's statistics *
+ ********************************************/
+
+ColumnStatistics *ColumnIdentity::getColumnStats() const
+{
+    return columnStats;
 }
 
 /*************************************************

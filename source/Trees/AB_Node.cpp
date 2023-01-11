@@ -1019,7 +1019,7 @@ void *AB_Node::searchAndRetrieveKey(void *key, int (*compare)(void *, void *))
 			AB_Node *next_child = (AB_Node *) children->getItemInPos(current_child);
 
 			/* We return the result of searching in the child */
-			return next_child->searchKey(key, compare);
+			return next_child->searchAndRetrieveKey(key, compare);
 		}
 
 		/* We point to the next child, which may be
@@ -1041,7 +1041,7 @@ void *AB_Node::searchAndRetrieveKey(void *key, int (*compare)(void *, void *))
 	AB_Node *next_child = (AB_Node *) children->getItemInPos(current_child);
 
 	/* We return the result of searching in the child */
-	return next_child->searchKey(key, compare);
+	return next_child->searchAndRetrieveKey(key, compare);
 }
 
 /******************************************************

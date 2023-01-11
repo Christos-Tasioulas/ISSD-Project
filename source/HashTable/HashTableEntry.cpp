@@ -1,6 +1,45 @@
 #include <iostream>
 #include "HashTableEntry.h"
 
+/******************************************************
+ * The user's visit function for the item and the key *
+ ******************************************************/
+
+static void (*userVisitItemAndKey)(void *item, void *key);
+
+/****************************
+ * Prints a 'HashEntryItem' *
+ ****************************/
+
+void HashTableEntry::printHashEntryItem(void *item)
+{
+	/* We cast the item to its original type */
+	HashEntryItem *entryItem = (HashEntryItem *) item;
+
+	/* We save the user's function to a seperate function pointer
+	 * in order not to lose it forever if another hash entry is
+	 * printed within the printing actions of the current entry
+	 * (because in that case the user function would be overwritten
+	 * by the inner hash entry printing call).
+	 */
+	void (*tempUserVisitItemAndKey)(void *, void *) = userVisitItemAndKey;
+
+	/* We print the item and the key with the user's function */
+	userVisitItemAndKey(entryItem->getItem(), entryItem->getKey());
+
+	/* We assign the initial user function that was given */
+	userVisitItemAndKey = tempUserVisitItemAndKey;
+}
+
+/*****************************
+ * Deletes a 'HashEntryItem' *
+ *****************************/
+
+void HashTableEntry::deleteHashEntryItem(void *item)
+{
+	delete (HashEntryItem *) item;
+}
+
 /***************
  * Constructor *
  ***************/
@@ -8,11 +47,8 @@
 HashTableEntry::HashTableEntry(void *item, void *key,
 	unsigned int bitCapacity)
 {
-	/* We set the given item to the 'item' field */
-	this->item = item;
-
-	/* We set the given key to the 'key' field */
-	this->key = key;
+	/* We initialize the list of items */
+	items = new List();
 
 	/* We initialize the bit capacity of the bitmap */
 	this->bitCapacity = bitCapacity;
@@ -27,25 +63,18 @@ HashTableEntry::HashTableEntry(void *item, void *key,
 
 HashTableEntry::~HashTableEntry()
 {
+	items->traverseFromHead(deleteHashEntryItem);
+	delete items;
 	delete hopInformation;
 }
 
-/*************************************************
- * Getter - Returns the item stored in the entry *
- *************************************************/
+/**********************************************************
+ * Getter - Returns the list of items stored in the entry *
+ **********************************************************/
 
-void *HashTableEntry::getItem() const
+List *HashTableEntry::getItems() const
 {
-	return item;
-}
-
-/************************************************
- * Getter - Returns the key stored in the entry *
- ************************************************/
-
-void *HashTableEntry::getKey() const
-{
-	return key;
+	return items;
 }
 
 /********************************************
@@ -70,26 +99,20 @@ unsigned int HashTableEntry::getBitCapacity() const
  * Stores the user's item and key in its corresponding fields *
  **************************************************************/
 
-void HashTableEntry::updateData(void *item, void *key)
+void HashTableEntry::insertItem(void *item, void *key)
 {
-	/* We store the given user's item to the 'item' field */
-	this->item = item;
-
-	/* We store the given user's key to the 'key' field */
-	this->key = key;
+	items->insertLast(new HashEntryItem(item, key));
 }
 
-/*******************************************************************
- * Removes the item and the key that are being stored in the entry *
- *******************************************************************/
+/*****************************************************************
+ * Swaps the items of this entry with the items of another entry *
+ *****************************************************************/
 
-void HashTableEntry::removeData()
+void HashTableEntry::swap(HashTableEntry *other)
 {
-	/* We detach the current item by setting the 'item' field to 'NULL' */
-	item = NULL;
-
-	/* We detach the current key by setting the 'key' field to 'NULL' */
-	key = NULL;
+	List *otherItems = other->items;
+	other->items = this->items;
+	this->items = otherItems;
 }
 
 /********************************************************************
@@ -98,7 +121,7 @@ void HashTableEntry::removeData()
 
 bool HashTableEntry::isAvailable() const
 {
-	return (item == NULL) && (key == NULL);
+	return (items->getCounter() == 0);
 }
 
 /**********************************************************************
@@ -114,17 +137,22 @@ bool HashTableEntry::isFull() const
  * Prints the contents of the entry *
  ************************************/
 
-void HashTableEntry::print(void (*visitItemAndKey)(void *, void *),
-	void (*contextBetweenDataAndBitmap)()) const
+void HashTableEntry::print(
+	void (*visitItemAndKey)(void *, void *),
+	void (*contextBetweenItems)(),
+	void (*contextBetweenItemsAndBitmap)()) const
 {
-	/* We visit the item and the key stored in the entry */
-	visitItemAndKey(item, key);
+	/* We assign the user's function to the static function pointer */
+	userVisitItemAndKey = visitItemAndKey;
+
+	/* We print the list of items from the head */
+	items->printFromHead(printHashEntryItem, contextBetweenItems);
 
 	/* If a no-null operation that prints some context
 	 * between the user data and the bitmap, we use it
 	 */
-	if(contextBetweenDataAndBitmap != NULL)
-		contextBetweenDataAndBitmap();
+	if(contextBetweenItemsAndBitmap != NULL)
+		contextBetweenItemsAndBitmap();
 
 	/* Finally, we print the bitmap of this entry */
 	hopInformation->print();

@@ -2,7 +2,6 @@
 #define _HASH_TABLE_H_
 
 #include "HashTableEntry.h"
-#include "List.h"
 
 class HashTable {
 
@@ -11,7 +10,7 @@ private:
 /* The Hash Table is represented by an array of Hash Table Entries */
 	HashTableEntry *table;
 
-/* The amount of inserted elements in the hash table */
+/* The amount of occupied entries in the hash table */
 	unsigned int elementsNum;
 
 /* The total capacity of the hash table */
@@ -37,7 +36,16 @@ private:
  * is vital to preserve the properties of the structure when
  * large amounts of input are inserted in the table.
  */
-	void rehash(unsigned int (*hash_function)(void *));
+	void rehash(
+		unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *)
+	);
+
+	unsigned int searchPos(
+		void *key,
+		unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *)
+	);
 
 public:
 
@@ -53,7 +61,7 @@ public:
 /* Getter - Returns the array representing the hash table */
 	HashTableEntry *getTable() const;
 
-/* Getter - Returns the number of elements in the table */
+/* Getter - Returns the amount of occupied entries in the hash table */
 	unsigned int getElementsNum() const;
 
 /* Getter - Returns the number of buckets in the table */
@@ -69,24 +77,12 @@ public:
 	unsigned int getHopInfoCapacity() const;
 
 /* Inserts a new pair of item and key in the hash table */
-	void insert(void *item, void *key, unsigned int (*hash_function)(void *));
-
-/* Searches the given key in the hash table
- * Returns 'true' if the given key exists in the table
- * Returns 'false' if the given key does not exist
- */
-	bool search(void *key, unsigned int (*hash_function)(void *),
-		int (*compare)(void *, void *)) const;
-
-/* Searches the given key in the hash table
- *
- * Returns the item that accompanies the given
- * key if the key exists in the table
- *
- * Returns 'NULL' if the given key does not exist
- */
-	void *searchItem(void *key, unsigned int (*hash_function)(void *),
-		int (*compare)(void *, void *)) const;
+	void insert(
+		void *item,
+		void *key,
+		unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *)
+	);
 
 /* Searches the given key in the hash table
  *
@@ -99,17 +95,23 @@ public:
  * Even if the list was empty, it must still be
  * terminated using the same operation.
  */
-	List *bulkSearch(void *key, unsigned int (*hash_function)(void *),
-		int (*compare)(void *, void *));
+	List *bulkSearchKeys(
+		void *key,
+		unsigned int (*hash_function)(void *),
+		int (*compare)(void *, void *)
+	);
 
 /* Terminates the result returned by 'bulkSearch' */
 	static void terminateBulkSearchList(List *bulkSearchResult);
 
 /* Prints all the contents of the hash table */
-	void print(void (*visitItemAndKey)(void *, void *),
+	void print(
+		void (*visitItemAndKey)(void *, void *),
+		void (*contextBetweenItems)() = NULL,
 		void (*contextBetweenDataAndBitmap)() = NULL,
 		void (*contextBetweenHashEntries)() = NULL,
-		void (*emptyEntryPrinting)() = NULL) const;
+		void (*emptyEntryPrinting)() = NULL
+	) const;
 
 };
 

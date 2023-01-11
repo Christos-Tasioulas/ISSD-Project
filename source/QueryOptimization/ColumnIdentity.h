@@ -73,6 +73,12 @@ public:
     /* Getter - Returns the ID of the column identity */
     unsigned int getId() const;
 
+    /* Getter - Returns the neighbors of the column identity */
+    List *getNeighbors() const;
+
+    /* Getter - Returns the column's statistics */
+    ColumnStatistics *getColumnStats() const; 
+
     /* Inserts a new neighbor along with the related
      * join predicate to the lists of the class
      */
