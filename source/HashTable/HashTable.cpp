@@ -441,8 +441,8 @@ void HashTable::insert(void *item, void *key,
 			 */
 			posOfFirstAceInMap = nextTargetBitmap->posOfFirstAce();
 
-			/* If there the first ace exists and is in
-			 * range, we found the target we will displace
+			/* If the first ace exists and is in range,
+			 * we found the target we will displace
 			 */
 			if((posOfFirstAceInMap != 0) && (posOfFirstAceInMap <= maxRange - i))
 			{
@@ -639,14 +639,19 @@ List *HashTable::bulkSearchKeys(void *key, unsigned int (*hash_function)(void *)
 
 		if(compare(key, keyOfNextBucket) == 0)
 		{
+			/* We will start traversing the list of items of that entry */
 			Listnode *currentNode = entryItems->getHead();
 
+			/* As long as we have not finished traversing the list */
 			while(currentNode != NULL)
 			{
+				/* We retrieve the hash entry item in the current node */
 				HashEntryItem *nextEntryItem = (HashEntryItem *) currentNode->getItem();
 
+				/* We insert the key of the hash entry in the result list */
 				result->insertLast(nextEntryItem->getKey());
 
+				/* We proceed to the next node */
 				currentNode = currentNode->getNext();
 			}
 		}
@@ -655,6 +660,13 @@ List *HashTable::bulkSearchKeys(void *key, unsigned int (*hash_function)(void *)
 	/* Finally, we return the list of all matching keys */
 	return result;
 }
+
+/*****************************************************************
+ *   Searches the given key in the hash table. If there exists   *
+ *   at least one key in the hash table that is compared equal   *
+ *   to the given key by the given compare method, the position  *
+ * in the hash table of the entry containing the key is returned *
+ *****************************************************************/
 
 unsigned int HashTable::searchPos(void *key,
 	unsigned int (*hash_function)(void *),

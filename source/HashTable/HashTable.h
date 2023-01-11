@@ -41,6 +41,11 @@ private:
 		int (*compare)(void *, void *)
 	);
 
+/* Searches the given key in the hash table. If there exists
+ * at least one key in the hash table that is compared equal
+ * to the given key by the given compare method, the position
+ * in the hash table of the entry containing the key is returned
+ */
 	unsigned int searchPos(
 		void *key,
 		unsigned int (*hash_function)(void *),
