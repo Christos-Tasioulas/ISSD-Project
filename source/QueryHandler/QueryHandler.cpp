@@ -159,6 +159,7 @@ void QueryHandler::addressSingleQuery(Query *query)
     QueryOptimizer queryOptimizer = QueryOptimizer(tables, query);
     //queryOptimizer.printColumnsOfQuery();
     //std::cout << std::endl;
+    //queryOptimizer.printFilterAndJoinPredicates();
 
     /* We retrieve the list of the relations taking part in the query */
     List *queryRels = query->getRelations();

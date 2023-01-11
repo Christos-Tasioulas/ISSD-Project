@@ -60,10 +60,18 @@ private:
     /* Prints a column identity */
     static void printColumnIdentity(void *item);
 
+    /* Prints a predicate */
+    static void printPredicate(void *item);
+
     /* Prints a new line (this is the context that
      * will be printed between column identities)
      */
     static void contextBetweenColumnIdentities();
+
+    /* Prints a comma & space (this is the context
+     * that will be printed between two predicates)
+     */
+    static void contextBetweenPredicates();
 
     /* Frees the allocated memory for a column identity */
     static void deleteColumnIdentity(void *item, void *key);
@@ -84,6 +92,11 @@ public:
 
     /* Prints all the column identities taking part in the query */
     void printColumnsOfQuery() const;
+
+    /* Prints all the filter predicates and then
+     * all the join predicates of the query
+     */
+    void printFilterAndJoinPredicates() const;
 
 };
 

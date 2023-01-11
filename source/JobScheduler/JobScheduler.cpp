@@ -155,7 +155,7 @@ static void cond_signal(pthread_cond_t *condition_variable)
 /**************************************************************************
  * Unblocks all threads that were blocked on the given condition variable *
  **************************************************************************/
-
+/*
 static void cond_broadcast(pthread_cond_t *condition_variable)
 {
 	int broadcast_result = pthread_cond_broadcast(condition_variable);
@@ -166,7 +166,7 @@ static void cond_broadcast(pthread_cond_t *condition_variable)
 		printf("Reason: %s\n", strerror(broadcast_result));
 	}
 }
-
+*/
 /*****************************************************************
  *  Returns 'true' if there are no working threads. If at least  *
  * one thread is working on a job, the operation returns 'false' *

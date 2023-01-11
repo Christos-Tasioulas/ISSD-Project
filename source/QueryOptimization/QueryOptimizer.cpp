@@ -122,6 +122,16 @@ void QueryOptimizer::printColumnIdentity(void *item)
     colId->print();
 }
 
+/**********************
+ * Prints a predicate *
+ **********************/
+
+void QueryOptimizer::printPredicate(void *item)
+{
+    PredicatesParser *predicate = (PredicatesParser *) item;
+    predicate->print();
+}
+
 /***********************************************
  * Prints a new line (this is the context that *
  *  will be printed between column identities) *
@@ -130,6 +140,16 @@ void QueryOptimizer::printColumnIdentity(void *item)
 void QueryOptimizer::contextBetweenColumnIdentities()
 {
     std::cout << std::endl;
+}
+
+/************************************************
+ * Prints a comma & space (this is the context  *
+ * that will be printed between two predicates) *
+ ************************************************/
+
+void QueryOptimizer::contextBetweenPredicates()
+{
+    std::cout << ", ";
 }
 
 /****************************************************
@@ -153,6 +173,12 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
 
     /* We initialize the tree as a (2,3)-Tree */
     columnIdentitiesTree = new B_Tree(3);
+
+    /* We initialize the list that will be storing only the join predicates
+     * and the list that will be storing only the filter predicates
+     */
+    joinPreds = new List();
+    filterPreds = new List();
 
     /* We retrieve the list of predicates of the query */
     List *predicates = query->getPredicates();
@@ -182,6 +208,8 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
 
         /* We find out if the query is a join or a filter query */
         bool needsJoin = !currentPred->hasConstant();
+
+        /* Case the current predicate is a 'JOIN' predicate */
 
         if(needsJoin)
         {
@@ -274,6 +302,21 @@ QueryOptimizer::QueryOptimizer(List *tables, Query *query)
              */
             leftColId->insertNeighbor(rightColId, currentPred);
             rightColId->insertNeighbor(leftColId, currentPred);
+
+            /* Also, we insert the current predicate in the
+             * list that is storing only the join predicates
+             */
+            joinPreds->insertLast(currentPred);
+        }
+
+        /* Case the current predicate is a filter predicate */
+
+        else
+        {
+            /* We insert the current predicate in the list
+             * that is storing only the filter predicates
+             */
+            filterPreds->insertLast(currentPred);
         }
 
         /* We proceed to the next node */
@@ -300,50 +343,8 @@ List *QueryOptimizer::getOptimalPredicatesOrder() const
     /* This is the list of the final result that we will return */
     List *result = new List();
 
-    /* The list of predicates of the query contains both join and
-     * filter queries. Our first job is to place all the filter
-     * queries at the begining of the result list (those have the
-     * highest priority of execution). Then, we need to place all
-     * the join predicates in a seperate list and find the optimal
-     * path of execution among those. In the end, we will concat
-     * the optimal path of the join predicates to the result list.
-     */
-    List *joinPredicatesOnly = new List();
-
-    /* We will start traversing the list of predicates from the head */
-    Listnode *currentNode = query->getPredicates()->getHead();
-
-    /* As long as we have not finished traversing the list */
-
-    while(currentNode != NULL)
-    {
-        /* We retrieve the predicate stored in the current node */
-
-        PredicatesParser *currentPredicate = (PredicatesParser *)
-            currentNode->getItem();
-
-        /* Case the current predicate is a filter predicate.
-         *                                 ^^^^^^
-         * We insert it instantly in the final list.
-         */
-        if(currentPredicate->hasConstant())
-            result->insertLast(currentPredicate);
-
-        /* Case the current predicate is a join predicate.
-         *                                 ^^^^
-         * We insert it in the new list containing only join predicates.
-         */     
-            joinPredicatesOnly->insertLast(currentPredicate);
-
-        /* We proceed to the next node */
-        currentNode = currentNode->getNext();
-    }
-
-    /* We concatenate that order to the filter predicates */
-    result->append(joinPredicatesOnly);
-
-    /* We free the allocated memory for the temporary list */
-    delete joinPredicatesOnly;
+    result->append(filterPreds);
+    result->append(joinPreds);
 
     /* We return the final result */
     return result;
@@ -369,4 +370,22 @@ void QueryOptimizer::printColumnsOfQuery() const
         printColumnIdentity,
         contextBetweenColumnIdentities
     );
+}
+
+/*********************************************
+ * Prints all the filter predicates and then *
+ *   all the join predicates of the query    *
+ *********************************************/
+
+void QueryOptimizer::printFilterAndJoinPredicates() const
+{
+    std::cout << "Filter Predicates:" << std::endl;
+    std::cout << "^^^^^^^^^^^^^^^^^" << std::endl;
+    filterPreds->printFromHead(printPredicate, contextBetweenPredicates);
+    std::cout << std::endl;
+
+    std::cout << "Join Predicates:" << std::endl;
+    std::cout << "^^^^^^^^^^^^^^^" << std::endl;
+    joinPreds->printFromHead(printPredicate, contextBetweenPredicates);
+    std::cout << std::endl;
 }
