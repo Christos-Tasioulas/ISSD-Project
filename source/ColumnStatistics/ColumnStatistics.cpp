@@ -198,9 +198,9 @@ void ColumnStatistics::setDistinctElementsNum(unsigned long long newDistinctElem
 
 void ColumnStatistics::print() const
 {
-    std::cout << "Column statistics: min element = "
-        << minElement << ", max element = " << maxElement
-        << ", num of elements = " << elementsNum
-        << ", num of distinct elements = " << distinctElementsNum
-        << std::endl;
+    std::cout << "ColumnStatistics{minElement="
+        << minElement << ",maxElement=" << maxElement
+        << ",elementsNum=" << elementsNum
+        << ",distinctElementsNum=" << distinctElementsNum
+        << "}";
 }
