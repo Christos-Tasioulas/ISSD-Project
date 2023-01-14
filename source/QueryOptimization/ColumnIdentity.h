@@ -73,11 +73,23 @@ public:
     /* Getter - Returns the ID of the column identity */
     unsigned int getId() const;
 
+    /* Getter - Returns the table alias of the column identity */
+    unsigned int getTableName() const;
+
+    /* Getter - Returns the table column of the column identity */
+    unsigned int getTableColumn() const;
+
+    /* Getter - Returns the real table name of the column identity */
+    unsigned int getRealTableName() const;
+
     /* Getter - Returns the neighbors of the column identity */
     List *getNeighbors() const;
 
     /* Getter - Returns the column's statistics */
     ColumnStatistics *getColumnStats() const; 
+
+    /* Setter - Updates the stats of the column identity */
+    void setColumnStats(ColumnStatistics *newStats);
 
     /* Inserts a new neighbor along with the related
      * join predicate to the lists of the class

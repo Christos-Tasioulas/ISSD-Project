@@ -1,6 +1,101 @@
 #include <iostream>
 #include "ColumnSubset.h"
 
+/***************
+ * Constructor *
+ ***************/
+
+ColumnSubset::ColumnSubset(
+    ColumnIdentity *firstColId,
+    unsigned int minElement,
+    unsigned int maxElement,
+    unsigned int elementsNum,
+    unsigned int distinctElementsNum)
+{
+    columnIdentities = new List();
+
+    subsetStats = new ColumnStatistics(
+        minElement,
+        maxElement,
+        elementsNum,
+        distinctElementsNum
+    );
+
+    totalCost = 0;
+}
+
+/**************
+ * Destructor *
+ **************/
+
+ColumnSubset::~ColumnSubset()
+{
+    delete subsetStats;
+    delete columnIdentities;
+}
+
+/**************************************************
+ * Getter - Returns the list of column identities *
+ **************************************************/
+
+List *ColumnSubset::getColumnsIdentities() const
+{
+    return columnIdentities;
+}
+
+/****************************************************
+ * Getter - Returns the current stats of the subset *
+ ****************************************************/
+
+ColumnStatistics *ColumnSubset::getSubsetStats() const
+{
+    return subsetStats;
+}
+
+/********************************************
+ * Getter - Returns the total cost to reach *
+ *  the intermediate result of this subset  *
+ ********************************************/
+
+unsigned long long ColumnSubset::getTotalCost() const
+{
+    return totalCost;
+}
+
+/********************************************
+ * Adds a new column identity to the subset *
+ ********************************************/
+
+void ColumnSubset::insertColumnIdentity(ColumnIdentity *colId)
+{
+    columnIdentities->insertLast(colId);
+}
+
+/********************************************
+ * Returns the 'pos'-th identity of the set *
+ ********************************************/
+
+ColumnIdentity *ColumnSubset::getColumnIdentityInPos(unsigned int pos) const
+{
+    return (ColumnIdentity *) columnIdentities->getItemInPos(pos);
+}
+
+/***********************************
+ * Changes the stats of the subset *
+ ***********************************/
+
+void ColumnSubset::changeStats(
+    unsigned int newMinElement,
+    unsigned int newMaxElement,
+    unsigned int newElementsNum,
+    unsigned int newDistinctElementsNum)
+{
+    subsetStats->setMinElement(newMinElement);
+    subsetStats->setMaxElement(newMaxElement);
+    subsetStats->setElementsNum(newElementsNum);
+    subsetStats->setDistinctElementsNum(newDistinctElementsNum);
+}
+
 /*
 
 bool is_connected(ColumnSubset *cs1, ColumnSubset *cs2);

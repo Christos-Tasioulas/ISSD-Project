@@ -114,6 +114,33 @@ unsigned int ColumnIdentity::getId() const
     return id;
 }
 
+/***********************************************************
+ * Getter - Returns the table alias of the column identity *
+ ***********************************************************/
+
+unsigned int ColumnIdentity::getTableName() const
+{
+    return tableName;
+}
+
+/************************************************************
+ * Getter - Returns the table column of the column identity *
+ ************************************************************/
+
+unsigned int ColumnIdentity::getTableColumn() const
+{
+    return tableColumn;
+}
+
+/***************************************************************
+ * Getter - Returns the real table name of the column identity *
+ ***************************************************************/
+
+unsigned int ColumnIdentity::getRealTableName() const
+{
+    return realTableName;
+}
+
 /*********************************************************
  * Getter - Returns the neighbors of the column identity *
  *********************************************************/
@@ -130,6 +157,15 @@ List *ColumnIdentity::getNeighbors() const
 ColumnStatistics *ColumnIdentity::getColumnStats() const
 {
     return columnStats;
+}
+
+/*****************************************************
+ * Setter - Updates the stats of the column identity *
+ *****************************************************/
+
+void ColumnIdentity::setColumnStats(ColumnStatistics *newStats)
+{
+    columnStats = newStats;
 }
 
 /*************************************************

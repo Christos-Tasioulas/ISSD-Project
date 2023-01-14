@@ -45,7 +45,7 @@ DEPS=$(OBJS:.o=.d)
 CC=g++
 
 # Name the flags
-CPPFLAGS=-g3 -Wall -pthread
+CPPFLAGS=-g3 -Wall -pthread -lm
 
 # The command line arguments of the program
 ARGUMENTS=

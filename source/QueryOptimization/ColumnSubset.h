@@ -5,21 +5,60 @@
 
 class ColumnSubset {
 
-    /*
-    private:
+private:
 
-    List* columns;       // 0.0 -> 0.1 -> 0.2
-    ColumnStatistics *interm_stats[columns->size];  // stats[0.0] -> stats[0.1] -> stats[0.2]
-    unsigned long long cost;
+    /* A column subset is a set of column identities */
+    List *columnIdentities;
+
+    /* The statistics of the intermediate array when all
+     * the column identities of the subset are joined
+     */
+    ColumnStatistics *subsetStats;
+
+    /* The number of tuples of the intermediate result */
+    unsigned long long totalCost;
+
+public:
     
+    /* Constructor */
+    ColumnSubset(
+        ColumnIdentity *firstColId,
+        unsigned int minElement,
+        unsigned int maxElement,
+        unsigned int elementsNum,
+        unsigned int distinctElementsNum
+    );
+    
+    // ColumnSubset(ColumnSubset *cs1, ColumnSubset *cs1);
+    // ColumnSubset(List* columns);
 
-    public:
-
-    ColumnSubset(String column_name);
-    ColumnSubset(ColumnSubset *cs1, ColumnSubset *cs1);
-    ColumnSubset(List* columns);
+    /* Destructor */
     ~ColumnSubset();
-    */
+
+    /* Getter - Returns the list of column identities */
+    List *getColumnsIdentities() const;
+
+    /* Getter - Returns the current stats of the subset */
+    ColumnStatistics *getSubsetStats() const;
+
+    /* Getter - Returns the total cost to reach
+     * the intermediate result of this subset
+     */
+    unsigned long long getTotalCost() const;
+
+    /* Adds a new column identity to the subset */
+    void insertColumnIdentity(ColumnIdentity *colId);
+
+    /* Returns the 'pos'-th identity of the set */
+    ColumnIdentity *getColumnIdentityInPos(unsigned int pos) const;
+
+    /* Changes the stats of the subset */
+    void changeStats(
+        unsigned int newMinElement,
+        unsigned int newMaxElement,
+        unsigned int newElementsNum,
+        unsigned int newDistinctElementsNum
+    );
 
 };
 

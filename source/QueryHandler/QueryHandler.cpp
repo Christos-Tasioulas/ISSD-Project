@@ -157,8 +157,9 @@ void QueryHandler::addressSingleQuery(Query *query)
 
     /* We create a query optimizer for this query */
     QueryOptimizer queryOptimizer = QueryOptimizer(tables, query);
-    //queryOptimizer.printColumnsOfQuery();
-    //std::cout << std::endl;
+    queryOptimizer.printColumnsOfQuery();
+    std::cout << std::endl;
+    //queryOptimizer.printColumnsGroupedByTableName();
     //queryOptimizer.printFilterAndJoinPredicates();
 
     /* We retrieve the list of the relations taking part in the query */
@@ -166,6 +167,9 @@ void QueryHandler::addressSingleQuery(Query *query)
 
     /* We retrieve the predicates in the order that was estimated most optimal */
     List *optimalPredicatesOrder = queryOptimizer.getOptimalPredicatesOrder();
+    std::cout << "After filtering\n===============" << std::endl;
+    queryOptimizer.printColumnsOfQuery();
+    std::cout << std::endl;
 
     /* We will start traversing the list of predicates from the head */
     Listnode *currentNodeOfPredicate = optimalPredicatesOrder->getHead();
