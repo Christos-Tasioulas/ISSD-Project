@@ -117,11 +117,15 @@ static int* line_to_array(std::string text)
  *                     and columns of a relation                     *
  *********************************************************************/
 
-List *FileReader::readInitFile(const char *init_file)
+List *FileReader::readInitFile(const char *init_file, const char *config_file)
 {
     /* A list that will be storing the table of every relation */
 
     List *relations = new List();
+
+    /* We read the desired maximum bitmap size from the config file */
+    unsigned int maxBitmapSize;
+    readMaxBitmapSize(config_file, &maxBitmapSize);
 
     /* We open the initialization file */
 
@@ -208,7 +212,7 @@ List *FileReader::readInitFile(const char *init_file)
         sprintf(currentBinaryFilename, "../input/%s", buf);
 
         /* We create a new Table giving it the binary file as input */
-        Table *new_table = new Table(currentBinaryFilename);
+        Table *new_table = new Table(currentBinaryFilename, maxBitmapSize);
 
         /* We store the new Table we just created in the list */
         relations->insertLast(new_table);
@@ -454,11 +458,11 @@ void FileReader::readInputFile(
     
 }
 
-/*********************************************************************
- * Reads the given configuration file and returns the value of each  *
- * option in the file through the memory addresses that are given as *
- *                     arguments to the function                     *
- *********************************************************************/
+/*************************************************************************
+ *   Reads the given configuration file and returns the value of each    *
+ * option in the file that is associated with the join execution through *
+ *   the memory addresses that are given as arguments to the function    *
+ *************************************************************************/
 
 void FileReader::readConfigFile(
     const char *config_file,
@@ -918,6 +922,289 @@ void FileReader::readConfigFile(
                  * save that integer to the given address of that option.
                  */
                 (*maxPartitionDepth) = atou(maxPartitionDepthAsString);
+
+                /* There is nothing more to do with this line of file */
+                break;
+            }
+
+            /* Case the currently read line is none of the above */
+
+            default:
+            {
+                break;
+            }
+        }
+
+        /* We update the current line and proceed to the next loop */
+        currentLine++;
+    }
+
+    /* Finally, we close the opened configuration file */
+
+	int close_result = close(fd);
+
+	/* We examine if the closing of the file was successful */
+
+	if(close_result == -1)
+	{
+		printf("Error closing \"%s\"\n", config_file);
+		perror("close");
+	}
+}
+
+/*****************************************************************************
+ *  Reads the number of threads from the configuration file and places the   *
+ * value of the option to the address pointed by the given 'result' argument *
+ *****************************************************************************/
+
+void FileReader::readNumOfThreads(const char *config_file, unsigned int *result)
+{
+    /* We open the configuration file */
+
+	int fd = open(config_file, O_RDONLY);
+
+	/* We examine if the opening was successful */
+
+	if(fd == -1)
+	{
+		printf("Error opening \"%s\"\n", config_file);
+		perror("open");
+		return;
+	}
+
+	/* We prepare the variables we will need to read the file */
+
+	char read_char = 0;
+	char buf[messageLength];
+	unsigned int i = 0;
+	unsigned int currentLine = 1;
+	bool endOfFile = false;
+
+	/* We will read the file character by character and each time
+	 * we will save the read character in the 'read_char' variable
+	 */
+
+	while(1)
+	{
+		/* With the inner 'while' we read a single line of the file */
+
+		while(1)
+		{
+			/* Here we read the next character */
+
+			int read_bytes = read(fd, &read_char, 1);
+
+			/* If there are no more characters in the file,
+			 * (result from 'read' <= 0) we exit immediatelly
+			 */
+
+			if(read_bytes <= 0)
+			{
+				endOfFile = true;
+				break;
+			}
+
+			/* If the read character was a new line, the loop ends */
+
+			if(read_char == '\n')
+			{
+				/* We complete the string with final zero
+		 		 * and reset 'i' for the next loop
+				 */
+
+				buf[i] = '\0';
+				i = 0;
+
+				break;
+			}
+
+			/* Else we store the character in the buffer and continue */
+
+			buf[i++] = read_char;
+		}
+
+		/* If the end of file was reached, we stop the loop */
+
+		if(endOfFile)
+			break;
+
+		/* Now the 'buf' array is storing the whole content of the current
+		 * line of the file that we just read in the above inner 'while' loop.
+		 *
+		 * In this part we will do any actions we want with this line of file.
+		 */
+
+        switch(currentLine)
+        {
+            /* Case the currently read line is the 1st line of the file */
+
+            case 60:
+            {
+                /* We create a new variable that points to the base address
+                 * of the buffer storing the content of the current line
+                 */
+                char *threadsNum = buf;
+
+                /* As long as we do not encounter the '=' symbol,
+                 * we go to the next character of the string
+                 */
+                while(*threadsNum != '=')
+                    threadsNum++;
+
+                /* We go to the next character exactly after the '=' */
+                threadsNum++;
+
+                /* Now the variable is pointing to the start of the data
+                 * we are interested in reading. In this line we want to
+                 * read the amount of threads that will be executing the
+                 * tasks of each join. This option is an integer value.
+                 *
+                 * We convert the arithmetic string to integer and we
+                 * save that integer to the given address of that option.
+                 */
+                (*result) = atou(threadsNum);
+
+                /* There is nothing more to do with this line of file */
+                break;
+            }
+
+            /* Case the currently read line is none of the above */
+
+            default:
+            {
+                break;
+            }
+        }
+
+        /* We update the current line and proceed to the next loop */
+        currentLine++;
+    }
+
+    /* Finally, we close the opened configuration file */
+
+	int close_result = close(fd);
+
+	/* We examine if the closing of the file was successful */
+
+	if(close_result == -1)
+	{
+		printf("Error closing \"%s\"\n", config_file);
+		perror("close");
+	}
+}
+
+/**********************************************************************
+ * Reads the maximum size of each bitmap that we will use to estimate *
+ *      the amount of distinct elements per column of each table      *
+ **********************************************************************/
+
+void FileReader::readMaxBitmapSize(const char *config_file, unsigned int *result)
+{
+    /* We open the configuration file */
+
+	int fd = open(config_file, O_RDONLY);
+
+	/* We examine if the opening was successful */
+
+	if(fd == -1)
+	{
+		printf("Error opening \"%s\"\n", config_file);
+		perror("open");
+		return;
+	}
+
+	/* We prepare the variables we will need to read the file */
+
+	char read_char = 0;
+	char buf[messageLength];
+	unsigned int i = 0;
+	unsigned int currentLine = 1;
+	bool endOfFile = false;
+
+	/* We will read the file character by character and each time
+	 * we will save the read character in the 'read_char' variable
+	 */
+
+	while(1)
+	{
+		/* With the inner 'while' we read a single line of the file */
+
+		while(1)
+		{
+			/* Here we read the next character */
+
+			int read_bytes = read(fd, &read_char, 1);
+
+			/* If there are no more characters in the file,
+			 * (result from 'read' <= 0) we exit immediatelly
+			 */
+
+			if(read_bytes <= 0)
+			{
+				endOfFile = true;
+				break;
+			}
+
+			/* If the read character was a new line, the loop ends */
+
+			if(read_char == '\n')
+			{
+				/* We complete the string with final zero
+		 		 * and reset 'i' for the next loop
+				 */
+
+				buf[i] = '\0';
+				i = 0;
+
+				break;
+			}
+
+			/* Else we store the character in the buffer and continue */
+
+			buf[i++] = read_char;
+		}
+
+		/* If the end of file was reached, we stop the loop */
+
+		if(endOfFile)
+			break;
+
+		/* Now the 'buf' array is storing the whole content of the current
+		 * line of the file that we just read in the above inner 'while' loop.
+		 *
+		 * In this part we will do any actions we want with this line of file.
+		 */
+
+        switch(currentLine)
+        {
+            /* Case the currently read line is the 1st line of the file */
+
+            case 63:
+            {
+                /* We create a new variable that points to the base address
+                 * of the buffer storing the content of the current line
+                 */
+                char *maxBitmapSize = buf;
+
+                /* As long as we do not encounter the '=' symbol,
+                 * we go to the next character of the string
+                 */
+                while(*maxBitmapSize != '=')
+                    maxBitmapSize++;
+
+                /* We go to the next character exactly after the '=' */
+                maxBitmapSize++;
+
+                /* Now the variable is pointing to the start of the data
+                 * we are interested in reading. In this line we want to
+                 * read the maximum size of each bitmap that will be used
+                 * to estimate the number of distinct elements of each
+                 * column of every table. This option is an integer value.
+                 *
+                 * We convert the arithmetic string to integer and we
+                 * save that integer to the given address of that option.
+                 */
+                (*result) = atou(maxBitmapSize);
 
                 /* There is nothing more to do with this line of file */
                 break;

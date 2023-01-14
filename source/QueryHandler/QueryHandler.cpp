@@ -78,7 +78,7 @@ QueryHandler::QueryHandler(const char *init_file, const char *work_file,
     const char *config_file)
 {
     /* We read the input tables and save them in the 'tables' list */
-    tables = FileReader::readInitFile(init_file);
+    tables = FileReader::readInitFile(init_file, config_file);
 
     /* We read the input queries in batches
      * and save them in the 'queryBatches' list
@@ -87,6 +87,15 @@ QueryHandler::QueryHandler(const char *init_file, const char *work_file,
 
     /* We initialize the configurations of each join that will be performed */
     joinParameters = new PartitionedHashJoinInput(config_file);
+
+    /* The amount of threads the user desires will be stored in the variable */
+    unsigned int numThreads;
+
+    /* We read the amount of threads from the configuration file */
+    FileReader::readNumOfThreads(config_file, &numThreads);
+
+    /* We initialize the job scheduler with the amount of available threads */
+    jobScheduler = new JobScheduler(numThreads);
 }
 
 /**************
@@ -105,6 +114,9 @@ QueryHandler::~QueryHandler()
 
     /* We free the allocated memory for the join configurations */
     delete joinParameters;
+
+    /* We free the allocated memory for the job scheduler */
+    delete jobScheduler;
 }
 
 /******************************************************************
@@ -153,12 +165,12 @@ void QueryHandler::addressSingleQuery(Query *query)
 {
     /* We create the intermediate representation of this query */
     IntermediateRepresentation intermediateRepresentation =
-    IntermediateRepresentation(tables, joinParameters);
+    IntermediateRepresentation(tables, joinParameters, jobScheduler);
 
     /* We create a query optimizer for this query */
     QueryOptimizer queryOptimizer = QueryOptimizer(tables, query);
-    queryOptimizer.printColumnsOfQuery();
-    std::cout << std::endl;
+    //queryOptimizer.printColumnsOfQuery();
+    //std::cout << std::endl;
     //queryOptimizer.printColumnsGroupedByTableName();
     //queryOptimizer.printFilterAndJoinPredicates();
 
@@ -167,9 +179,9 @@ void QueryHandler::addressSingleQuery(Query *query)
 
     /* We retrieve the predicates in the order that was estimated most optimal */
     List *optimalPredicatesOrder = queryOptimizer.getOptimalPredicatesOrder();
-    std::cout << "After filtering\n===============" << std::endl;
-    queryOptimizer.printColumnsOfQuery();
-    std::cout << std::endl;
+    //std::cout << "After filtering\n===============" << std::endl;
+    //queryOptimizer.printColumnsOfQuery();
+    //std::cout << std::endl;
 
     /* We will start traversing the list of predicates from the head */
     Listnode *currentNodeOfPredicate = optimalPredicatesOrder->getHead();

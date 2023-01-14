@@ -61,13 +61,15 @@ IntermediateArray::IntermediateArray(
 	unsigned int rightRelColumn,
 	unsigned int rightRelPriority,
 	List *tables,
-	PartitionedHashJoinInput *joinParameters)
+	PartitionedHashJoinInput *joinParameters,
+	JobScheduler *jobScheduler)
 {
 	/* We initialize all the fields of the class (apart from 'rowsNum' for now) */
 	this->tables = tables;
 	this->relations = new List();
 	this->rowIdArrays = new List();
 	this->joinParameters = joinParameters;
+	this->jobScheduler = jobScheduler;
 
 	/* We retrieve pointers to the original left and right tables with all the data */
 	Table *leftTable = (Table *) tables->getItemInPos(leftRel + 1);
@@ -119,7 +121,9 @@ IntermediateArray::IntermediateArray(
 	Relation *right = new Relation(rightTuples, rightTableRows);
 
 	/* We execute the Partitioned Hash Join Algorithm */
-	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
+	PartitionedHashJoin *join = new PartitionedHashJoin(
+		left, right, this->joinParameters, this->jobScheduler);
+
 	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
@@ -193,13 +197,15 @@ IntermediateArray::IntermediateArray(
 	unsigned int filterValue,
 	char filterOperator,
 	List *tables,
-	PartitionedHashJoinInput *joinParameters)
+	PartitionedHashJoinInput *joinParameters,
+	JobScheduler *jobScheduler)
 {
 	/* We initialize all the fields of the class (apart from 'rowsNum' for now) */
 	this->tables = tables;
 	this->relations = new List();
 	this->rowIdArrays = new List();
 	this->joinParameters = joinParameters;
+	this->jobScheduler = jobScheduler;
 
 	/* We retrieve a pointer to the original table with all the data */
 	Table *table = (Table *) tables->getItemInPos(relName + 1);
@@ -502,7 +508,9 @@ void IntermediateArray::executeJoinWithForeignRelation(
 	Relation *right = new Relation(foreignTuples, foreignTableRows);
 
 	/* We execute the Partitioned Hash Join Algorithm */
-	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
+	PartitionedHashJoin *join = new PartitionedHashJoin(
+		left, right, joinParameters, jobScheduler);
+
 	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
@@ -676,7 +684,9 @@ void IntermediateArray::executeJoinWithTwoRelationsInTheArray(
 	Relation *right = new Relation(rightLocalTuples, rightLocalTableRows);
 
 	/* We execute the Partitioned Hash Join Algorithm */
-	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
+	PartitionedHashJoin *join = new PartitionedHashJoin(
+		left, right, joinParameters, jobScheduler);
+
 	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */
@@ -887,7 +897,9 @@ void IntermediateArray::executeJoinWithRelationOfOtherArray(
 	Relation *right = new Relation(foreignTuples, foreignTableRows);
 
 	/* We execute the Partitioned Hash Join Algorithm */
-	PartitionedHashJoin *join = new PartitionedHashJoin(left, right, this->joinParameters);
+	PartitionedHashJoin *join = new PartitionedHashJoin(
+		left, right, joinParameters, jobScheduler);
+
 	RowIdRelation *joinResult = join->executeJoin();
 
 	/* We retrieve the row ID pairs of the join result as well as the amount of them */

@@ -25,7 +25,7 @@ void readInputFile(
  * (Table *) in each node. Each 'Table' object stores all the rows
  * and columns of a relation.
  */
-List *readInitFile(const char *init_file);
+List *readInitFile(const char *init_file, const char *config_file);
 
 /* Reads the "work" file that contains all the queries that will
  * be given to the program. Every query is stored in a 'Query'
@@ -35,9 +35,9 @@ List *readInitFile(const char *init_file);
  */
 List *readWorkFile(const char *work_file);
 
-/* Reads the given configuration file and returns the
- * value of each option in the file through the memory
- * addresses that are given as arguments to the function.
+/* Reads the given configuration file and returns the value of each
+ * option in the file that is associated with the join execution through
+ * the memory addresses that are given as arguments to the function.
  */
 void readConfigFile(
     const char *config_file,
@@ -54,6 +54,16 @@ void readConfigFile(
     double *maxAllowedSizeModifier,
     unsigned int *maxPartitionDepth
 );
+
+/* Reads the number of threads from the configuration file and places the
+ * value of the option to the address pointed by the given 'result' argument
+ */
+void readNumOfThreads(const char *config_file, unsigned int *result);
+
+/* Reads the maximum size of each bitmap that we will use to estimate
+ * the amount of distinct elements per column of each table
+ */
+void readMaxBitmapSize(const char *config_file, unsigned int *result);
 
 };
 

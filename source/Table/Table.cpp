@@ -11,7 +11,7 @@
  * Constructor *
  ***************/
 
-Table::Table(const char *binary_filename)
+Table::Table(const char *binary_filename, unsigned int maxBitmapSize)
 {
     /* We open the binary input file */
 
@@ -134,7 +134,7 @@ Table::Table(const char *binary_filename)
     columnStatistics = new ColumnStatistics *[numColumns];
 
     for(i = 0; i < numColumns; i++)
-        columnStatistics[i] = new ColumnStatistics(table[i], numTuples, 50000000);
+        columnStatistics[i] = new ColumnStatistics(table[i], numTuples, maxBitmapSize);
 }
 
 /**************

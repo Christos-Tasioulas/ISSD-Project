@@ -5,6 +5,7 @@
 #include "Table.h"
 #include "PartitionedHashJoin.h"
 #include "IntermediateRelation.h"
+#include "JobScheduler.h"
 
 class IntermediateArray {
 
@@ -24,6 +25,11 @@ private:
 
 	/* The additional parameters for a 'JOIN' operation */
 	PartitionedHashJoinInput *joinParameters;
+
+    /* A job scheduler that we will use for parallel
+     * execution of the tasks of a join predicate
+     */
+	JobScheduler *jobScheduler;
 
 	/* Finds and returns the position in the list of the given relation */
 	unsigned int posOfRelationInList(unsigned int relationName,
@@ -56,7 +62,8 @@ public:
 		unsigned int rightRelColumn,
 		unsigned int rightRelPriority,
 		List *tables,
-		PartitionedHashJoinInput *joinParameters);
+		PartitionedHashJoinInput *joinParameters,
+		JobScheduler *jobScheduler = NULL);
 
 	/* A constructor that initializes the array
 	 * with one relation that must be filtered
@@ -68,7 +75,8 @@ public:
 		unsigned int filterValue,
 		char filterOperator,
 		List *tables,
-		PartitionedHashJoinInput *joinParameters);
+		PartitionedHashJoinInput *joinParameters,
+		JobScheduler *jobScheduler = NULL);
 
 	/* Destructor */
 	~IntermediateArray();

@@ -189,8 +189,11 @@ static unsigned int alterBitsNum(unsigned int currentBitsNumForHashing)
  * Constructor *
  ***************/
 
-PartitionedHashJoin::PartitionedHashJoin(Relation *relR,
-    Relation *relS, PartitionedHashJoinInput *inputStructure)
+PartitionedHashJoin::PartitionedHashJoin(
+    Relation *relR,
+    Relation *relS,
+    PartitionedHashJoinInput *inputStructure,
+    JobScheduler *jobScheduler)
 {
     /* We assign the given relations to the fields of the class */
     this->relR = relR;
@@ -211,6 +214,9 @@ PartitionedHashJoin::PartitionedHashJoin(Relation *relR,
     this->loadFactor = inputStructure->loadFactor;
     this->maxAllowedSizeModifier = inputStructure->maxAllowedSizeModifier;
     this->maxPartitionDepth = inputStructure->maxPartitionDepth;
+
+    /* We assign the given job scheduler to the job scheduler of the class */
+    this->jobScheduler = jobScheduler;
 
     /* Since this object was created through a 'PartitionedHashJoinInput'
      * structure, it is the object that the query handler created and not

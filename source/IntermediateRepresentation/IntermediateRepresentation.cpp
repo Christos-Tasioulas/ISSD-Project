@@ -12,11 +12,12 @@ void IntermediateRepresentation::deleteIntermediateArray(void *item)
  ***************/
 
 IntermediateRepresentation::IntermediateRepresentation(List *tables,
-	PartitionedHashJoinInput *joinParameters)
+	PartitionedHashJoinInput *joinParameters, JobScheduler *jobScheduler)
 {
 	this->intermediateArrays = new List();
 	this->tables = tables;
 	this->joinParameters = joinParameters;
+	this->jobScheduler = jobScheduler;
 }
 
 /**************

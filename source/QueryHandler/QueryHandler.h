@@ -1,7 +1,6 @@
 #ifndef _QUERY_HANDLER_H_
 #define _QUERY_HANDLER_H_
 
-#include "PartitionedHashJoin.h"
 #include "PartitionedHashJoinInput.h"
 #include "IntermediateRepresentation.h"
 #include "QueryOptimizer.h"
@@ -22,6 +21,11 @@ private:
 
     /* Parameters of every join operation that will be performed */
     PartitionedHashJoinInput *joinParameters;
+
+    /* A job scheduler that we will use for parallel
+     * execution of the tasks of a join predicate
+     */
+    JobScheduler *jobScheduler;
 
     /* Returns the priority of the relation at the specified position */
     unsigned int getPriorityOfRelation(List *queryRelations,
