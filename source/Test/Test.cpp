@@ -5,13 +5,14 @@
 #include <cstdlib>
 #include "acutest.h"
 #include "QueryHandler.h"
-#include "CompleteBinaryTree.h"
+#include "BinaryHeap.h"
 #include "Query.h"
 
 using namespace std;
 
 // Global variable
 int* int_data;
+int counter;
 
 /**************************************************************************
  *                          Auxiliary Functions                           *
@@ -37,7 +38,8 @@ static void test_compare(void *key, void *value)
 {
     int myKey = *((int *) key);
     int myValue = *((int *) value);
-    TEST_ASSERT(myValue == int_data[myKey]);
+    TEST_ASSERT(myValue == int_data[counter]);
+    counter++;
 }
 
 int count_char(string s, char mychar) {
@@ -1219,6 +1221,7 @@ void abTreeInsertTest()
         delete insertionWasSuccessful;
     }
 
+    counter = 0;
     testTree->traverse(Inorder, test_compare);
 
     delete testTree;
@@ -1448,6 +1451,7 @@ void binarySearchTreeInsertTest()
     }
 
     // traversing the nodes in order so that we find out that the keys were sorted correctly during insertion
+    counter = 0;
     tree->traverse(Inorder, test_compare);
 
     delete[] test_data;
@@ -1576,6 +1580,28 @@ void binarySearchTreeRemoveTest()
     delete tree;
 }
 
+void binaryHeapInsertTest()
+{
+    BinaryHeap *heap = new BinaryHeap(MAXHEAP);
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        heap->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    delete test_data;
+    delete heap;
+}
+
 /**************************************************************************
  *                                  Main                                  *
  **************************************************************************/
@@ -1630,5 +1656,6 @@ TEST_LIST = {
     { "Binary Search Tree Search Item Test", binarySearchTreeSearchItemTest},
     { "Binary Search Tree Search Key Test", binarySearchTreeSearchKeyTest},
     { "Binary Search Tree Remove Test", binarySearchTreeRemoveTest},
+    { "Binary Heap Insert Test", binaryHeapInsertTest},
     { NULL, NULL }
 };
