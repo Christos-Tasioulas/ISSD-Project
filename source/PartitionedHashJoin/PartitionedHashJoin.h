@@ -4,14 +4,18 @@
 #include "HashTable.h"
 #include "RowIdRelation.h"
 #include "PartitionedHashJoinInput.h"
+#include "JobScheduler.h"
 
 class PartitionedHashJoin {
 
 public:
 
 /* Constructor (used by the user) */
-    PartitionedHashJoin(Relation *relR, Relation *relS,
-        PartitionedHashJoinInput *inputStructure);
+    PartitionedHashJoin(
+        Relation *relR,
+        Relation *relS,
+        PartitionedHashJoinInput *inputStructure,
+        JobScheduler *jobScheduler = NULL);
 
 /* Constructor for subrelations (used by this class only) */
     PartitionedHashJoin(
@@ -120,6 +124,11 @@ private:
 
 /* Determines the maximum depth of partitions */
     unsigned int maxPartitionDepth;
+
+/* A job scheduler that we will use for parallel
+ * execution of the tasks of a join predicate
+ */
+    JobScheduler *jobScheduler;
 
 /* Determines wheter a bucket of the relation 'rerR' or 'relS'
  * needs to be further partitioned to additional buckets

@@ -16,6 +16,11 @@ private:
 	/* The additional parameters of the Partitioned Hash Join Algorithm */
 	PartitionedHashJoinInput *joinParameters;
 
+    /* A job scheduler that we will use for parallel
+     * execution of the tasks of a join predicate
+     */
+	JobScheduler *jobScheduler;
+
 	/* Searches if the given relation exists in any of the
 	 * intermediate arrays of the intermediate representation.
 	 * If it exists, that intermediate array is returned
@@ -32,7 +37,8 @@ private:
 public:
 
 	/* Constructor & Destructor */
-	IntermediateRepresentation(List *tables, PartitionedHashJoinInput *joinParameters);
+	IntermediateRepresentation(List *tables, PartitionedHashJoinInput *joinParameters,
+		JobScheduler *jobScheduler = NULL);
 	~IntermediateRepresentation();
 
 	/* Getter - Returns the arrays of the intermediate representation */

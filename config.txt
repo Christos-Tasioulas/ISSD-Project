@@ -56,3 +56,10 @@ allowed size of any array so as it does not need to be partitioned is
 
 maxPartitionDepth=2
 [Determines the maximum depth of the partitions that will be performed]
+
+numberOfThreads=4
+[The number of threads that will be executing the tasks of each join]
+
+maxBitmapSize=50000000
+[The maximum size of the bitmap used to estimate the amount of distinct
+elements of every column of each table]

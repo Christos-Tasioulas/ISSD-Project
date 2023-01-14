@@ -27,7 +27,7 @@ private:
 public:
 
     /* Constructor & Destructor */
-    Table(const char *binary_filename);
+    Table(const char *binary_filename, unsigned int maxBitmapSize = 50000000);
     ~Table();
 
     /* Getter - Returns the number of rows of the table */
