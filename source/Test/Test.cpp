@@ -2,8 +2,10 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
 #include "acutest.h"
 #include "QueryHandler.h"
+#include "CompleteBinaryTree.h"
 #include "Query.h"
 
 using namespace std;
@@ -65,6 +67,21 @@ static void print_table(unsigned long long** table, unsigned long long numTuples
         }
         cout << endl;
     }
+}
+
+void swap(int *i, int *j)
+{
+    int temp = *i;
+    *i = *j;
+    *j = temp;
+}
+
+void array_random_shuffle(int* array, int size)
+{
+  for (int i=size-1; i>0; --i) {
+    int j = rand() % (i+1);
+    swap (&array[i], &array[j]);
+  }
 }
 
 /*******************************************************************
@@ -1289,6 +1306,276 @@ void abTreeRemoveTest()
     delete[] testArray;
 }
 
+void binaryTreeInsertTest()
+{
+    BinaryTree *tree = new BinaryTree();
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insertRoot(&key1);
+    tree->insertRoot(&key2);
+    tree->insertRoot(&key3);
+    Treenode* node = tree->getRoot();
+    TEST_ASSERT(node != NULL);
+    // The first key that was inserted is the final root of the tree
+    // The final two keys were not inserted in the tree
+    TEST_ASSERT(*((int *)node->getItem()) == key1);
+
+    tree->insertLeft(node, &key2);
+    Treenode* leftNode = node->getLeft();
+    TEST_ASSERT(leftNode!= NULL);
+    TEST_ASSERT(*((int *)leftNode->getItem()) == key2);
+
+    tree->insertRight(node, &key3);
+    Treenode* rightNode = node->getRight();
+    TEST_ASSERT(rightNode!= NULL);
+    TEST_ASSERT(*((int *)rightNode->getItem()) == key3);
+
+    delete tree;
+}
+
+void binaryTreeRemoveTest()
+{
+    BinaryTree *tree = new BinaryTree();
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insertRoot(&key1);
+    Treenode* node = tree->getRoot();
+    tree->insertLeft(node, &key2);
+    tree->insertRight(node, &key3);
+
+    // We can't remove the root node from the tree because it is not a leaf node
+    tree->remove(node);
+    TEST_ASSERT(tree->size() == 3);
+
+    // This node is a leaf node
+    Treenode* leftNode = node->getLeft();
+    tree->remove(leftNode);
+    TEST_ASSERT(tree->size() == 2);
+
+    delete tree;
+}
+
+void completeBinaryTreeInsertTest()
+{
+    CompleteBinaryTree *tree = new CompleteBinaryTree();
+
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insert(&key1);
+    tree->insert(&key2);
+    tree->insert(&key3);
+
+    Treenode* node = tree->getRoot();
+    // The first key that was inserted is the final root of the tree
+    TEST_ASSERT(*((int *)node->getItem()) == key1);
+    /* The first key that was inserted is the root of the tree
+     * The other keys that were inserted will automatically be 
+     * the left and right children of the root respectively
+     * So the final height of the tree will be equal to 2.
+     */
+    TEST_ASSERT(tree->height() == 2);
+
+    delete tree;
+}
+
+void completeBinaryTreeRemoveTest()
+{
+    CompleteBinaryTree *tree = new CompleteBinaryTree();
+
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+    int key4 = 3;
+    int key5 = 4;
+    int key6 = 5;
+    int key7 = 6;
+    int key8 = 7;
+    int key9 = 8;
+
+    tree->insert(&key1);
+    tree->insert(&key2);
+    tree->insert(&key3);
+    tree->insert(&key4);
+    tree->insert(&key5);
+    tree->insert(&key6);
+    tree->insert(&key7);
+    tree->insert(&key8);
+    tree->insert(&key9);
+
+    // The tree has 9 keys so its height should be equal 
+    // to the integer part of log9 plus 1 which equals to 4  
+    TEST_ASSERT(tree->height() == 4);
+
+    // In a Complete Binary Tree we can only remove the last node traversing in level order
+    tree->removeLast();
+    tree->removeLast();
+    
+    // We have removed all the keys from the last level of the tree
+    // so the height will be lowered to 3
+    TEST_ASSERT(tree->height() == 3);
+
+    delete tree;
+}
+
+void binarySearchTreeInsertTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+    int_data = new int[20];
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        int_data[i] = i;
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        Treenode** node_p = new Treenode*;
+        tree->insert(&test_data[i], &test_data[i], compare_ints, node_p);
+        // testing if the node has been inserted successfully
+        TEST_ASSERT(*node_p != NULL);
+        delete node_p;
+    }
+
+    // traversing the nodes in order so that we find out that the keys were sorted correctly during insertion
+    tree->traverse(Inorder, test_compare);
+
+    delete[] test_data;
+    delete[] int_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(tree->search(&key1, compare_ints, NULL) == true);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->search(&key2, compare_ints, NULL) == false);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchItemTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(*((int *)tree->searchItem(&key1, compare_ints, NULL)) == key1);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->searchItem(&key2, compare_ints, NULL) == NULL);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchKeyTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(*((int *)tree->searchKey(&key1, compare_ints, NULL)) == key1);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->searchKey(&key2, compare_ints, NULL) == NULL);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeRemoveTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    // Trying to remove an element from the tree
+    int key1 = 5;
+    bool *removal_true = new bool;
+    tree->remove(&key1, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == true);
+    TEST_ASSERT(tree->search(&key1, compare_ints, NULL) == false);
+
+    // Trying to remove an element that doesn't exist
+    int key3 = 21;
+    tree->remove(&key3, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == false);
+
+    delete removal_true;
+    delete tree;
+}
+
 /**************************************************************************
  *                                  Main                                  *
  **************************************************************************/
@@ -1304,7 +1591,7 @@ TEST_LIST = {
     // Hash Table Test
     { "Hash Insert",  insertWithoutRehashTest},
     { "Hash Rehash",  rehashTest},
-    // { "Hash Bulk Search",  bulkSearchTest},
+    { "Hash Bulk Search",  bulkSearchTest},
     // Intermediate Array
     { "Intermediate Array Search", testIntermediateArraySearch},
     { "Intermediate Array Execute Join With Foreign Relation", testExecuteJoinWithForeignRelation},
@@ -1334,5 +1621,14 @@ TEST_LIST = {
     { "AB_Tree Search Test", abTreeSearchTest},
     { "AB_Tree Search And Return Test", abTreeSearchandReturnTest},
     { "AB_Tree Remove Test", abTreeRemoveTest},
+    { "Binary Tree Insert Test", binaryTreeInsertTest},
+    { "Binary Tree Remove Test", binaryTreeRemoveTest},
+    { "Complete Binary Tree Insert Test", completeBinaryTreeInsertTest},
+    { "Complete Binary Tree Remove Test", completeBinaryTreeRemoveTest},
+    { "Binary Search Tree Insert Test", binarySearchTreeInsertTest},
+    { "Binary Search Tree Search Test", binarySearchTreeSearchTest},
+    { "Binary Search Tree Search Item Test", binarySearchTreeSearchItemTest},
+    { "Binary Search Tree Search Key Test", binarySearchTreeSearchKeyTest},
+    { "Binary Search Tree Remove Test", binarySearchTreeRemoveTest},
     { NULL, NULL }
 };
