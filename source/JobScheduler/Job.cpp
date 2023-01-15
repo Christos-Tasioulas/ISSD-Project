@@ -129,7 +129,7 @@ void Job::executeJob() const
 				joinJobInput->leftPrefixSum,
 				joinJobInput->rightPrefixSum,
 				joinJobInput->bucketsNum,
-				joinJobInput-> hopscotchBuckets,
+				joinJobInput->hopscotchBuckets,
 				joinJobInput->hopscotchRange,
 				joinJobInput->resizableByLoadFactor,
 				joinJobInput->loadFactor,
