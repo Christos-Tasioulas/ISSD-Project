@@ -63,3 +63,6 @@ numberOfThreads=4
 maxBitmapSize=50000000
 [The maximum size of the bitmap used to estimate the amount of distinct
 elements of every column of each table]
+
+dataset=small
+[Choose "small" for a small input dataset or "public" for a larger one]

@@ -65,6 +65,9 @@ void readNumOfThreads(const char *config_file, unsigned int *result);
  */
 void readMaxBitmapSize(const char *config_file, unsigned int *result);
 
+/* Reads the type of input dataset that will be used as input */
+void readDataset(const char *config_file, char **result);
+
 };
 
 #endif

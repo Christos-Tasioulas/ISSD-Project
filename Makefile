@@ -102,8 +102,13 @@ harness:
 
 # Runs the harness executable with the small input files
 # and our main program as command line arguments
-run_harness:
-	@cd build && ./harness ../input/small.init ../input/small.work ../input/small.result phj
+run_harness_small:
+	@cd build && ./harness ../input/small/small.init ../input/small/small.work ../input/small/small.result phj
+
+# Runs the harness executable with the public input files
+# and our main program as command line arguments
+run_harness_public:
+	@cd build && ./harness ../input/public/public.init ../input/public/public.work ../input/public/public.result phj
 
 # Removes the harness executable from the 'build' directory
 clean_harness:

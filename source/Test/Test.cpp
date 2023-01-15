@@ -1997,7 +1997,7 @@ TEST_LIST = {
     { "Reset and resize Bitmap", test_reset_and_resize},
     // Filereader testing
     { "Reading Configuration File", read_config_test},
-    //{ "Reading Init File", read_init_file_test},
+    { "Reading Init File", read_init_file_test},
     // Hash Table Test
     { "Hash Insert",  insertWithoutRehashTest},
     { "Hash Rehash",  rehashTest},

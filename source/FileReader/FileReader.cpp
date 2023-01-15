@@ -129,8 +129,18 @@ List *FileReader::readInitFile(const char *init_file, const char *config_file)
      */
     unsigned int maxBitmapSize = 50000000;
 
-    if(config_file != NULL)
+    if(config_file != NULL) {
         readMaxBitmapSize(config_file, &maxBitmapSize);
+    }
+
+	/* We read the dataset type from the configuration file */
+
+	char *dataset;
+	readDataset(config_file, &dataset);
+
+	/* We find the length of the string with the dataset type */
+
+	unsigned int dataset_length = strlen(dataset);
 
     /* We open the initialization file */
 
@@ -209,12 +219,9 @@ List *FileReader::readInitFile(const char *init_file, const char *config_file)
          */
         unsigned int buffer_length = strlen(buf);
 
-        /* All the binary files of the relations are inside the "input"
-         * directory. Consequently, the path from the executable of the
-         * program to a binary file "rX" is "../input/rX".
-         */
-        char currentBinaryFilename[strlen("../input/") + buffer_length + 1];
-        sprintf(currentBinaryFilename, "../input/%s", buf);
+        /* We build the relative path to the binary filename */
+        char currentBinaryFilename[strlen("../input/") + dataset_length + 1 + buffer_length + 1];
+        sprintf(currentBinaryFilename, "../input/%s/%s", dataset, buf);
 
         /* We create a new Table giving it the binary file as input */
         Table *new_table = new Table(currentBinaryFilename, maxBitmapSize);
@@ -237,6 +244,10 @@ List *FileReader::readInitFile(const char *init_file, const char *config_file)
 		printf("Error closing \"%s\"\n", init_file);
 		perror("close");
 	}
+
+    /* We free the allocated memory for the dataset type */
+
+    free(dataset);
 
     /* Finally we return the list of Tables of each relation */
 
@@ -1210,6 +1221,146 @@ void FileReader::readMaxBitmapSize(const char *config_file, unsigned int *result
                  * save that integer to the given address of that option.
                  */
                 (*result) = atou(maxBitmapSize);
+
+                /* There is nothing more to do with this line of file */
+                break;
+            }
+
+            /* Case the currently read line is none of the above */
+
+            default:
+            {
+                break;
+            }
+        }
+
+        /* We update the current line and proceed to the next loop */
+        currentLine++;
+    }
+
+    /* Finally, we close the opened configuration file */
+
+	int close_result = close(fd);
+
+	/* We examine if the closing of the file was successful */
+
+	if(close_result == -1)
+	{
+		printf("Error closing \"%s\"\n", config_file);
+		perror("close");
+	}
+}
+
+/**************************************************************
+ * Reads the type of input dataset that will be used as input *
+ **************************************************************/
+
+void FileReader::readDataset(const char *config_file, char **result)
+{
+    /* We open the configuration file */
+
+	int fd = open(config_file, O_RDONLY);
+
+	/* We examine if the opening was successful */
+
+	if(fd == -1)
+	{
+		printf("Error opening \"%s\"\n", config_file);
+		perror("open");
+		return;
+	}
+
+	/* We prepare the variables we will need to read the file */
+
+	char read_char = 0;
+	char buf[messageLength];
+	unsigned int i = 0;
+	unsigned int currentLine = 1;
+	bool endOfFile = false;
+
+	/* We will read the file character by character and each time
+	 * we will save the read character in the 'read_char' variable
+	 */
+
+	while(1)
+	{
+		/* With the inner 'while' we read a single line of the file */
+
+		while(1)
+		{
+			/* Here we read the next character */
+
+			int read_bytes = read(fd, &read_char, 1);
+
+			/* If there are no more characters in the file,
+			 * (result from 'read' <= 0) we exit immediatelly
+			 */
+
+			if(read_bytes <= 0)
+			{
+				endOfFile = true;
+				break;
+			}
+
+			/* If the read character was a new line, the loop ends */
+
+			if(read_char == '\n')
+			{
+				/* We complete the string with final zero
+		 		 * and reset 'i' for the next loop
+				 */
+
+				buf[i] = '\0';
+				i = 0;
+
+				break;
+			}
+
+			/* Else we store the character in the buffer and continue */
+
+			buf[i++] = read_char;
+		}
+
+		/* If the end of file was reached, we stop the loop */
+
+		if(endOfFile)
+			break;
+
+		/* Now the 'buf' array is storing the whole content of the current
+		 * line of the file that we just read in the above inner 'while' loop.
+		 *
+		 * In this part we will do any actions we want with this line of file.
+		 */
+
+        switch(currentLine)
+        {
+            /* Case the currently read line is the 1st line of the file */
+
+            case 67:
+            {
+                /* We create a new variable that points to the base address
+                 * of the buffer storing the content of the current line
+                 */
+                char *dataset = buf;
+
+                /* As long as we do not encounter the '=' symbol,
+                 * we go to the next character of the string
+                 */
+                while(*dataset != '=')
+                    dataset++;
+
+                /* We go to the next character exactly after the '=' */
+                dataset++;
+
+                /* Now the variable is pointing to the start of the data
+                 * we are interested in reading. In this line we want to
+                 * read the dataset that will be used as input.
+                 */
+                unsigned int datasetNameLen = strlen(dataset);
+                (*result) = (char *) malloc(1 + datasetNameLen);
+
+                /* We copy the dataset to the result string */
+                strcpy((*result), dataset);
 
                 /* There is nothing more to do with this line of file */
                 break;
