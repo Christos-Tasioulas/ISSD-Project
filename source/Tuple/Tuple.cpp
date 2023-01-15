@@ -16,6 +16,17 @@ Tuple::Tuple(void *item, unsigned int rowId)
 
 Tuple::~Tuple() {}
 
+
+/********************
+ * Copy Constructor *
+ ********************/
+
+Tuple::Tuple(const Tuple& other)
+{
+	item = other.item;
+	rowId = other.rowId;
+}
+
 /*************************************************************
  * Getter - Returns the user data that is saved in the tuple *
  *************************************************************/

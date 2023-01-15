@@ -151,7 +151,8 @@ void IntermediateRepresentation::executeJoin(
 				rightRelColumn,
 				rightRelPriority,
 				tables,
-				joinParameters);
+				joinParameters,
+				jobScheduler);
 
 			intermediateArrays->insertLast(newArray);
 		}
@@ -261,7 +262,8 @@ void IntermediateRepresentation::executeFilter(
 			filterValue,
 			filterOperator,
 			tables,
-			joinParameters);
+			joinParameters,
+			jobScheduler);
 
 		intermediateArrays->insertLast(newArray);
 	}

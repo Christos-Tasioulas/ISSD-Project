@@ -2,14 +2,24 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
 #include "acutest.h"
 #include "QueryHandler.h"
+#include "BinaryHeap.h"
 #include "Query.h"
 
 using namespace std;
 
-// Global variable
+// Global variables
+
+// Used for traversal testings of insert functions
 int* int_data;
+int counter;
+// Temporary variable to store the previous counter value used in the inOrderRedBlackTree function
+int prev_counter;
+// Used to determine how much the counter should be incremented in the test_compare function
+// Also used to determine the number of index keys in the inverted index
+int modifier;
 
 /**************************************************************************
  *                          Auxiliary Functions                           *
@@ -31,11 +41,11 @@ static int compare_ints(void *i1, void* i2)
     return myInt1 - myInt2;
 }
 
-static void test_compare(void *key, void *value)
+static void test_compare(void *value, void *key)
 {
-    int myKey = *((int *) key);
     int myValue = *((int *) value);
-    TEST_ASSERT(myValue == int_data[myKey]);
+    TEST_ASSERT(myValue == int_data[counter]);
+    counter+=modifier;
 }
 
 int count_char(string s, char mychar) {
@@ -53,57 +63,54 @@ static void deleteTable(void *item)
 	delete table;
 }
 
-static void print_table(unsigned long long** table, unsigned long long numTuples, unsigned long long numColumns)
+void swap(int *i, int *j)
 {
-    unsigned long long i,j;
-    for(j=0; j<numTuples; j++)
+    int temp = *i;
+    *i = *j;
+    *j = temp;
+}
+
+void array_random_shuffle(int* array, int size)
+{
+  for (int i=size-1; i>0; --i) {
+    int j = rand() % (i+1);
+    swap (&array[i], &array[j]);
+  }
+}
+
+// Preorder traversal of a MaxBinaryHeap in order to evaluate its heap status
+static void preorderBMaxHeap(Treenode *node)
+{
+    if(node != NULL)
     {
-        for(i=0; i<numColumns; i++)
+        BHObject* bhObject = (BHObject*) node->getItem();
+        int key = *((int*) bhObject->getKey());
+        if(node->getLeft())
         {
-            cout<<table[i][j];
-            if(i<(numColumns-1)) cout << "|";
+            Treenode* left = node->getLeft();
+            BHObject* lBhObject = (BHObject*) left->getItem();
+            int l_key = *((int*) lBhObject->getKey());
+            TEST_ASSERT(l_key <= key);
         }
-        cout << endl;
+        if(node->getRight())
+        {
+            Treenode* right = node->getRight();
+            BHObject* rBhObject = (BHObject*) right->getItem();
+            int r_key = *((int*) rBhObject->getKey());
+            TEST_ASSERT(r_key <= key);
+        } 
+        preorderBMaxHeap(node->getLeft());
+        preorderBMaxHeap(node->getRight());
     }
 }
 
-/*******************************************************************
- * Used to call the printing operation of the Hopscotch Hash Table *
- *******************************************************************/
-
-static void printIntAndInt(void *item1, void *item2)
+// InOrder Traversal of an Inverted Index that contains RedBlackTrees
+static void inOrderRedBlackTree(void* value, void* key)
 {
-   int my_int_1 = *((int *) item1);
-   int my_int_2 = *((int *) item2);
-
-    printf("|%11u|%11d|", my_int_1, my_int_2);
-}
-
-/*******************************************************************
- * Used to call the printing operation of the Hopscotch Hash Table *
- *******************************************************************/
-
-static void colonContext()
-{
-    std::cout << " : ";
-}
-
-/*******************************************************************
- * Used to call the printing operation of the Hopscotch Hash Table *
- *******************************************************************/
-
-static void lineContextWithNewLine()
-{
-    std::cout << "\n+-----------+-----------+" << std::endl;
-}
-
-/***************************************************************
- * Used to print the empty entries of the Hopscotch Hash Table *
- ***************************************************************/
-
-static void emptyHashEntryPrinting()
-{
-    std::cout << "|           |           |";
+    prev_counter = counter;
+    RedBlackTree* index_tree = (RedBlackTree*) value;
+    index_tree->traverse(Inorder, test_compare);
+    counter = prev_counter + 1;
 }
 
 static int compare_results(RowIdRelation* r1, RowIdRelation* r2)
@@ -122,10 +129,8 @@ static int compare_results(RowIdRelation* r1, RowIdRelation* r2)
             if((p1.getLeftRowId() != p2.getLeftRowId()) || (p1.getRightRowId() != p2.getRightRowId())) 
             {
                 return 0;  
-            }
-            
+            } 
         }
-
     }
     return 1;
 }
@@ -344,7 +349,7 @@ void read_config_test()
 
 void read_init_file_test()
 {
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     Listnode *current = tables->getHead();
     int i = 0;
@@ -385,7 +390,7 @@ void insertWithoutRehashTest()
     
     // Case: Duplicate
     int myDuplicateKey = 5;
-    ht->insert(&myKey, &myKey, hash_int, compare_ints);
+    ht->insert(&myDuplicateKey, &myDuplicateKey, hash_int, compare_ints);
     items1 = ht->getTable()[5].getItems();
     entryItem1 = (HashEntryItem *) items1->getItemInPos(2);
     item1 = *((int *)entryItem1->getItem());
@@ -547,7 +552,7 @@ void bulkSearchTest()
 void testIntermediateArraySearch()
 {
     // Reading initialization file
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -579,7 +584,7 @@ void testExecuteJoinWithForeignRelation()
      *  So in these tests we will compare the number of rowIDs before  *
      *                  with the number of rowIDs after                *
      *******************************************************************/
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -615,7 +620,7 @@ void testExecuteJoinWithTwoRelationsInTheArray()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -643,7 +648,7 @@ void testExecuteJoinWithRelationOfOtherArray()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -672,7 +677,7 @@ void testExecuteFilter()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init");
+    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
     IntermediateArray *ia = new IntermediateArray(2, 2, 0, 3000, '<', tables, phji);
@@ -1087,7 +1092,7 @@ void testAppend()
     list->append(list1);
     TEST_ASSERT(list->getCounter() == list1->getCounter());
 
-    int prev_counter = list->getCounter();
+    unsigned int prev_counter = list->getCounter();
 
     // Testing the case we append an empty list to a list
     list->append(list2);
@@ -1202,6 +1207,8 @@ void abTreeInsertTest()
         delete insertionWasSuccessful;
     }
 
+    counter = 0;
+    modifier = 1;
     testTree->traverse(Inorder, test_compare);
 
     delete testTree;
@@ -1289,6 +1296,696 @@ void abTreeRemoveTest()
     delete[] testArray;
 }
 
+void binaryTreeInsertTest()
+{
+    BinaryTree *tree = new BinaryTree();
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insertRoot(&key1);
+    tree->insertRoot(&key2);
+    tree->insertRoot(&key3);
+    Treenode* node = tree->getRoot();
+    TEST_ASSERT(node != NULL);
+    // The first key that was inserted is the final root of the tree
+    // The final two keys were not inserted in the tree
+    TEST_ASSERT(*((int *)node->getItem()) == key1);
+
+    tree->insertLeft(node, &key2);
+    Treenode* leftNode = node->getLeft();
+    TEST_ASSERT(leftNode!= NULL);
+    TEST_ASSERT(*((int *)leftNode->getItem()) == key2);
+
+    tree->insertRight(node, &key3);
+    Treenode* rightNode = node->getRight();
+    TEST_ASSERT(rightNode!= NULL);
+    TEST_ASSERT(*((int *)rightNode->getItem()) == key3);
+
+    delete tree;
+}
+
+void binaryTreeRemoveTest()
+{
+    BinaryTree *tree = new BinaryTree();
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insertRoot(&key1);
+    Treenode* node = tree->getRoot();
+    tree->insertLeft(node, &key2);
+    tree->insertRight(node, &key3);
+
+    // We can't remove the root node from the tree because it is not a leaf node
+    tree->remove(node);
+    TEST_ASSERT(tree->size() == 3);
+
+    // This node is a leaf node
+    Treenode* leftNode = node->getLeft();
+    tree->remove(leftNode);
+    TEST_ASSERT(tree->size() == 2);
+
+    delete tree;
+}
+
+void completeBinaryTreeInsertTest()
+{
+    CompleteBinaryTree *tree = new CompleteBinaryTree();
+
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+
+    tree->insert(&key1);
+    tree->insert(&key2);
+    tree->insert(&key3);
+
+    Treenode* node = tree->getRoot();
+    // The first key that was inserted is the final root of the tree
+    TEST_ASSERT(*((int *)node->getItem()) == key1);
+    /* The first key that was inserted is the root of the tree
+     * The other keys that were inserted will automatically be 
+     * the left and right children of the root respectively
+     * So the final height of the tree will be equal to 2.
+     */
+    TEST_ASSERT(tree->height() == 2);
+
+    delete tree;
+}
+
+void completeBinaryTreeRemoveTest()
+{
+    CompleteBinaryTree *tree = new CompleteBinaryTree();
+
+    int key1 = 0;
+    int key2 = 1;
+    int key3 = 2;
+    int key4 = 3;
+    int key5 = 4;
+    int key6 = 5;
+    int key7 = 6;
+    int key8 = 7;
+    int key9 = 8;
+
+    tree->insert(&key1);
+    tree->insert(&key2);
+    tree->insert(&key3);
+    tree->insert(&key4);
+    tree->insert(&key5);
+    tree->insert(&key6);
+    tree->insert(&key7);
+    tree->insert(&key8);
+    tree->insert(&key9);
+
+    // The tree has 9 keys so its height should be equal 
+    // to the integer part of log9 plus 1 which equals to 4  
+    TEST_ASSERT(tree->height() == 4);
+
+    // In a Complete Binary Tree we can only remove the last node traversing in level order
+    tree->removeLast();
+    tree->removeLast();
+    
+    // We have removed all the keys from the last level of the tree
+    // so the height will be lowered to 3
+    TEST_ASSERT(tree->height() == 3);
+
+    delete tree;
+}
+
+void binarySearchTreeInsertTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+    int_data = new int[20];
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        int_data[i] = i;
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        Treenode** node_p = new Treenode*;
+        tree->insert(&test_data[i], &test_data[i], compare_ints, node_p);
+        // testing if the node has been inserted successfully
+        TEST_ASSERT(*node_p != NULL);
+        delete node_p;
+    }
+
+    // traversing the nodes in order so that we find out that the keys were sorted correctly during insertion
+    counter = 0;
+    modifier = 1;
+    tree->traverse(Inorder, test_compare);
+
+    delete[] test_data;
+    delete[] int_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(tree->search(&key1, compare_ints, NULL) == true);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->search(&key2, compare_ints, NULL) == false);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchItemTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(*((int *)tree->searchItem(&key1, compare_ints, NULL)) == key1);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->searchItem(&key2, compare_ints, NULL) == NULL);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeSearchKeyTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn complexity
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree
+    TEST_ASSERT(*((int *)tree->searchKey(&key1, compare_ints, NULL)) == key1);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(tree->searchKey(&key2, compare_ints, NULL) == NULL);
+    delete[] test_data;
+    delete tree;
+}
+
+void binarySearchTreeRemoveTest()
+{
+    BinarySearchTree *tree = new BinarySearchTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // shuffling the input array makes sure that the search inside the tree is in logn
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints, NULL);
+    }
+
+    // Trying to remove an element from the tree
+    int key1 = 5;
+    bool *removal_true = new bool;
+    tree->remove(&key1, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == true);
+    TEST_ASSERT(tree->search(&key1, compare_ints, NULL) == false);
+
+    // Trying to remove an element that doesn't exist
+    int key3 = 21;
+    tree->remove(&key3, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == false);
+
+    delete removal_true;
+    delete tree;
+}
+
+void binaryHeapInsertTest()
+{
+    BinaryHeap *heap = new BinaryHeap(MAXHEAP);
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // the shuffle exists for testing purposes
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        heap->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // Preorder traversal to compare each key in the heap with its children
+    // so that we ensure the heap is sorted correctly
+    preorderBMaxHeap(heap->getRoot());
+
+    delete test_data;
+    delete heap;
+}
+
+void binaryHeapGetHighestPriorityItemTest()
+{
+    BinaryHeap *heap = new BinaryHeap(MAXHEAP);
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // the shuffle exists for testing purposes
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        heap->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // The largest item is 19
+    TEST_ASSERT(*((int*) heap->getHighestPriorityItem()) == 19);
+
+    delete test_data;
+    delete heap;
+}
+
+void binaryHeapGetHighestPriorityKeyTest()
+{
+    BinaryHeap *heap = new BinaryHeap(MAXHEAP);
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // the shuffle exists for testing purposes
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        heap->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // The largest key is 19
+    TEST_ASSERT(*((int*) heap->getHighestPriorityKey()) == 19);
+
+    delete test_data;
+    delete heap;
+}
+
+void binaryHeapRemoveTest()
+{
+    BinaryHeap *heap = new BinaryHeap(MAXHEAP);
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    // the shuffle exists for testing purposes
+    array_random_shuffle(test_data, 20);
+
+    for(int i=0; i<20; i++)
+    {
+        heap->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // emptying the heap for testing purposes
+    for(int i=19; i>=0; --i)
+    {
+        // current highest priority key is i
+        TEST_ASSERT(*((int*) heap->getHighestPriorityKey()) == i);
+        heap->remove(compare_ints);
+    }
+
+    // the heap must be empty
+    TEST_ASSERT(heap->isEmpty() == true);
+
+    delete test_data;
+    delete heap;
+}
+
+void redBlackTreeInsertTest()
+{
+    RedBlackTree *tree = new RedBlackTree();
+    int* test_data = new int[20];
+    int_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+        int_data[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // traversing the nodes in order so that we find out that the keys were sorted correctly during insertion
+    counter = 0;
+    modifier = 1;
+    tree->traverse(Inorder, test_compare);
+
+    // height is bounded on the lower side by log(2)(n+1) and on the upper side by 2*log(2)(n+1)
+    // so, when n=20 the height is between about 4 and 8
+    int height = tree->height();
+    TEST_ASSERT((height >= 4) && (height <= 8));
+
+    delete[] test_data;
+    delete[] int_data;
+    delete tree;
+}
+
+void redBlackTreeSearchTest()
+{
+    RedBlackTree *tree = new RedBlackTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree, same as BST
+    TEST_ASSERT(tree->search(&key1, compare_ints) == true);
+    // Trying to search an element that is not in the tree, same as BST
+    TEST_ASSERT(tree->search(&key2, compare_ints) == false);
+
+    delete[] test_data;
+    delete tree;
+}
+
+void redBlackTreeSearchItemTest()
+{
+    RedBlackTree *tree = new RedBlackTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree, same as BST
+    TEST_ASSERT(*((int *)tree->searchItem(&key1, compare_ints)) == key1);
+    // Trying to search an element that is not in the tree, same as BST
+    TEST_ASSERT(tree->searchItem(&key2, compare_ints) == NULL);
+
+    delete[] test_data;
+    delete tree;
+}
+
+void redBlackTreeSearchKeyTest()
+{
+    RedBlackTree *tree = new RedBlackTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    int key1 = 5;
+    int key2 = 21;
+    // Trying to search an element from the tree, same as BST
+    TEST_ASSERT(*((int *)tree->searchKey(&key1, compare_ints)) == key1);
+    // Trying to search an element that is not in the tree, same as BST
+    TEST_ASSERT(tree->searchKey(&key2, compare_ints) == NULL);
+
+    delete[] test_data;
+    delete tree;
+}
+
+void redBlackTreeRemoveTest()
+{
+    RedBlackTree *tree = new RedBlackTree();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        tree->insert(&test_data[i], &test_data[i], compare_ints);
+    }
+
+    // Trying to remove an element from the tree
+    int key1 = 5;
+    bool *removal_true = new bool;
+    tree->remove(&key1, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == true);
+    TEST_ASSERT(tree->search(&key1, compare_ints) == false);
+
+    // Trying to remove an element that doesn't exist
+    int key2 = 21;
+    tree->remove(&key2, compare_ints, removal_true);
+    TEST_ASSERT(*removal_true == false);
+
+    // Removing enough keys to potentially drop the tree's height down 
+    int key3 = 15;
+    tree->remove(&key3, compare_ints, NULL);
+    int key4 = 6;
+    tree->remove(&key4, compare_ints, NULL);
+    int key5 = 16;
+    tree->remove(&key5, compare_ints, NULL);
+    int key6 = 7;
+    tree->remove(&key6, compare_ints, NULL);
+    int key7 = 17;
+    tree->remove(&key7, compare_ints, NULL);
+
+    // height is bounded on the lower side by log(2)(n+1) and on the upper side by 2*log(2)(n+1)
+    // so, when n=14 the height is between about 3 and 7
+    int height = tree->height();
+    TEST_ASSERT((height >= 3) && (height <= 7));
+
+    delete removal_true;
+    delete tree;
+}
+
+void invertedIndexInsertTest()
+{
+    InvertedIndex *ii = new InvertedIndex();
+    int* test_data = new int[20];
+    int_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+        int_data[i] = i;
+    }
+
+    modifier = 4; 
+    int *index = new int[modifier];
+    for(int i=0; i<modifier; i++)
+    {
+        index[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        ii->insert(&test_data[i], &index[i%modifier], &test_data[i], compare_ints, compare_ints);
+    }
+
+    // traversing the nodes in order so that we find out that the keys were sorted correctly during insertion
+    counter = 0;
+    ii->traverse(Inorder, inOrderRedBlackTree);
+
+    delete[] index;
+    delete[] test_data;
+    delete[] int_data;
+    delete ii;
+}
+
+void invertedIndexSearchItemKeyTest()
+{
+    InvertedIndex *ii = new InvertedIndex();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    modifier = 4; 
+    int *index = new int[modifier];
+    for(int i=0; i<modifier; i++)
+    {
+        index[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        ii->insert(&test_data[i], &index[i%modifier], &test_data[i], compare_ints, compare_ints);
+    }
+
+    int key1 = 5;
+    int index1 = key1 % modifier;
+    int key2 = 22;
+    int index2 = key2 % modifier;
+    int index3 = key2;
+    // Trying to search an element from the index tree that includes it
+    TEST_ASSERT(ii->searchItemKey(&index1, &key1, compare_ints, compare_ints) != NULL);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(ii->searchItemKey(&index2, &key2, compare_ints, compare_ints) == NULL);
+    // Trying to search an element from an index tree that does not include it
+    TEST_ASSERT(ii->searchItemKey(&index2, &key1, compare_ints, compare_ints) == NULL);
+    // Trying to search an element from an index tree that does not exist in the inverted index
+    TEST_ASSERT(ii->searchItemKey(&index3, &key1, compare_ints, compare_ints) == NULL);
+
+
+    delete[] index;
+    delete[] test_data;
+    delete ii;
+}
+
+void invertedIndexSearchIndexKeyTest()
+{
+    InvertedIndex *ii = new InvertedIndex();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    modifier = 4; 
+    int *index = new int[modifier];
+    for(int i=0; i<modifier; i++)
+    {
+        index[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        ii->insert(&test_data[i], &test_data[i], &index[i%modifier], compare_ints, compare_ints);
+    }
+
+    // removing a node from the inverted index
+    int key1 = 5;
+    int index1 = key1 % modifier;
+    ii->remove(&index1, &key1, compare_ints, compare_ints);
+    TEST_ASSERT(ii->searchItemKey(&index1, &key1, compare_ints, compare_ints) == NULL);
+
+    delete[] index;
+    delete[] test_data;
+    delete ii;
+}
+
+void invertedIndexRemoveTest()
+{
+    InvertedIndex *ii = new InvertedIndex();
+    int* test_data = new int[20];
+
+    for(int i=0; i<20; i++)
+    {
+        test_data[i] = i;
+    }
+
+    modifier = 4; 
+    int *index = new int[modifier];
+    for(int i=0; i<modifier; i++)
+    {
+        index[i] = i;
+    }
+
+    for(int i=0; i<20; i++)
+    {
+        ii->insert(&test_data[i], &index[i%modifier], &test_data[i], compare_ints, compare_ints);
+    }
+
+    int key1 = 5;
+    int index1 = key1 % modifier;
+    int key2 = 22;
+    int index2 = key2 % modifier;
+    int index3 = key2;
+    // Trying to search an element from the index tree that includes it
+    TEST_ASSERT(ii->searchItemKey(&index1, &key1, compare_ints, compare_ints) != NULL);
+    // Trying to search an element that is not in the tree
+    TEST_ASSERT(ii->searchItemKey(&index2, &key2, compare_ints, compare_ints) == NULL);
+    // Trying to search an element from an index tree that does not include it
+    TEST_ASSERT(ii->searchItemKey(&index2, &key1, compare_ints, compare_ints) == NULL);
+    // Trying to search an element from an index tree that does not exist in the inverted index
+    TEST_ASSERT(ii->searchItemKey(&index3, &key1, compare_ints, compare_ints) == NULL);
+
+
+    delete[] index;
+    delete[] test_data;
+    delete ii;
+}
+
 /**************************************************************************
  *                                  Main                                  *
  **************************************************************************/
@@ -1304,7 +2001,7 @@ TEST_LIST = {
     // Hash Table Test
     { "Hash Insert",  insertWithoutRehashTest},
     { "Hash Rehash",  rehashTest},
-    // { "Hash Bulk Search",  bulkSearchTest},
+    { "Hash Bulk Search",  bulkSearchTest},
     // Intermediate Array
     { "Intermediate Array Search", testIntermediateArraySearch},
     { "Intermediate Array Execute Join With Foreign Relation", testExecuteJoinWithForeignRelation},
@@ -1334,5 +2031,27 @@ TEST_LIST = {
     { "AB_Tree Search Test", abTreeSearchTest},
     { "AB_Tree Search And Return Test", abTreeSearchandReturnTest},
     { "AB_Tree Remove Test", abTreeRemoveTest},
+    { "Binary Tree Insert Test", binaryTreeInsertTest},
+    { "Binary Tree Remove Test", binaryTreeRemoveTest},
+    { "Complete Binary Tree Insert Test", completeBinaryTreeInsertTest},
+    { "Complete Binary Tree Remove Test", completeBinaryTreeRemoveTest},
+    { "Binary Search Tree Insert Test", binarySearchTreeInsertTest},
+    { "Binary Search Tree Search Test", binarySearchTreeSearchTest},
+    { "Binary Search Tree Search Item Test", binarySearchTreeSearchItemTest},
+    { "Binary Search Tree Search Key Test", binarySearchTreeSearchKeyTest},
+    { "Binary Search Tree Remove Test", binarySearchTreeRemoveTest},
+    { "Binary Heap Insert Test", binaryHeapInsertTest},
+    { "Binary Heap Get Highest Priority Item Test", binaryHeapGetHighestPriorityItemTest},
+    { "Binary Heap Get Highest Priority Key Test", binaryHeapGetHighestPriorityKeyTest},
+    { "Binary Heap Remove Test", binaryHeapRemoveTest},
+    { "Red Black Tree Insert Test", redBlackTreeInsertTest},
+    { "Red Black Tree Search Test", redBlackTreeSearchTest},
+    { "Red Black Tree Search Item Test", redBlackTreeSearchItemTest},
+    { "Red Black Tree Search Key Test", redBlackTreeSearchKeyTest},
+    { "Red Black Tree Remove Test", redBlackTreeRemoveTest},
+    { "Inverted Index Insert Test", invertedIndexInsertTest},
+    { "Inverted Index Search Item Key Test", invertedIndexSearchItemKeyTest},
+    { "Inverted Index Search Index Key Test", invertedIndexSearchIndexKeyTest},
+    { "Inverted Index Remove Test", invertedIndexRemoveTest},
     { NULL, NULL }
 };

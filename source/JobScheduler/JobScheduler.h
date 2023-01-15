@@ -28,6 +28,9 @@ struct ThreadInput {
 	/* A status mutex is part of the threads' input */
 	pthread_mutex_t *status_mutex;
 
+	/* A utility mutex is part of the thread's input */
+	pthread_mutex_t *utility_mutex;
+
 	/* The job queue is part of the threads' input */
 	Queue *queue;
 
@@ -40,9 +43,10 @@ struct ThreadInput {
 		pthread_mutex_t *job_mutex,
 		pthread_mutex_t *queue_mutex,
 		pthread_mutex_t *status_mutex,
+		pthread_mutex_t *utility_mutex,
 		Queue *queue) : rank(rank), work_table(work_table), exit_var(exit_var),
 		sleep_var(sleep_var), job_mutex(job_mutex), queue_mutex(queue_mutex),
-		status_mutex(status_mutex), queue(queue) {}
+		status_mutex(status_mutex), utility_mutex(utility_mutex), queue(queue) {}
 
 };
 
@@ -82,6 +86,11 @@ private:
 	/* A mutex that will be guarding the working status table */
 	pthread_mutex_t statusMutex;
 
+	/* A mutex for user service. It can be used by the user
+	 * to lock and unlock critical sections inside user jobs
+	 */
+	pthread_mutex_t *utilityMutex;
+
 	/* Returns 'true' if there are no working threads. If at least
 	 * one thread is working on a job, the operation returns 'false'
 	 */
@@ -106,6 +115,12 @@ public:
 
 	/* Destructor */
 	~JobScheduler();
+
+	/* Getter - Returns the number of maximum available threads */
+	unsigned int getMaxThreads() const;
+
+	/* Getter - Returns the utility mutex to the user */
+	pthread_mutex_t *getUtilityMutex() const;
 
 	/* Places a new job at the end of the queue */
 	void submitJob(Job *newJob);

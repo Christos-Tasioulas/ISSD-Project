@@ -32,7 +32,8 @@ public:
         bool resizableByLoadFactor,
         double loadFactor,
         double maxAllowedSizeModifier,
-        unsigned int maxPartitionDepth);
+        unsigned int maxPartitionDepth,
+        JobScheduler *jobScheduler = NULL);
 
 /* Destructor */
     ~PartitionedHashJoin();
@@ -150,12 +151,98 @@ private:
 /* Hashes a given integer into the value of
  * its rightmost 'bitsNumForHashing' bits
  */
-    unsigned int bitReductionHash(unsigned long long integer) const;
+    static unsigned int bitReductionHash(
+        unsigned long long integer,
+        unsigned int bitsNumForHashing
+    );
 
 /* Given the address of a tuple, it hashes its
  * contents to a non-negative integer value
  */
     static unsigned int hashTuple(void *item);
+
+/* Updates the given histogram with the results of
+ * hashing the input relation within the given boundaries
+ */
+    static void createHistogram(
+        unsigned int *histogram,
+        Tuple *relation,
+        unsigned int relationStartIndex,
+        unsigned int relationEndIndex,
+        unsigned int selectedBitsNumForHashing
+    );
+
+/* Sums the contents of all the partial histograms into one histogram */
+    static void sumPartialHistograms(
+        unsigned int **partialHistograms,
+        unsigned int numPartialHistograms,
+        unsigned int *originalHistogram,
+        unsigned int histogramsSize
+    );
+
+/* A parallel method to create the histogram of a relation */
+    void parallelMethodForHistogramCreation(
+        Tuple *relation,
+        unsigned int *histogram,
+        unsigned int relationSize,
+        unsigned int histogramSize
+    );
+
+/* Reorders the tuples of the given relation.
+ *
+ * Used by 'parallelMethodForTupleReordering'.
+ */
+    static void reorderTuples(
+        Tuple *relation,
+        Tuple *reorderedRelation,
+        unsigned int *prefixSumOfRel,
+        unsigned int *elementsCounterOfRel,
+        unsigned int relationStartIndex,
+        unsigned int relationEndIndex,
+        unsigned int selectedBitsNumForHashing,
+        pthread_mutex_t *util
+    );
+
+/* A parallel method to reorder the contents of a relation */
+    void parallelMethodForTupleReordering(
+        Tuple *relation,
+        Tuple *reorderedRelation,
+        unsigned int relationSize,
+        unsigned int *prefixSumOfRel,
+        unsigned int *elementsCounterOfRel
+    );
+
+/* Joins the two buckets indicated by the 'rank' parameter */
+    static void joinBuckets(
+        unsigned int rank,
+        Tuple *leftRel,
+        Tuple *rightRel,
+        unsigned int leftRelSize,
+        unsigned int rightRelSize,
+        unsigned int *leftPrefixSum,
+        unsigned int *rightPrefixSum,
+        unsigned int bucketsNum,
+        unsigned int hopscotchBuckets,
+        unsigned int hopscotchRange,
+        bool resizableByLoadFactor,
+        double loadFactor,
+        pthread_mutex_t *util,
+        List *result,
+        bool resultHasAlreadyBeenDeposited
+    );
+
+/* A parallel method to join the buckets of two relations */
+    void parallelMethodForBucketJoining(
+        Tuple *leftRel,
+        Tuple *rightRel,
+        unsigned int leftRelSize,
+        unsigned int rightRelSize,
+        unsigned int *leftPrefixSum,
+        unsigned int *rightPrefixSum,
+        unsigned int bucketsNum,
+        List *result,
+        bool *resultHasAlreadyBeenDeposited
+    );
 
 /* Executes Building and Probing for a pair of buckets of the
  * relations 'S' and 'R'. The four indexes determine the start

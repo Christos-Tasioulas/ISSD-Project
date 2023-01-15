@@ -355,6 +355,11 @@ JobScheduler::JobScheduler(unsigned int maxThreads)
 	/* We save the given maximum amount of threads in the object */
 	this->maxThreads = maxThreads;
 
+	/* We allocate memory for the utility. This one should be in
+	 * the heap so as we can return its address to the user easily.
+	 */
+	utilityMutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+
 	/* We initialize the condition variables & mutexes of the structure */
 	cond_init(&exitConditionVariable);
 	cond_init(&sleepConditionVariable);
@@ -362,6 +367,7 @@ JobScheduler::JobScheduler(unsigned int maxThreads)
 	mutex_init(&queueMutex);
 	mutex_init(&sleepMutex);
 	mutex_init(&statusMutex);
+	mutex_init(utilityMutex);
 
 	/* We initialize the queue of the Scheduler
 	 * where the submitted jobs will be waiting
@@ -394,6 +400,7 @@ JobScheduler::JobScheduler(unsigned int maxThreads)
 			&jobMutex,
 			&queueMutex,
 			&statusMutex,
+			utilityMutex,
 			submittedJobs);
 
 		/* We create a new thread */
@@ -488,11 +495,33 @@ JobScheduler::~JobScheduler()
 	mutex_destroy(&queueMutex);
 	mutex_destroy(&sleepMutex);
 	mutex_destroy(&statusMutex);
+	mutex_destroy(utilityMutex);
+
+	/* We free the allocated memory for the utility mutex */
+	free(utilityMutex);
 
 	/* We prepare the static variable for use from another
 	 * job scheduler that may be initialized in the future
 	 */
 	timeToExit = false;
+}
+
+/************************************************************
+ * Getter - Returns the number of maximum available threads *
+ ************************************************************/
+
+unsigned int JobScheduler::getMaxThreads() const
+{
+	return maxThreads;
+}
+
+/**************************************************
+ * Getter - Returns the utility mutex to the user *
+ **************************************************/
+
+pthread_mutex_t *JobScheduler::getUtilityMutex() const
+{
+	return utilityMutex;
 }
 
 /********************************************

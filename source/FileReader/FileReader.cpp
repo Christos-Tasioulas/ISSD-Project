@@ -123,9 +123,14 @@ List *FileReader::readInitFile(const char *init_file, const char *config_file)
 
     List *relations = new List();
 
-    /* We read the desired maximum bitmap size from the config file */
-    unsigned int maxBitmapSize;
-    readMaxBitmapSize(config_file, &maxBitmapSize);
+    /* We read the desired maximum bitmap size from the config file.
+     *
+     * If no config file has been given, the size is initialized with 50000000.
+     */
+    unsigned int maxBitmapSize = 50000000;
+
+    if(config_file != NULL)
+        readMaxBitmapSize(config_file, &maxBitmapSize);
 
     /* We open the initialization file */
 

@@ -17,6 +17,9 @@ public:
 	Tuple(void *item = NULL, unsigned int rowId = 0);
 	~Tuple();
 
+/* Copy Constructor */
+	Tuple(const Tuple& other);
+
 /* Getters */
 	void *getItem() const;
 	unsigned int getRowId() const;

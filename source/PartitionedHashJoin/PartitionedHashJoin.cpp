@@ -4,6 +4,36 @@
 #include <unistd.h>
 #include "PartitionedHashJoin.h"
 
+/*************************
+ * Locks the given mutex *
+ *************************/
+
+static void lock(pthread_mutex_t *mutex)
+{
+	int lock_result = pthread_mutex_lock(mutex);
+
+	if(lock_result != 0)
+	{
+		printf("A mutex could not be locked\n");
+		printf("Reason: %s\n", strerror(lock_result));
+	}
+}
+
+/***************************
+ * Unlocks the given mutex *
+ ***************************/
+
+static void unlock(pthread_mutex_t *mutex)
+{
+	int unlock_result = pthread_mutex_unlock(mutex);
+
+	if(unlock_result != 0)
+	{
+		printf("A mutex could not be unlocked\n");
+		printf("Reason: %s\n", strerror(unlock_result));
+	}
+}
+
 /*****************************************
  * Used to print the contents of a tuple *
  *****************************************/
@@ -245,7 +275,8 @@ PartitionedHashJoin::PartitionedHashJoin(
     bool resizableByLoadFactor,
     double loadFactor,
     double maxAllowedSizeModifier,
-    unsigned int maxPartitionDepth)
+    unsigned int maxPartitionDepth,
+    JobScheduler *jobScheduler)
 {
     /* We set the value of every variable field to
      * the value provided by the constructor arguments
@@ -264,6 +295,7 @@ PartitionedHashJoin::PartitionedHashJoin(
     this->loadFactor = loadFactor;
     this->maxAllowedSizeModifier = maxAllowedSizeModifier;
     this->maxPartitionDepth = maxPartitionDepth;
+    this->jobScheduler = jobScheduler;
 
     /* An object initialized by this constructor
      * always depicts subrelations. Consequently,
@@ -418,7 +450,9 @@ void PartitionedHashJoin::displayAuxiliaryArrays(unsigned int size,
  *      rightmost 'bitsNumForHashing' bits      *
  ************************************************/
 
-unsigned int PartitionedHashJoin::bitReductionHash(unsigned long long integer) const
+unsigned int PartitionedHashJoin::bitReductionHash(
+    unsigned long long integer,
+    unsigned int bitsNumForHashing)
 {
     /* This is the final result of hashing */
     unsigned int result = 0;
@@ -510,17 +544,15 @@ void PartitionedHashJoin::probeRelations(
         return;
     }
 
+    /* We find the number of elements of each of the two buckets */
+
 	unsigned int R_tuples_num = R_end_index - R_start_index;
 	unsigned int S_tuples_num = S_end_index - S_start_index;
 
-/*
-	std::cout << "Probing: R(" << R_start_index << "," << R_end_index
-		<< ") S(" << S_start_index << "," << S_end_index << ")" << std::endl;
-*/
     /* We will start building the index of one of the relations */
 
 	HashTable *hash_table = new HashTable(hopscotchBuckets,
-			resizableByLoadFactor, loadFactor, hopscotchRange);	
+		resizableByLoadFactor, loadFactor, hopscotchRange);
 
     /* We retrieve the relational tables of 'relR' and 'relS' */
     Tuple *R_table = relR->getTuples();
@@ -689,6 +721,554 @@ void PartitionedHashJoin::probeRelations(
     delete hash_table;
 }
 
+/**********************************************************
+ *    Updates the given histogram with the results of     *
+ * hashing the input relation within the given boundaries *
+ **********************************************************/
+
+void PartitionedHashJoin::createHistogram(
+    unsigned int *histogram,
+    Tuple *relation,
+    unsigned int relationStartIndex,
+    unsigned int relationEndIndex,
+    unsigned int selectedBitsNumForHashing)
+{
+    unsigned int i;
+
+    for(i = relationStartIndex; i < relationEndIndex; i++)
+    {
+        /* We retrieve the value of the current element */
+        unsigned long long currentItem = *((unsigned long long *) relation[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
+        unsigned int hash_value = bitReductionHash(currentItem, selectedBitsNumForHashing);
+
+        /* The value of the histogram's element of the index
+        * that matches the hash value is now increased by 1,
+        * since one more element of the relational array was
+        * hashed to this value
+        */
+        histogram[hash_value]++;
+    }
+}
+
+/**********************************************************************
+ * Sums the contents of all the partial histograms into one histogram *
+ **********************************************************************/
+
+void PartitionedHashJoin::sumPartialHistograms(
+    unsigned int **partialHistograms,
+    unsigned int numPartialHistograms,
+    unsigned int *originalHistogram,
+    unsigned int histogramsSize)
+{
+    unsigned int i, j;
+
+    for(i = 0; i < histogramsSize; i++)
+    {
+        for(j = 0; j < numPartialHistograms; j++)
+            originalHistogram[i] += partialHistograms[j][i];
+    }
+}
+
+/***********************************************************
+ * A parallel method to create the histogram of a relation *
+ ***********************************************************/
+
+void PartitionedHashJoin::parallelMethodForHistogramCreation(
+    Tuple *relation,
+    unsigned int *histogram,
+    unsigned int relationSize,
+    unsigned int histogramSize)
+{
+    unsigned int maxThreads = jobScheduler->getMaxThreads();
+    unsigned int *partialHistograms[maxThreads];
+    unsigned int i, j;
+
+    for(i = 0; i < maxThreads; i++)
+    {
+        partialHistograms[i] = new unsigned int[histogramSize];
+
+        for(j = 0; j < histogramSize; j++)
+            partialHistograms[i][j] = 0;
+    }
+
+    unsigned int step = relationSize / maxThreads;
+    unsigned int leftBound = 0;
+    unsigned int rightBound = step;
+
+    HistogramJobInput *histogramJobInputs[maxThreads];
+
+    for(i = 0; i < maxThreads; i++)
+    {
+        if(i == maxThreads - 1)
+            rightBound = relationSize;
+
+        histogramJobInputs[i] = new HistogramJobInput(
+            partialHistograms[i],
+            relation,
+            leftBound,
+            rightBound,
+            bitsNumForHashing
+        );
+
+        leftBound += step;
+        rightBound += step;
+    }
+
+    Job *histogramJobs[maxThreads];
+
+    for(i = 0; i < maxThreads; i++)
+    {
+        histogramJobs[i] = new Job(createHistogram, histogramJobInputs[i], NULL, NULL, NULL, NULL);
+        jobScheduler->submitJob(histogramJobs[i]);
+    }
+
+    jobScheduler->executeAllJobs();
+    jobScheduler->waitAllTasksFinish();
+
+    sumPartialHistograms(
+        partialHistograms,
+        maxThreads,
+        histogram,
+        histogramSize
+    );
+
+    for(i = 0; i < maxThreads; i++)
+    {
+        delete histogramJobs[i];
+        delete histogramJobInputs[i];
+        delete[] partialHistograms[i];
+    }
+}
+
+/**********************************************
+ * Reorders the tuples of the given relation  *
+ *                                            *
+ * Used by 'parallelMethodForTupleReordering' *
+ **********************************************/
+
+void PartitionedHashJoin::reorderTuples(
+    Tuple *relation,
+    Tuple *reorderedRelation,
+    unsigned int *prefixSumOfRel,
+    unsigned int *elementsCounterOfRel,
+    unsigned int relationStartIndex,
+    unsigned int relationEndIndex,
+    unsigned int selectedBitsNumForHashing,
+    pthread_mutex_t *util)
+{
+    unsigned int i;
+
+    for(i = relationStartIndex; i < relationEndIndex; i++)
+    {
+        /* We retrieve the value of the current tuple */
+        unsigned long long currentItem = *((unsigned long long *) relation[i].getItem());
+
+        /* We hash that value with bit reduction hashing */
+        unsigned int hash_value = bitReductionHash(currentItem, selectedBitsNumForHashing);
+
+        /* We are about to enter a critical section. Only one thread at a time should
+         * access the 'elementsCounterOfRel' array. The implementation of the job
+         * scheduler allows us to use a utility mutex that will block threads on critical
+         * sections that we create with this mutex.
+         */
+        lock(util);
+
+        /* According to its hash value and the amount of previous
+        * items that have been hashed to the same bucket, we
+        * insert the current item to the reordered array of 'relR'
+        */
+        reorderedRelation[prefixSumOfRel[hash_value] + elementsCounterOfRel[hash_value]] = relation[i];
+
+        /* We increase the amount of inserted items in this bucket by 1 */
+        elementsCounterOfRel[hash_value]++;
+
+        /* End of critical section - we unlock the mutex */
+        unlock(util);
+    }
+}
+
+/***********************************************************
+ * A parallel method to reorder the contents of a relation *
+ ***********************************************************/
+
+void PartitionedHashJoin::parallelMethodForTupleReordering(
+    Tuple *relation,
+    Tuple *reorderedRelation,
+    unsigned int relationSize,
+    unsigned int *prefixSumOfRel,
+    unsigned int *elementsCounterOfRel)
+{
+    /* We retrieve the number of maximum available threads of the scheduler */
+    unsigned int maxThreads = jobScheduler->getMaxThreads();
+
+    /* We retrieve the utility mutex from the scheduler, which is for user service */
+    pthread_mutex_t *utilMutex = jobScheduler->getUtilityMutex();
+
+    /* Auxiliary variable (used for counting) */
+    unsigned int i;
+
+    /* Determines the amount of tuples each thread will process */
+    unsigned int step = relationSize / maxThreads;
+
+    /* The bounds of the array within which a thread may process the array */
+    unsigned int leftBound = 0;
+    unsigned int rightBound = step;
+
+    /* We define the input for each partition job */
+    PartitionJobInput *partitionJobInputs[maxThreads];
+
+    /* We create the input for each job */
+    for(i = 0; i < maxThreads; i++)
+    {
+        /* In the last itereation we take the remaining
+         * content of the array that has been left
+         */
+        if(i == maxThreads - 1)
+            rightBound = relationSize;
+
+        /* We create the next input */
+        partitionJobInputs[i] = new PartitionJobInput(
+            relation,
+            reorderedRelation,
+            prefixSumOfRel,
+            elementsCounterOfRel,
+            leftBound,
+            rightBound,
+            bitsNumForHashing,
+            utilMutex
+        );
+
+        /* We update the range for the next input object */
+        leftBound += step;
+        rightBound += step;
+    }
+
+    /* Now we will create the jobs using the above input objects */
+    Job *partitionJobs[maxThreads];
+
+    for(i = 0; i < maxThreads; i++)
+    {
+        /* We create the next job */
+        partitionJobs[i] = new Job(NULL, NULL, reorderTuples, partitionJobInputs[i], NULL, NULL);
+
+        /* We submit the job to the scheduler */
+        jobScheduler->submitJob(partitionJobs[i]);
+    }
+
+    /* We request the scheduler to execute all jobs and
+     * then sleep until all the jobs have been finished
+     */
+    jobScheduler->executeAllJobs();
+    jobScheduler->waitAllTasksFinish();
+
+    /* The jobs have been completed. We free the allocated
+     * memory for the job objects and the job input objects
+     */
+    for(i = 0; i < maxThreads; i++)
+    {
+        delete partitionJobs[i];
+        delete partitionJobInputs[i];
+    }
+}
+
+/***********************************************************
+ * Joins the two buckets indicated by the 'rank' parameter *
+ ***********************************************************/
+
+void PartitionedHashJoin::joinBuckets(
+    unsigned int rank,
+    Tuple *leftRel,
+    Tuple *rightRel,
+    unsigned int leftRelSize,
+    unsigned int rightRelSize,
+    unsigned int *leftPrefixSum,
+    unsigned int *rightPrefixSum,
+    unsigned int bucketsNum,
+    unsigned int hopscotchBuckets,
+    unsigned int hopscotchRange,
+    bool resizableByLoadFactor,
+    double loadFactor,
+    pthread_mutex_t *util,
+    List *result,
+    bool resultHasAlreadyBeenDeposited)
+{
+    /* If the result of joining these two buckets has already
+     * been deposited, we just exit immediatelly. This happens
+     * when the buckets are partitioned further into smaller
+     * buckets (we call that 'multipartitioning').
+     */
+    if(resultHasAlreadyBeenDeposited)
+        return;
+
+    /* We determine the bounds of the buckets according to the rank */
+
+    unsigned int R_start_index = leftPrefixSum[rank];
+    unsigned int S_start_index = rightPrefixSum[rank];
+    unsigned int R_end_index, S_end_index;
+
+    if(rank == bucketsNum - 1)
+        R_end_index = leftRelSize;
+
+    else
+        R_end_index = leftPrefixSum[rank + 1];
+
+    if(rank == bucketsNum - 1)
+        S_end_index = rightRelSize;
+
+    else
+        S_end_index = rightPrefixSum[rank + 1];
+
+    /* If one of the two buckets is empty, the join
+     * operation produces no result for these buckets
+     */
+    if(R_start_index >= R_end_index
+    || S_start_index >= S_end_index)
+    {
+        return;
+    }
+
+    /* We find the amount of tuples of each of the two buckets */
+
+	unsigned int R_tuples_num = R_end_index - R_start_index;
+	unsigned int S_tuples_num = S_end_index - S_start_index;
+
+    /* We will start building the index of one of the relations */
+
+	HashTable *hash_table = new HashTable(hopscotchBuckets,
+		resizableByLoadFactor, loadFactor, hopscotchRange);
+
+    /* We store the pointers in more convinient variables */
+    Tuple *R_table = leftRel;
+    Tuple *S_table = rightRel;
+
+    /* Helper variable for counting */
+    unsigned int i;
+
+	if(R_tuples_num < S_tuples_num)
+	{
+	    /* Starting from the given starting index of 'R', we place
+		 * every tuple of the 'R' table to the hash table. We keep
+		 * inserting items until we reach the given end index of 'R'
+		 */
+		for(i = R_start_index; i < R_end_index; i++)
+		{
+			hash_table->insert(&R_table[i], &R_table[i],
+				PartitionedHashJoin::hashTuple, compareTupleUserData);
+		}
+	}
+
+	else
+	{
+	    /* Starting from the given starting index of 'S', we place
+		 * every tuple of the 'S' table to the hash table. We keep
+		 * inserting items until we reach the given end index of 'S'
+		 */
+		for(i = S_start_index; i < S_end_index; i++)
+		{
+			hash_table->insert(&S_table[i], &S_table[i],
+				PartitionedHashJoin::hashTuple, compareTupleUserData);
+		}
+	}
+
+	if(R_tuples_num < S_tuples_num)
+	{
+		/* Starting from the given starting index of 'S', we search
+		 * every tuple of the 'S' table in the hash table. If we
+		 * find an item with the same value in the hash table, we
+		 * include it in the final result of the 'join' operation
+		 *
+		 * We keep searching the tuples of 'S' in the hash
+		 * table until we reach the given end index of 'S'
+		 */
+		for(i = S_start_index; i < S_end_index; i++)
+		{
+			/* We search the current tuple of 'S' in the hash table */
+
+			List *matchingKeys = hash_table->bulkSearchKeys(
+				&S_table[i], PartitionedHashJoin::hashTuple,
+                compareTupleUserData);
+
+			/* As long as the list is not empty, we do the following */
+
+			while(!matchingKeys->isEmpty())
+			{
+				/* We retrieve the current content of the head of the list */
+				Tuple *current_tuple = (Tuple *) matchingKeys->getItemInPos(1);
+
+				/* The current content of the head is removed from the list
+				 *
+				 * The next node of the head becomes the new head
+				 */
+				matchingKeys->removeFront();
+
+				/* Now we have found a tuple of 'S' and a tuple of 'R'
+				 * that have the same user data. We retrieve the row
+				 * IDs of these two tuples
+				 */
+				unsigned int R_tuple_rowId = current_tuple->getRowId();
+				unsigned int S_tuple_rowId = S_table[i].getRowId();
+
+                /* We are about to enter a critical section. Only one
+                 * thread at a time should access the 'result' lists.
+                 * We use the utility mutex of the Job Scheduler to
+                 * create critical sections inside our functions that
+                 * we give as jobs to the scheduler.
+                 */
+                lock(util);
+
+				/* We create an item that stores the pair of the above
+				 * two row IDs and we insert that item in the list
+				 */
+				result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
+
+                /* End of critical section - we unlock the mutex */
+                unlock(util);
+			}
+
+			/* Finally, we terminate the list of matching keys */
+			HashTable::terminateBulkSearchList(matchingKeys);
+		}
+	}
+
+	else
+	{
+		/* Starting from the given starting index of 'R', we search
+		 * every tuple of the 'R' table in the hash table. If we
+		 * find an item with the same value in the hash table, we
+		 * include it in the final result of the 'join' operation
+		 *
+		 * We keep searching the tuples of 'R' in the hash
+		 * table until we reach the given end index of 'R'
+		 */
+		for(i = R_start_index; i < R_end_index; i++)
+		{
+			/* We search the current tuple of 'R' in the hash table */
+
+			List *matchingKeys = hash_table->bulkSearchKeys(
+                &R_table[i], PartitionedHashJoin::hashTuple,
+                compareTupleUserData);
+
+			/* As long as the list is not empty, we do the following */
+
+			while(!matchingKeys->isEmpty())
+			{
+				/* We retrieve the current content of the head of the list */
+				Tuple *current_tuple = (Tuple *) matchingKeys->getItemInPos(1);
+
+				/* The current content of the head is removed from the list
+				 *
+				 * The next node of the head becomes the new head
+				 */
+				matchingKeys->removeFront();
+
+				/* Now we have found a tuple of 'S' and a tuple of 'R'
+				 * that have the same user data. We retrieve the row
+				 * IDs of these two tuples
+				 */
+				unsigned int S_tuple_rowId = current_tuple->getRowId();
+				unsigned int R_tuple_rowId = R_table[i].getRowId();
+
+                /* We are about to enter a critical section. Only one
+                 * thread at a time should access the 'result' lists.
+                 * We use the utility mutex of the Job Scheduler to
+                 * create critical sections inside our functions that
+                 * we give as jobs to the scheduler.
+                 */
+                lock(util);
+
+				/* We create an item that stores the pair of the above
+				 * two row IDs and we insert that item in the list
+				 */
+				result->insertLast(new RowIdPair(R_tuple_rowId, S_tuple_rowId));
+
+                /* End of critical section - we unlock the mutex */
+                unlock(util);
+			}
+
+			/* Finally, we terminate the list of matching keys */
+			HashTable::terminateBulkSearchList(matchingKeys);
+		}
+	}
+
+    /* We free the allocated memory for the hash table */
+    delete hash_table;
+}
+
+/**********************************************************
+ * A parallel method to join the buckets of two relations *
+ **********************************************************/
+
+void PartitionedHashJoin::parallelMethodForBucketJoining(
+    Tuple *leftRel,
+    Tuple *rightRel,
+    unsigned int leftRelSize,
+    unsigned int rightRelSize,
+    unsigned int *leftPrefixSum,
+    unsigned int *rightPrefixSum,
+    unsigned int bucketsNum,
+    List *result,
+    bool *resultHasAlreadyBeenDeposited)
+{
+    /* We retrieve the utility mutex from the scheduler, which is for user service */
+    pthread_mutex_t *utilMutex = jobScheduler->getUtilityMutex();
+
+    /* Auxiliary variable (used for counting) */
+    unsigned int i;
+
+    /* We define the input for each partition job */
+    JoinJobInput *joinJobInputs[bucketsNum];
+
+    for(i = 0; i < bucketsNum; i++)
+    {
+        joinJobInputs[i] = new JoinJobInput(
+            i,
+            leftRel,
+            rightRel,
+            leftRelSize,
+            rightRelSize,
+            leftPrefixSum,
+            rightPrefixSum,
+            bucketsNum,
+            hopscotchBuckets,
+            hopscotchRange,
+            resizableByLoadFactor,
+            loadFactor,
+            utilMutex,
+            result,
+            resultHasAlreadyBeenDeposited[i]
+        );
+    }
+
+    /* Now we will create the jobs using the above input objects */
+    Job *joinJobs[bucketsNum];
+
+    for(i = 0; i < bucketsNum; i++)
+    {
+        /* We create the next job */
+        joinJobs[i] = new Job(NULL, NULL, NULL, NULL, joinBuckets, joinJobInputs[i]);
+
+        /* We submit the job to the scheduler */
+        jobScheduler->submitJob(joinJobs[i]);
+    }
+
+    /* We request the scheduler to execute all jobs and
+     * then sleep until all the jobs have been finished
+     */
+    jobScheduler->executeAllJobs();
+    jobScheduler->waitAllTasksFinish();
+
+    /* The jobs have been completed. We free the allocated
+     * memory for the job objects and the job input objects
+     */
+    for(i = 0; i < bucketsNum; i++)
+    {
+        delete joinJobs[i];
+        delete joinJobInputs[i];
+    }
+}
+
 /************************************************
  * Executes the Partitioned Hash Join Algorithm *
  ************************************************/
@@ -773,22 +1353,33 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
          * indicates the amount of elements of the relational
          * array 'relR' that were hashed to the bucket 'i'
          *
-         * For each element of the array we do the following
+         * Case a job scheduler does not exist.
+         *
+         * We make the histogram serially.
          */
-        for(i = 0; i < R_numOfTuples; i++)
+        if(jobScheduler == NULL)
         {
-            /* We retrieve the value of the current element */
-            unsigned long long currentItem = *((unsigned long long *) R_table[i].getItem());
+            createHistogram(
+                R_histogram,
+                R_table,
+                0,
+                R_numOfTuples,
+                bitsNumForHashing
+            );
+        }
 
-            /* We hash that value with bit reduction hashing */
-            unsigned int hash_value = bitReductionHash(currentItem);
-
-            /* The value of the histogram's element of the index
-             * that matches the hash value is now increased by 1,
-             * since one more element of the relational array was
-             * hashed to this value
-             */
-            R_histogram[hash_value]++;
+        /* Case a job scheduler exists.
+         *
+         * We make the histogram in parallel.
+         */
+        else
+        {
+            parallelMethodForHistogramCreation(
+                R_table,
+                R_histogram,
+                R_numOfTuples,
+                R_histogramSize
+            );
         }
 
         /* We will build the histogram of the relation 'relS'
@@ -820,22 +1411,33 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
          * indicates the amount of elements of the relational
          * array 'relS' that were hashed to the bucket 'i'
          *
-         * For each element of the array we do the following
+         * Case a job scheduler does not exist.
+         *
+         * We make the histogram serially.
          */
-        for(i = 0; i < S_numOfTuples; i++)
+        if(jobScheduler == NULL)
         {
-            /* We retrieve the value of the current element */
-            unsigned long long currentItem = *((unsigned long long *) S_table[i].getItem());
+            createHistogram(
+                S_histogram,
+                S_table,
+                0,
+                S_numOfTuples,
+                bitsNumForHashing
+            );
+        }
 
-            /* We hash that value with bit reduction hashing */
-            unsigned int hash_value = bitReductionHash(currentItem);
-
-            /* The value of the histogram's element of the index
-             * that matches the hash value is now increased by 1,
-             * since one more element of the relational array was
-             * hashed to this value
-             */
-            S_histogram[hash_value]++;
+        /* Case a job scheduler exists.
+         *
+         * We make the histogram in parallel.
+         */
+        else
+        {
+            parallelMethodForHistogramCreation(
+                S_table,
+                S_histogram,
+                S_numOfTuples,
+                S_histogramSize
+            );
         }
 
         /* Now we are going to build the prefix sum arrays
@@ -938,54 +1540,90 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
         for(i = 0; i < R_histogramSize; i++)
             elementsCounter[i] = 0;
 
-        /* We start reordering the relational array 'relR' */
-
-        for(i = 0; i < R_numOfTuples; i++)
+        /* We start reordering the relational array 'relR'
+         *
+         * Case a job scheduler does not exist (we do it serially)
+         */
+        if(jobScheduler == NULL)
         {
-            /* We retrieve the value of the current tuple */
-            unsigned long long currentItem = *((unsigned long long *) R_table[i].getItem());
+            for(i = 0; i < R_numOfTuples; i++)
+            {
+                /* We retrieve the value of the current tuple */
+                unsigned long long currentItem = *((unsigned long long *) R_table[i].getItem());
 
-            /* We hash that value with bit reduction hashing */
-            unsigned int hash_value = bitReductionHash(currentItem);
+                /* We hash that value with bit reduction hashing */
+                unsigned int hash_value = bitReductionHash(currentItem, bitsNumForHashing);
 
-            /* According to its hash value and the amount of previous
-             * items that have been hashed to the same bucket, we
-             * insert the current item to the reordered array of 'relR'
-             */
-            reordered_R[prefixSum_R[hash_value] + elementsCounter[hash_value]] = R_table[i];
+                /* According to its hash value and the amount of previous
+                * items that have been hashed to the same bucket, we
+                * insert the current item to the reordered array of 'relR'
+                */
+                reordered_R[prefixSum_R[hash_value] + elementsCounter[hash_value]] = R_table[i];
 
-            /* We increase the amount of inserted items in this bucket by 1 */
-            elementsCounter[hash_value]++;
+                /* We increase the amount of inserted items in this bucket by 1 */
+                elementsCounter[hash_value]++;
+            }
+        }
+
+        /* Case a job scheduler exists (we do it in parallel) */
+
+        else
+        {
+            parallelMethodForTupleReordering(
+                R_table,
+                reordered_R,
+                R_numOfTuples,
+                prefixSum_R,
+                elementsCounter
+            );
         }
 
         /* We assign the reordered array to 'relR' and discard the previous array */
         memcpy(relR->getTuples(), reordered_R, R_numOfTuples * sizeof(Tuple));
         delete[] reordered_R;
 
-        /* We reset the contents of 'elementCounter' to zero,
+        /* We reset the contents of 'elementsCounter' to zero,
          * because we want to repeat the process for 'relS'
          */
-        for(i = 0; i < R_histogramSize; i++)
+        for(i = 0; i < S_histogramSize; i++)
             elementsCounter[i] = 0;
 
-        /* We start reordering the relational array 'relS' */
-
-        for(i = 0; i < S_numOfTuples; i++)
+        /* We start reordering the relational array 'relS'
+         *
+         * Case a job scheduler does not exist (we do it serially)
+         */
+        if(jobScheduler == NULL)
         {
-            /* We retrieve the value of the current tuple */
-            unsigned long long currentItem = *((unsigned long long *) S_table[i].getItem());
+            for(i = 0; i < S_numOfTuples; i++)
+            {
+                /* We retrieve the value of the current tuple */
+                unsigned long long currentItem = *((unsigned long long *) S_table[i].getItem());
 
-            /* We hash that value with bit reduction hashing */
-            unsigned int hash_value = bitReductionHash(currentItem);
+                /* We hash that value with bit reduction hashing */
+                unsigned int hash_value = bitReductionHash(currentItem, bitsNumForHashing);
 
-            /* According to its hash value and the amount of previous
-             * items that have been hashed to the same bucket, we
-             * insert the current item to the reordered array of 'relS'
-             */
-            reordered_S[prefixSum_S[hash_value] + elementsCounter[hash_value]] = S_table[i];
+                /* According to its hash value and the amount of previous
+                * items that have been hashed to the same bucket, we
+                * insert the current item to the reordered array of 'relS'
+                */
+                reordered_S[prefixSum_S[hash_value] + elementsCounter[hash_value]] = S_table[i];
 
-            /* We increase the amount of inserted items in this bucket by 1 */
-            elementsCounter[hash_value]++;
+                /* We increase the amount of inserted items in this bucket by 1 */
+                elementsCounter[hash_value]++;
+            }
+        }
+
+        /* Case a job scheduler exists (we do it in parallel) */
+
+        else
+        {
+            parallelMethodForTupleReordering(
+                S_table,
+                reordered_S,
+                S_numOfTuples,
+                prefixSum_S,
+                elementsCounter
+            );
         }
 
         /* We assign the reordered array to 'relS' and discard the previous array */
@@ -1058,7 +1696,8 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
                 resizableByLoadFactor,
                 loadFactor,
                 maxAllowedSizeModifier,
-                maxPartitionDepth - 1
+                maxPartitionDepth - 1,
+                jobScheduler
             );
 
             /* Here we perform the 'join' operation between the buckets */
@@ -1107,25 +1746,47 @@ RowIdRelation *PartitionedHashJoin::executeJoin()
          * to the buckets of the reordered array 'S' that have the
          * same hashing ID.
          *
-         * We skip processing the buckets that have already been
-         * processed by the mutlipartitioning algorithm just above.
+         * Case a job scheduler does not exist (we do it serially).
          */
-        for(i = 0; i < histogramSize - 1; i++)
+        if(jobScheduler == NULL)
         {
-            if(resultsHaveBeenDeposited[i] == false)
+            /* We skip processing the buckets that have already been
+             * processed by the mutlipartitioning algorithm just above.
+             */
+            for(i = 0; i < histogramSize - 1; i++)
             {
-                probeRelations(prefixSum_R[i], prefixSum_R[i+1],
-                    prefixSum_S[i], prefixSum_S[i+1], resultAsList);
+                if(resultsHaveBeenDeposited[i] == false)
+                {
+                    probeRelations(prefixSum_R[i], prefixSum_R[i+1],
+                        prefixSum_S[i], prefixSum_S[i+1], resultAsList);
+                }
+            }
+
+            /* We compare the last pair of buckets (only if it has not
+             * already been processed by the multipartitioning algorithm)
+             */
+            if(resultsHaveBeenDeposited[histogramSize - 1] == false)
+            {
+                probeRelations(prefixSum_R[i], R_numOfTuples,
+                    prefixSum_S[i], S_numOfTuples, resultAsList);
             }
         }
 
-        /* We compare the last pair of buckets (only if it has not
-         * already been processed by the multipartitioning algorithm)
-         */
-        if(resultsHaveBeenDeposited[histogramSize - 1] == false)
+        /* Case a job scheduler exists (we do it in parallel) */
+
+        else
         {
-            probeRelations(prefixSum_R[i], R_numOfTuples,
-                prefixSum_S[i], S_numOfTuples, resultAsList);
+            parallelMethodForBucketJoining(
+                relR->getTuples(),
+                relS->getTuples(),
+                R_numOfTuples,
+                S_numOfTuples,
+                prefixSum_R,
+                prefixSum_S,
+                R_histogramSize,
+                resultAsList,
+                &resultsHaveBeenDeposited[0]
+            );
         }
 
         /* This is the number of row ID pairs of the result */

@@ -25,7 +25,7 @@ void readInputFile(
  * (Table *) in each node. Each 'Table' object stores all the rows
  * and columns of a relation.
  */
-List *readInitFile(const char *init_file, const char *config_file);
+List *readInitFile(const char *init_file, const char *config_file = NULL);
 
 /* Reads the "work" file that contains all the queries that will
  * be given to the program. Every query is stored in a 'Query'
