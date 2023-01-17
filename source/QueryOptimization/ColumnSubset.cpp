@@ -151,8 +151,54 @@ ColumnIdentity *ColumnSubset::getColumnIdentityInPos(unsigned int pos) const
 
 void ColumnSubset::getNeighbors(List **neighborsList, List **neighborPredsList) const
 {
+    /* We initialize both lists */
     (*neighborsList) = new List();
     (*neighborPredsList) = new List();
+
+    /* We will traverse the list of column identities */
+    Listnode *current = columnIdentities->getHead();
+
+    /* As long as we have not reached the end of the list */
+    while(current != NULL)
+    {
+        /* We retrieve the column stored in the current node */
+        ColumnIdentity *colId = (ColumnIdentity *) current->getItem();
+
+        /* For each neighbor of the column, we examine which ones do not
+         * exist already in the subset. All those are possible successors
+         * for the next join in the subset.
+         */
+        Listnode *neighborNode = colId->getNeighbors()->getHead();
+        Listnode *neighborPredNode = colId->getNeighborPredicates()->getHead();
+
+        /* As long as we have not examined all the neighbors */
+        while(neighborNode != NULL)
+        {
+            /* We retrieve the neighbor in the current node */
+            ColumnIdentity * currentNeighbor = (ColumnIdentity *)
+                neighborNode->getItem();
+
+            /* We retrieve the corresponding join predicate */
+            PredicatesParser *currentNeighborPred = (PredicatesParser *)
+                neighborPredNode->getItem();
+
+            /* If the neighbor exists in the subset, we
+             * proceed immediatelly to the next neighbor
+             */
+            if(!exists(currentNeighbor))
+            {
+                (*neighborsList)->insertLast(currentNeighbor);
+                (*neighborPredsList)->insertLast(currentNeighborPred);
+            }
+
+            /* We proceed to the next neighbor */
+            neighborNode = neighborNode->getNext();
+            neighborPredNode = neighborPredNode->getNext();
+        }
+
+        /* We proceed to the next node */
+        current = current->getNext();
+    }
 }
 
 /********************************************************************

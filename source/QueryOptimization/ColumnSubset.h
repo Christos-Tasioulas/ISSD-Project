@@ -21,6 +21,9 @@ private:
     /* The number of tuples of the intermediate result */
     unsigned long long totalCost;
 
+    /* Returns 'true' if the given column identity exists in the subset */
+    bool exists(ColumnIdentity *colId) const;
+
 public:
 
     /* Constructor */
@@ -73,9 +76,6 @@ public:
 
     /* Frees the allocated memory for the lists built by 'getNeighbors' */
     static void freeNeighbors(List *neighborsList, List *neighborPredsList);
-
-    /* Returns 'true' if the given column identity exists in the subset */
-    bool exists(ColumnIdentity *colId) const;
 
     /* Changes the stats of the subset */
     void changeStats(

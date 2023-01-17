@@ -1481,6 +1481,37 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
 
     subsetsTree->print(printGroup, printBinaryHeapOfSubsets);
 
+    nextGroupId--;
+
+    RedBlackTree *largestCombinationsGroup = subsetsTree->
+        searchIndexKey(&nextGroupId, compareUnsignedIntegers);
+
+    ComplexItem *rootItem = (ComplexItem *)
+        largestCombinationsGroup->getRoot()->getItem();
+
+    BinaryHeap *largestSubsetsHeap = (BinaryHeap *) rootItem->getItem();
+
+    ColumnSubset *bestOrder = (ColumnSubset *)
+        largestSubsetsHeap->getHighestPriorityItem();
+
+    List *resultPredicatesOrder = bestOrder->getPredicatesOrder();
+
+    std::cout << "Best order: ";
+    resultPredicatesOrder->printFromHead(printPredicate);
+    std::cout << std::endl;
+
+    // List *remainingPreds = new List();
+
+    // searchRemainingPredsAndPlaceDuplicates(
+    //     resultPredicatesOrder, joinPreds, remainingPreds
+    // );
+
+    // result->append(resultPredicatesOrder);
+
+    // getOptimalPredicatesOrder(remainingPreds, result);
+
+    // delete remainingPreds;
+
     result->append(joinPreds);
 
     /* We free the allocated memory for the inverted index */

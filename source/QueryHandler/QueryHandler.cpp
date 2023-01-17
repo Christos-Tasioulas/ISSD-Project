@@ -169,8 +169,8 @@ void QueryHandler::addressSingleQuery(Query *query)
 
     /* We create a query optimizer for this query */
     QueryOptimizer queryOptimizer = QueryOptimizer(tables, query);
-    //queryOptimizer.printColumnsOfQuery();
-    //std::cout << "\n" << std::endl;
+    queryOptimizer.printColumnsOfQuery();
+    std::cout << "\n" << std::endl;
     //queryOptimizer.printColumnsGroupedByTableName();
     //queryOptimizer.printFilterAndJoinPredicates();
 
