@@ -349,7 +349,7 @@ void read_config_test()
 
 void read_init_file_test()
 {
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     Listnode *current = tables->getHead();
     int i = 0;
@@ -358,7 +358,7 @@ void read_init_file_test()
     while(current != NULL)
     {
         // Filename: ../input/ri.tbl
-        string filename = "../input/r" + to_string(i) + ".tbl";
+        string filename = "../input/small/r" + to_string(i) + ".tbl";
         Table *item = (Table *) current->getItem();
 
         TEST_ASSERT(compareTable(item, filename) == true);
@@ -552,7 +552,7 @@ void bulkSearchTest()
 void testIntermediateArraySearch()
 {
     // Reading initialization file
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -584,7 +584,7 @@ void testExecuteJoinWithForeignRelation()
      *  So in these tests we will compare the number of rowIDs before  *
      *                  with the number of rowIDs after                *
      *******************************************************************/
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -620,7 +620,7 @@ void testExecuteJoinWithTwoRelationsInTheArray()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -648,7 +648,7 @@ void testExecuteJoinWithRelationOfOtherArray()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
 
@@ -677,7 +677,7 @@ void testExecuteFilter()
      *                  with the number of rowIDs after                *
      *******************************************************************/
      
-    List *tables = FileReader::readInitFile("../input/small.init", "../config.txt");
+    List *tables = FileReader::readInitFile("../input/small/small.init", "../config.txt");
 
     PartitionedHashJoinInput *phji = new PartitionedHashJoinInput("../config.txt");
     IntermediateArray *ia = new IntermediateArray(2, 2, 0, 3000, '<', tables, phji);
@@ -1182,6 +1182,51 @@ void projectionsParserTest()
     TEST_ASSERT(pp.getColumn() == 5);
 }
 
+/***************************************************************************
+ *                                 Queue                                   *
+ **************************************************************************/
+
+void queueInsertTest()
+{
+    Queue *testQueue = new Queue();
+    
+    int i1 = 1;
+    int i2 = 2;
+
+    // test case this is the first item in the queue
+    testQueue->insert(&i1);
+    int item1 = *((int *)testQueue->getOldestItem());
+    TEST_ASSERT(item1 == 1);
+
+    // normal test case new items are always inserted at the end of the queue
+    testQueue->insert(&i2);
+    int item2 = *((int *)testQueue->getOldestItem());
+    TEST_ASSERT(item2 == 1);
+
+    delete testQueue;
+}
+
+void queueRemoveTest()
+{
+    Queue *testQueue = new Queue();
+
+    int i1 = 1;
+    int i2 = 2;
+
+    testQueue->insert(&i1);
+    testQueue->remove();
+    // test case we removed the first item in the queue
+    TEST_ASSERT(testQueue->isEmpty());
+
+    testQueue->insert(&i1);
+    testQueue->insert(&i2);
+    testQueue->remove();
+    int item = *((int *)testQueue->getOldestItem());
+    // normal test case, we always remove the first item in the queue
+    TEST_ASSERT(item == 2);
+
+    delete testQueue;
+}
 
 /***************************************************************************
  *                                 Trees                                   *
@@ -2026,6 +2071,9 @@ TEST_LIST = {
     // Query
     { "Predicates Parser Test", predicatesParserTest},
     { "Projections Parser Test", projectionsParserTest},
+    // Queue
+    { "Queue Insert Test", queueInsertTest},
+    { "Queue Remove Test", queueRemoveTest},
     // Trees
     { "AB_Tree Insert Test", abTreeInsertTest},
     { "AB_Tree Search Test", abTreeSearchTest},
