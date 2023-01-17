@@ -7,21 +7,27 @@
 
 ColumnSubset::ColumnSubset(
     ColumnIdentity *firstColId,
-    unsigned int minElement,
-    unsigned int maxElement,
-    unsigned int elementsNum,
-    unsigned int distinctElementsNum)
+    ColumnIdentity *neighborOfFirst,
+    PredicatesParser *predBetweenTheTwo,
+    ColumnStatistics *subsetStats)
 {
+    /* We initialize the list of columns */
     columnIdentities = new List();
+    columnIdentities->insertLast(firstColId);
+    columnIdentities->insertLast(neighborOfFirst);
 
-    subsetStats = new ColumnStatistics(
-        minElement,
-        maxElement,
-        elementsNum,
-        distinctElementsNum
-    );
+    /* We initialize the list of predicates */
+    predicatesOrder = new List();
+    predicatesOrder->insertLast(predBetweenTheTwo);
 
-    totalCost = 0;
+    /* We initialize the statistics of the subset */
+    this->subsetStats = subsetStats;
+
+    /* We initialize the cost to the estimated
+     * number of tuples of the intermediate result
+     * of join between the two given columns
+     */
+    totalCost = subsetStats->getElementsNum();
 }
 
 /**************
@@ -30,8 +36,18 @@ ColumnSubset::ColumnSubset(
 
 ColumnSubset::~ColumnSubset()
 {
+    /* We delete the stats because in the constructor
+     * the given stats were allocated with 'new' or
+     * they were changed with other stats that were
+     * allocated with 'new' as well.
+     */
     delete subsetStats;
+
+    /* Also we delete the list of column identities */
     delete columnIdentities;
+
+    /* We delete the list of predicates order as well */
+    delete predicatesOrder;
 }
 
 /**************************************************
@@ -41,6 +57,15 @@ ColumnSubset::~ColumnSubset()
 List *ColumnSubset::getColumnsIdentities() const
 {
     return columnIdentities;
+}
+
+/********************************************
+ * Getter - Returns the order of predicates *
+ ********************************************/
+
+List *ColumnSubset::getPredicatesOrder() const
+{
+    return predicatesOrder;
 }
 
 /****************************************************
@@ -69,6 +94,15 @@ unsigned long long ColumnSubset::getTotalCost() const
 void ColumnSubset::insertColumnIdentity(ColumnIdentity *colId)
 {
     columnIdentities->insertLast(colId);
+}
+
+/********************************************************
+ * Returns the most newly inserted column of the subset *
+ ********************************************************/
+
+ColumnIdentity *ColumnSubset::getLastColumn() const
+{
+    return (ColumnIdentity *) columnIdentities->getTail()->getItem();
 }
 
 /********************************************

@@ -10,6 +10,9 @@ private:
     /* A column subset is a set of column identities */
     List *columnIdentities;
 
+    /* The order of predicates that depicts the above order of columns */
+    List *predicatesOrder;
+
     /* The statistics of the intermediate array when all
      * the column identities of the subset are joined
      */
@@ -19,14 +22,13 @@ private:
     unsigned long long totalCost;
 
 public:
-    
+
     /* Constructor */
     ColumnSubset(
         ColumnIdentity *firstColId,
-        unsigned int minElement,
-        unsigned int maxElement,
-        unsigned int elementsNum,
-        unsigned int distinctElementsNum
+        ColumnIdentity *neighborOfFirst,
+        PredicatesParser *predBetweenTheTwo,
+        ColumnStatistics *subsetStats
     );
     
     // ColumnSubset(ColumnSubset *cs1, ColumnSubset *cs1);
@@ -38,6 +40,9 @@ public:
     /* Getter - Returns the list of column identities */
     List *getColumnsIdentities() const;
 
+    /* Getter - Returns the order of predicates */
+    List *getPredicatesOrder() const;
+
     /* Getter - Returns the current stats of the subset */
     ColumnStatistics *getSubsetStats() const;
 
@@ -48,6 +53,9 @@ public:
 
     /* Adds a new column identity to the subset */
     void insertColumnIdentity(ColumnIdentity *colId);
+
+    /* Returns the most newly inserted column of the subset */
+    ColumnIdentity *getLastColumn() const;
 
     /* Returns the 'pos'-th identity of the set */
     ColumnIdentity *getColumnIdentityInPos(unsigned int pos) const;

@@ -4,9 +4,35 @@
 #include "Table.h"
 #include "ColumnSubset.h"
 #include "InvertedIndex.h"
+#include "BinaryHeap.h"
 #include "B_Tree.h"
 
 class QueryOptimizer {
+
+public:
+
+    /* Constructor */
+    QueryOptimizer(List *tables, Query *query);
+
+    /* Destructor */
+    ~QueryOptimizer();
+
+    /* Returns a list of predicates in the order that is estimated most optimal */
+    List *getOptimalPredicatesOrder();
+
+    /* Frees the allocated memory for the result of 'getOptimalPredicatesOrder' */
+    void deleteOptimalPredicatesOrder(List *optimalPredicatesOrder) const;
+
+    /* Prints all the column identities taking part in the query */
+    void printColumnsOfQuery() const;
+
+    /* Prints all the column identities grouped by their table name */
+    void printColumnsGroupedByTableName() const;
+
+    /* Prints all the filter predicates and then
+     * all the join predicates of the query
+     */
+    void printFilterAndJoinPredicates() const;
 
 private:
 
@@ -31,9 +57,14 @@ private:
     List *colIdsWithRenewedStats;
 
     /* An inverted index storing all the column identities
-     * taking part in the query by their real array name
+     * taking part in the query grouped by their real array name
      */
     InvertedIndex *identitiesByRealTable;
+
+    /* An inverted index with groups of binary heaps,
+     * each containing the a column subset in every node
+     */
+    InvertedIndex *subsetsTree;
 
     /* Attempts to insert a relation with the given attributes to
      * the B-Tree. Fails if the relation already exists in the tree
@@ -52,17 +83,39 @@ private:
      * identities that belong to the same table as the given one.
      * Consequently, those will have their stats changed as well.
      */
-    void filterColumnIdentityAndTheRestInSameTable(ColumnIdentity *colId,
-        char filterOperator, unsigned int filterValue);
+    void filterColumnIdentityAndTheRestInSameTable(
+        ColumnIdentity *colId,
+        char filterOperator,
+        unsigned int filterValue);
 
     /* Applies the given filter to the given targeted column identity */
-    void updateStatsOfTargetedColumnByFilter(ColumnIdentity *colId,
-        char filterOperator, unsigned int filterValue);
+    void updateStatsOfTargetedColumnByFilter(
+        ColumnIdentity *colId,
+        char filterOperator,
+        unsigned int filterValue);
 
     /* Applies the given filter to the given non-targeted column identity */
-    void updateStatsOfNonTargetedColumnByFilter(ColumnIdentity *colId,
-        char filterOperator, unsigned int filterValue,
-        unsigned int old_fA, unsigned int new_fA);
+    void updateStatsOfNonTargetedColumnByFilter(
+        ColumnIdentity *colId,
+        char filterOperator,
+        unsigned int filterValue,
+        unsigned int old_fA,
+        unsigned int new_fA);
+
+    /* Estimates the new statistics after a join between the two given columns.
+     * The indirectly-returned stats must be deleted with 'delete' after use.
+     */
+    void updateStatsOfColumnsByJoin(
+        ColumnIdentity *leftColId,
+        ColumnIdentity *rightColId,
+        PredicatesParser *connectingPredicate,
+        ColumnStatistics **resultStatsAfterJoin
+    );
+
+    /* Appends to the 'result' all the join predicates in
+     * the 'joinPreds' list in the most optimal order
+     */
+    void getOptimalJoinsOrder(List *joinPreds, List *result);
 
     /* Given the list of relations taking part in the query and an alias,
      * we return the real name of the relation that has the given alias
@@ -94,11 +147,26 @@ private:
      */
     static int compareUnsignedIntegers(void *item1, void *item2);
 
-    /* Compares two column subsets which both consist of 1 column ID
-     * The operation uses 'compareColumnIdentities' to compare the
-     * single column identities and returns the result of the comparison
+    /* Compares two column subsets. By this function, the column
+     * subsets are considered equal if they have the same amount
+     * of column identities in them and the same column identities
+     * themselves. In other words, two subsets are considered
+     * "equal by combination" if their columns represent the same
+     * combination of columns, no matter their order in the subset.
+     *
+     * Returns 0 if the subsets are equal by the above rule.
+     * Returns 1 if 'item1' is a greater subset than 'item2'.
+     * Returns -1 if 'item2' is a greater subset than 'item1'.
      */
-    static int compareSingleSetsByColumnIds(void *item1, void *item2);
+    static int compareSubsetsByCombination(void *item1, void *item2);
+
+    /* Compares two column subsets only by their cost
+     *
+     * Returns -1 if the cost of 'item1' is lower
+     * Returns 1 if the cost of 'item1' is greater
+     * Returns 0 if the costs of the two subsets are equal
+     */
+    static int compareSubsetsByCost(void *item1, void *item2);
 
     /* Prints a column identity */
     static void printColumnIdentity(void *item);
@@ -112,6 +180,18 @@ private:
     /* Prints only one identity in the form the inverted index requires */
     static void printIdentityAndIdentity(void *item, void *itemKey);
 
+    /* Prints only the ID of a column identity */
+    static void printIdOfColumnIdentity(void *item);
+
+    /* Prints only the column identities of a column subset */
+    static void printColumnsOfSubset(void *item);
+
+    /* Prints the ID of a group in the inverted index of subsets */
+    static void printGroup(void *indexKey);
+
+    /* Prints all the subsets of a Binary Heap of subsets */
+    static void printBinaryHeapOfSubsets(void *item, void *key);
+
     /* Prints a new line (this is the context that
      * will be printed between column identities)
      */
@@ -122,39 +202,29 @@ private:
      */
     static void contextBetweenPredicates();
 
+    /* Prints beautiful context between joined identities */
+    static void contextBetweenJoinedIdentities();
+
+    /* Prints some context between two column subsets */
+    static void contextBetweenSubsets();
+
     /* Frees the allocated memory for a column identity */
     static void deleteColumnIdentity(void *item, void *key);
 
     /* Frees the allocated memory for an unsigned integer */
-    static void deleteUnsignedInteger(void *redBlackTreeItem, void *uInteger);
+    static void deleteUnsignedInteger(void *item, void *uInteger);
 
     /* Frees the allocated memory for the column statistics of an identity */
     static void deleteStatsFromColumnIdentity(void *item);
 
-public:
+    /* Frees the allocated memory for a column subset */
+    static void deleteColumnSubset(void *item, void *key);
 
-    /* Constructor */
-    QueryOptimizer(List *tables, Query *query);
+    /* Frees the allocated memory for the heaps and the subsets stored in them */
+    static void deleteHeapsOfSubsets(void *item, void *key);
 
-    /* Destructor */
-    ~QueryOptimizer();
-
-    /* Returns a list of predicates in the order that is estimated most optimal */
-    List *getOptimalPredicatesOrder();
-
-    /* Frees the allocated memory for the result of 'getOptimalPredicatesOrder' */
-    void deleteOptimalPredicatesOrder(List *optimalPredicatesOrder) const;
-
-    /* Prints all the column identities taking part in the query */
-    void printColumnsOfQuery() const;
-
-    /* Prints all the column identities grouped by their table name */
-    void printColumnsGroupedByTableName() const;
-
-    /* Prints all the filter predicates and then
-     * all the join predicates of the query
-     */
-    void printFilterAndJoinPredicates() const;
+    /* Frees the allocated memory for everything inside the tree of subsets */
+    static void deleteInvertedIndexInformation(void *item, void *key);
 
 };
 

@@ -150,6 +150,16 @@ List *ColumnIdentity::getNeighbors() const
     return neighbors;
 }
 
+/*********************************************
+ *  Getter - Returns the list of predicates  *
+ * that connect this column to its neighbors *
+ *********************************************/
+
+List *ColumnIdentity::getNeighborPredicates() const
+{
+    return neighborPredicates;
+}
+
 /********************************************
  * Getter - Returns the column's statistics *
  ********************************************/

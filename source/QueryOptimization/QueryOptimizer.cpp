@@ -79,27 +79,103 @@ int QueryOptimizer::compareUnsignedIntegers(void *item1, void *item2)
     return 0;
 }
 
-/*********************************************************************
- *   Compares two column subsets which both consist of 1 column ID   *
- *    The operation uses 'compareColumnIdentities' to compare the    *
- * single column identities and returns the result of the comparison *
- *********************************************************************/
+/***************************************************************
+ *  Compares two column subsets. By this function, the column  *
+ *  subsets are considered equal if they have the same amount  *
+ * of column identities in them and the same column identities *
+ *   themselves. In other words, two subsets are considered    *
+ * "equal by combination" if their columns represent the same  *
+ * combination of columns, no matter their order in the subset *
+ *                                                             *
+ *    Returns 0 if the subsets are equal by the above rule     *
+ *   Returns  1 if 'item1' is a greater subset than 'item2'    *
+ *   Returns -1 if 'item2' is a greater subset than 'item1'    *
+ ***************************************************************/
 
-int QueryOptimizer::compareSingleSetsByColumnIds(void *item1, void *item2)
+int QueryOptimizer::compareSubsetsByCombination(void *item1, void *item2)
 {
-    /* First we cast the items to their original type */
-    ColumnSubset *colSub1 = (ColumnSubset *) item1;
-    ColumnSubset *colSub2 = (ColumnSubset *) item2;
+    /* We cast the two given items to their original type */
+    ColumnSubset *subset_1 = (ColumnSubset *) item1;
+    ColumnSubset *subset_2 = (ColumnSubset *) item2;
 
-    /* Each subset is supposed to have only 1 column identity.
+    /* We will traverse both lists of columns */
+    Listnode *current_1 = subset_1->getColumnsIdentities()->getHead();
+    Listnode *current_2 = subset_2->getColumnsIdentities()->getHead();
+
+    /* We will compute the sum of powers of 2 to each of the column IDs.
      *
-     * We retrieve that column identity of both subsets.
+     * For example, if one subset is [2 3 5], then its sum will be
+     * 2^2 + 2^3 + 2^5 = 44. We produce this sum for both subsets.
      */
-    ColumnIdentity *colId1 = colSub1->getColumnIdentityInPos(1);
-    ColumnIdentity *colId2 = colSub2->getColumnIdentityInPos(1);
+    unsigned int sum_1 = 0;
+    unsigned int sum_2 = 0;
+    unsigned int temp = 1;
 
-    /* We return the result of the comparison of the column identities */
-    return compareColumnIdentities(colId1, colId2);
+    /* As long as we have not finished traversing the lists */
+    while((current_1 != NULL) && (current_2 != NULL))
+    {
+        /* We retrieve the columns of the current pair of nodes */
+        ColumnIdentity *colId_1 = (ColumnIdentity *) current_1->getItem();
+        ColumnIdentity *colId_2 = (ColumnIdentity *) current_2->getItem();
+
+        /* We create the next term of the first sum and add it to the sum */
+        unsigned int id_1 = colId_1->getId();
+        temp <<= id_1;
+        sum_1 += temp;
+        temp = 1;
+
+        /* We create the next term of the second sum and add it to the sum */
+        unsigned int id_2 = colId_2->getId();
+        temp <<= id_2;
+        sum_2 += temp;
+        temp = 1;
+
+        /* We proceed to the next pair of columns */
+        current_1 = current_1->getNext();
+        current_2 = current_2->getNext();
+    }
+
+    /* We return the result of the comparison between the two sums */
+    return compareUnsignedIntegers(&sum_1, &sum_2);
+}
+
+/*******************************************************
+ *   Compares two column subsets only by their cost    *
+ *                                                     *
+ *     Returns -1 if the cost of 'item1' is lower      *
+ *     Returns 1 if the cost of 'item1' is greater     *
+ * Returns 0 if the costs of the two subsets are equal *
+ *******************************************************/
+
+int QueryOptimizer::compareSubsetsByCost(void *item1, void *item2)
+{
+    /* We cast the two given items to their original type */
+    ColumnSubset *subset_1 = (ColumnSubset *) item1;
+    ColumnSubset *subset_2 = (ColumnSubset *) item2;
+
+    /* We retrieve the costs of both subsets */
+    unsigned long long cost_1 = subset_1->getTotalCost();
+    unsigned long long cost_2 = subset_2->getTotalCost();
+
+    /* Case the cost of subset '1' is greater.
+     *
+     * Then subset '1' is greater. We return 1.
+     */
+    if(cost_1 > cost_2)
+        return 1;
+
+    /* Case the cost of subset '2' is greater.
+     *
+     * Then subset '2' is greater. We return -1.
+     */
+    if(cost_1 < cost_2)
+        return -1;
+
+    /* Case the costs of the two subsets are equal.
+     *
+     * Then the subsets are equal. We return 0.
+     */
+    return 0;
 }
 
 /****************************
@@ -143,6 +219,55 @@ void QueryOptimizer::printPredicate(void *item)
     predicate->print();
 }
 
+/*******************************************
+ * Prints only the ID of a column identity *
+ *******************************************/
+
+void QueryOptimizer::printIdOfColumnIdentity(void *item)
+{
+    ColumnIdentity *colId = (ColumnIdentity *) item;
+    std::cout << colId->getId();
+}
+
+/********************************************************
+ * Prints only the column identities of a column subset *
+ ********************************************************/
+
+void QueryOptimizer::printColumnsOfSubset(void *item)
+{
+    ColumnSubset *subset = (ColumnSubset *) item;
+    List *columnIdsOfSubset = subset->getColumnsIdentities();
+
+    columnIdsOfSubset->printFromHead(
+        printIdOfColumnIdentity, contextBetweenJoinedIdentities);
+
+    std::cout << std::endl;
+}
+
+/*************************************************************
+ * Prints the ID of a group in the inverted index of subsets *
+ *************************************************************/
+
+void QueryOptimizer::printGroup(void *indexKey)
+{
+    unsigned int groupId = *((unsigned int *) indexKey);
+    std::cout << "Information of group #" << groupId << ":\n";
+    std::cout << "^^^^^^^^^^^^^^^^^^^^^^^" << std::endl;
+}
+
+/******************************************************
+ * Prints all the subsets of a Binary Heap of subsets *
+ ******************************************************/
+
+void QueryOptimizer::printBinaryHeapOfSubsets(void *item, void *key)
+{
+    BinaryHeap *subsetsHeap = (BinaryHeap *) item;
+    subsetsHeap->printItems(printColumnsOfSubset);
+
+    std::cout << "============ End of Heap ("
+        << subsetsHeap->getCounter() << " items) ============" << std::endl;
+}
+
 /***********************************************
  * Prints a new line (this is the context that *
  *  will be printed between column identities) *
@@ -163,6 +288,24 @@ void QueryOptimizer::contextBetweenPredicates()
     std::cout << ", ";
 }
 
+/******************************************************
+ * Prints beautiful context between joined identities *
+ ******************************************************/
+
+void QueryOptimizer::contextBetweenJoinedIdentities()
+{
+    std::cout << " i><i ";
+}
+
+/**************************************************
+ * Prints some context between two column subsets *
+ **************************************************/
+
+void QueryOptimizer::contextBetweenSubsets()
+{
+    std::cout << "," << std::endl;
+}
+
 /****************************************************
  * Frees the allocated memory for a column identity *
  ****************************************************/
@@ -176,7 +319,7 @@ void QueryOptimizer::deleteColumnIdentity(void *item, void *key)
  * Frees the allocated memory for an unsigned integer *
  ******************************************************/
 
-void QueryOptimizer::deleteUnsignedInteger(void *redBlackTreeItem, void *uInteger)
+void QueryOptimizer::deleteUnsignedInteger(void *item, void *uInteger)
 {
     delete (unsigned int *) uInteger;
 }
@@ -196,6 +339,50 @@ void QueryOptimizer::deleteStatsFromColumnIdentity(void *item)
     /* We free the allocated memory for the those statistics */
     delete colStats;
 }
+
+/**************************************************
+ * Frees the allocated memory for a column subset *
+ **************************************************/
+
+void QueryOptimizer::deleteColumnSubset(void *item, void *key)
+{
+    delete (ColumnSubset *) item;
+}
+
+/***************************************************************************
+ * Frees the allocated memory for the heaps and the subsets stored in them *
+ ***************************************************************************/
+
+void QueryOptimizer::deleteHeapsOfSubsets(void *item, void *key)
+{
+    /* We cast the item to its original type - It's a heap of subsets */
+    BinaryHeap *subsetsHeap = (BinaryHeap *) item;
+
+    /* We traverse the heap to delete all the subsets stored in it */
+    subsetsHeap->traverse(Postorder, deleteColumnSubset);
+
+    /* Then we delete the heap itself */
+    delete subsetsHeap;
+}
+
+/************************************************************************
+ * Frees the allocated memory for everything inside the tree of subsets *
+ ************************************************************************/
+
+ void QueryOptimizer::deleteInvertedIndexInformation(void *item, void *key)
+ {
+    /* We delete the ID of the group */
+    delete (unsigned int *) key;
+
+    /* We cast the group to its original type */
+    RedBlackTree *group = (RedBlackTree *) item;
+
+    /* We traverse the inner Red Black Tree and free all
+     * the memory for each Binary Heap stored in it and
+     * for the subsets stored in the Binary Heap
+     */
+    group->traverse(Postorder, deleteHeapsOfSubsets);
+ }
 
 /****************************************************************
  *  Attempts to insert a relation with the given attributes to  *
@@ -387,8 +574,11 @@ void QueryOptimizer::updateStatsOfTargetedColumnByFilter(
     /* We store some of the current statistics
      * that we will need for the update
      */
-    unsigned int prev_f = colId->getColumnStats()->getElementsNum();
-    unsigned int prev_d = colId->getColumnStats()->getDistinctElementsNum();
+    ColumnStatistics *stats = colId->getColumnStats();
+    unsigned int prev_l = stats->getMinElement();
+    unsigned int prev_u = stats->getMaxElement();
+    unsigned int prev_f = stats->getElementsNum();
+    unsigned int prev_d = stats->getDistinctElementsNum();
 
     /* We take different actions depending on the operator type */
 
@@ -463,12 +653,100 @@ void QueryOptimizer::updateStatsOfTargetedColumnByFilter(
 
         case '<':
         {
+            /* Statistical numbers we will use for this case */
+            unsigned int k1 = prev_l;
+            unsigned int k2 = (filterValue > prev_u) ? prev_u : filterValue;
+
+            /* Case the whole column is greater-equal
+             * than the maximum value of the filter.
+             *
+             * Then all elements will be removed
+             * with the execution of the filter.
+             */
+            if(k1 >= k2)
+            {
+                l = 0;
+                u = 0;
+                d = 0;
+                f = 0;
+            }
+
+            /* Case k1 < k2 */
+            else
+            {
+                /* In this case the lowest bound remains the same */
+                l = k1;
+
+                /* The highest bound becomes the filter value,
+                * because everything is less or equal to it
+                */
+                u = k2;
+
+                /* Case the column has only 1 distinct element */
+                if(prev_u == prev_l)
+                {
+                    d = 0;
+                    f = 0;
+                }
+
+                /* Case the column has more than 1 distinct elements */
+                else
+                {
+                    d = round((((double) (k2 - k1))/((double) (prev_u - prev_l))) * prev_d);
+                    f = round((((double) (k2 - k1))/((double) (prev_u - prev_l))) * prev_f);
+                }
+            }
+
             /* There is nothing else to do in this case */
             break;
         }
 
         case '>':
         {
+            /* Statistical numbers we will use for this case */
+            unsigned int k1 = (prev_l > filterValue) ? prev_l : filterValue;
+            unsigned int k2 = prev_u;
+
+            /* Case the whole column is lower-equal
+             * than the minimum value of the filter.
+             *
+             * Then all elements will be removed
+             * with the execution of the filter.
+             */
+            if(k1 >= k2)
+            {
+                l = 0;
+                u = 0;
+                d = 0;
+                f = 0;
+            }
+
+            /* Case k1 < k2 */
+            else
+            {
+                /* In this case the lowest bound remains the same */
+                l = k1;
+
+                /* The highest bound becomes the filter value,
+                * because everything is less or equal to it
+                */
+                u = k2;
+
+                /* Case the column has only 1 distinct element */
+                if(prev_u == prev_l)
+                {
+                    d = 0;
+                    f = 0;
+                }
+
+                /* Case the column has more than 1 distinct elements */
+                else
+                {
+                    d = round((((double) (k2 - k1))/((double) (prev_u - prev_l))) * prev_d);
+                    f = round((((double) (k2 - k1))/((double) (prev_u - prev_l))) * prev_f);
+                }
+            }
+
             /* There is nothing else to do in this case */
             break;
         }
@@ -478,7 +756,10 @@ void QueryOptimizer::updateStatsOfTargetedColumnByFilter(
     colId->setColumnStats(newStats);
 }
 
-/* Applies the given filter to the given non-targeted column identity */
+/**********************************************************************
+ * Applies the given filter to the given non-targeted column identity *
+ **********************************************************************/
+
 void QueryOptimizer::updateStatsOfNonTargetedColumnByFilter(
     ColumnIdentity *colId,
     char filterOperator,
@@ -499,58 +780,54 @@ void QueryOptimizer::updateStatsOfNonTargetedColumnByFilter(
     unsigned int prev_f = colId->getColumnStats()->getElementsNum();
     unsigned int prev_d = colId->getColumnStats()->getDistinctElementsNum();
 
-    /* We take different actions depending on the operator type */
+    /* In the case of non-targeted relations by filter, the actions
+     * we should take are the same no matter the operator of the
+     * filter ('<', '>', '='). We take these actions right below.
+     *
+     * We update the lower bound as suggested
+     */
+    l = prev_l;
 
-    switch(filterOperator)
+    /* We update the greater bound as suggested */
+    u = prev_u;
+
+    /* We update the elements num as suggested */
+    f = new_fA;
+
+    /* Case the targeted column has no elements
+     *
+     * Then all the non-targeted columns will not have either
+     */
+    if(old_fA == 0)
     {
-        case '=':
-        {
-            /* We update the lower bound as suggested */
-            l = prev_l;
+        f = 0;
+        d = 0;
+    }
 
-            /* We update the greater bound as suggested */
-            u = prev_u;
-
-            /* We update the elements num as suggested */
-            f = new_fA;
-
-            /* Case the targeted column has no elements
-             *
-             * Then all the non-targeted columns will not have either
-             */
-            if(old_fA == 0)
-            {
-                f = 0;
-                d = 0;
-            }
-
-            /* Case the targeted column has more than zero elements */
-            else
-            {
-                d = prev_d * round(1 - pow(1 -
-                    ((double) new_fA)/((double) old_fA),
-                    ((double) prev_f)/((double) prev_d)));
-            }
-
-            /* There is nothing else to do in this case */
-            break;
-        }
-
-        case '<':
-        {
-            /* There is nothing else to do in this case */
-            break;
-        }
-
-        case '>':
-        {
-            /* There is nothing else to do in this case */
-            break;
-        }
+    /* Case the targeted column has more than zero elements */
+    else
+    {
+        d = prev_d * round(1 - pow(1 -
+            ((double) new_fA)/((double) old_fA),
+            ((double) prev_f)/((double) prev_d)));
     }
 
     ColumnStatistics *newStats = new ColumnStatistics(l, u, f, d);
     colId->setColumnStats(newStats);
+}
+
+/***************************************************************************
+ * Estimates the new statistics after a join between the two given columns *
+ *  The indirectly-returned stats must be deleted with 'delete' after use  *
+ ***************************************************************************/
+
+void QueryOptimizer::updateStatsOfColumnsByJoin(
+    ColumnIdentity *leftColId,
+    ColumnIdentity *rightColId,
+    PredicatesParser *connectingPredicate,
+    ColumnStatistics **resultStatsAfterJoin)
+{
+    (*resultStatsAfterJoin) = new ColumnStatistics(0, 0, 0, 0);
 }
 
 /***************
@@ -825,11 +1102,189 @@ List *QueryOptimizer::getOptimalPredicatesOrder()
         currentNode = currentNode->getNext();
     }
 
+    /* We place in the result list all the filter predicates first.
+     * It's most optimal to have those executed first rather than
+     * any join predicate. The order of the filter predicates does
+     * not matter so much. We take their default order in the query.
+     */
     result->append(filterPreds);
-    result->append(joinPreds);
+
+    /* Then we append to the result list all the join predicates in
+     * the most optimal order with the 'getOptimalJoinsOrder' operation.
+     */
+    getOptimalJoinsOrder(joinPreds, result);
 
     /* We return the final result */
     return result;
+}
+
+/******************************************************
+ * Appends to the 'result' all the join predicates in *
+ *   the 'joinPreds' list in the most optimal order   *
+ ******************************************************/
+
+void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
+{
+    /* If there are no join predicates, we simply return */
+    if(joinPreds->getCounter() == 0)
+        return;
+
+    /* We initialize the tree of the subsets we will create */
+    subsetsTree = new InvertedIndex();
+
+    /* We place all the column identities in a
+     * list temporarily for a linear traversal
+     */
+    colIdsForParsing = new List();
+    columnIdentitiesTree->traverse(Preorder, placeColIdsInList);
+
+    /* We will traverse the list of columns from the head */
+    Listnode *currentNode = colIdsForParsing->getHead();
+
+    /* As long as we have not finished traversing the list */
+    while(currentNode != NULL)
+    {
+        /* We retrieve the column stored in the current node */
+        ColumnIdentity *colId = (ColumnIdentity *) currentNode->getItem();
+
+        /* We retrieve the neighbors of the column */
+        List *neighbors = colId->getNeighbors();
+
+        /* We also retrieve the list of neighbor predicates */
+        List *neighborPreds = colId->getNeighborPredicates();
+
+        /* We will traverse the list of neighbors from the head */
+        Listnode *currentNeighborNode = neighbors->getHead();
+
+        /* We will also traverse the list of neighbor preds from the head */
+        Listnode *currentNeighborPredicateNode = neighborPreds->getHead();
+
+        /* As long as we have not finished traversing the list.
+         *
+         * The two lists have the same number of nodes.
+         */
+        while(currentNeighborNode != NULL)
+        {
+            /* We retrieve the neighbor stored in the current node */
+            ColumnIdentity *neighborColId = (ColumnIdentity *)
+                currentNeighborNode->getItem();
+
+            /* We retrieve the neighbor pred stored in the current node */
+            PredicatesParser *neighborPred = (PredicatesParser *)
+                currentNeighborPredicateNode->getItem();
+
+            printIdOfColumnIdentity(colId);
+            std::cout << " & ";
+            printIdOfColumnIdentity(neighborColId);
+            std::cout << std::endl;
+
+            /* This variable will point to the result stats after join */
+            ColumnStatistics *statsAfterJoin;
+
+            /* We find the new stats after join */
+            updateStatsOfColumnsByJoin(colId, neighborColId,
+                neighborPred, &statsAfterJoin);
+
+            /* We create a new subset */
+            ColumnSubset *newSubset = new ColumnSubset(
+                colId, neighborColId, neighborPred, statsAfterJoin
+            );
+
+            /* We search for group #2 in the tree, since
+             * the subset we created has 2 columns
+             */
+            unsigned int group_2_id = 2;
+
+            RedBlackTree *group_2 = subsetsTree->searchIndexKey(
+                &group_2_id, compareUnsignedIntegers);
+
+            /* Case 1: Group #2 does not exist.
+             * ^^^^^^
+             * We create the group and insert it in the tree.
+             */
+            if(group_2 == NULL)
+            {
+                std::cout << "Created a new group" << std::endl;
+                /* We create the key for group 2 */
+                unsigned int *new_group_2_id = new unsigned int(2);
+
+                /* We place our first heap in the group */
+                BinaryHeap *new_2_combination = new BinaryHeap(MINHEAP);
+
+                /* We insert the new subset in the heap */
+                new_2_combination->insert(newSubset, newSubset,
+                    compareSubsetsByCost);
+
+                /* We insert the heap in the group */
+                subsetsTree->insert(
+                    new_2_combination,
+                    new_group_2_id,
+                    newSubset,
+                    compareUnsignedIntegers,
+                    compareSubsetsByCombination
+                );
+            }
+
+            /* Case 2: Group #2 exists. 
+             * ^^^^^^
+             * We search for the proper heap and place the new subset there.
+             * If the heap with combinations of this subset does not exist,
+             * we create a new heap and insert it in group #2.
+             */
+            else
+            {
+                /* We search for the heap of this combination */
+                BinaryHeap *combinationOfTheseTwoCols =
+                    (BinaryHeap *) subsetsTree->searchItemKey(
+                    &group_2_id,
+                    newSubset,
+                    compareUnsignedIntegers,
+                    compareSubsetsByCombination
+                );
+
+                /* If it does not exist, we create it */
+                if(combinationOfTheseTwoCols == NULL)
+                {
+                    std::cout << "Creating a new heap in existing group" << std::endl;
+                    combinationOfTheseTwoCols = new BinaryHeap(MINHEAP);
+
+                    /* We insert the heap in the group */
+                    subsetsTree->insert(
+                        combinationOfTheseTwoCols,
+                        &group_2_id,
+                        newSubset,
+                        compareUnsignedIntegers,
+                        compareSubsetsByCombination
+                    );
+                }
+
+                else
+                    std::cout << "Entering an existing heap of the group" << std::endl;
+
+                /* We insert the new ordering of the two columns in the heap */
+                combinationOfTheseTwoCols->insert(newSubset,
+                    newSubset, compareSubsetsByCost);
+            }
+
+            /* We proceed to the next pair of nodes */
+            currentNeighborNode = currentNeighborNode->getNext();
+            currentNeighborPredicateNode = currentNeighborPredicateNode->getNext();
+        }
+
+        /* We proceed to the next node */
+        currentNode = currentNode->getNext();
+    }
+
+    /* We free the allocated memory for the list of column identities */
+    delete colIdsForParsing;
+
+    subsetsTree->print(printGroup, printBinaryHeapOfSubsets);
+
+    result->append(joinPreds);
+
+    /* We free the allocated memory for the inverted index */
+    subsetsTree->traverse(Postorder, deleteInvertedIndexInformation);
+    delete subsetsTree;
 }
 
 /****************************************************************************

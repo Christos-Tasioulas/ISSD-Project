@@ -85,6 +85,11 @@ public:
     /* Getter - Returns the neighbors of the column identity */
     List *getNeighbors() const;
 
+    /* Getter - Returns the list of predicates
+     * that connect this column to its neighbors
+     */
+    List *getNeighborPredicates() const;
+
     /* Getter - Returns the column's statistics */
     ColumnStatistics *getColumnStats() const; 
 
