@@ -30,9 +30,14 @@ public:
         PredicatesParser *predBetweenTheTwo,
         ColumnStatistics *subsetStats
     );
-    
-    // ColumnSubset(ColumnSubset *cs1, ColumnSubset *cs1);
-    // ColumnSubset(List* columns);
+
+    /* Constructor */
+    ColumnSubset(
+        ColumnSubset *existingSubset,
+        ColumnIdentity *nextColId,
+        PredicatesParser *predBetweenLastAndNext,
+        ColumnStatistics *newStats
+    );
 
     /* Destructor */
     ~ColumnSubset();
@@ -59,6 +64,18 @@ public:
 
     /* Returns the 'pos'-th identity of the set */
     ColumnIdentity *getColumnIdentityInPos(unsigned int pos) const;
+
+    /* Updates the given 'neighborsList' with all the available column identities
+     * that can be joined to the subset and the 'neighborPredsList' with the
+     * corresponding join predicates that connect these columns with the set
+     */
+    void getNeighbors(List **neighborsList, List **neighborPredsList) const;
+
+    /* Frees the allocated memory for the lists built by 'getNeighbors' */
+    static void freeNeighbors(List *neighborsList, List *neighborPredsList);
+
+    /* Returns 'true' if the given column identity exists in the subset */
+    bool exists(ColumnIdentity *colId) const;
 
     /* Changes the stats of the subset */
     void changeStats(

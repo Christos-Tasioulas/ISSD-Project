@@ -112,6 +112,17 @@ private:
         ColumnStatistics **resultStatsAfterJoin
     );
 
+    /* Estimates the new statistics after a join between the given join tree
+     * and the given column identity. The indirectly-returned stats must be
+     * deleted with 'delete' after use.
+     */
+    void updateStatsOfJoinTreeAndColumnByJoin(
+        ColumnSubset *joinTree,
+        ColumnIdentity *colId,
+        PredicatesParser *connectingPredicate,
+        ColumnStatistics **resultStatsAfterJoin
+    );
+
     /* Appends to the 'result' all the join predicates in
      * the 'joinPreds' list in the most optimal order
      */
@@ -130,6 +141,11 @@ private:
 
     /* Places all the column identities of a structure in the static list */
     static void placeColIdsInList(void *item, void *key);
+
+    /* Used to traverse a group of Binary Heaps of subsets and places the
+     * subset in the root of each binary heap in a static helper list
+     */
+    static void placeSubsetsInList(void *item, void *key);
 
     /* Compares two column identities
      *

@@ -108,6 +108,9 @@ public:
     /* Compares the column identity to another column identities */
     int compare(ColumnIdentity *other) const;
 
+    /* Resets the counter of column IDs to zero */
+    static void resetIdCounter();
+
 };
 
 #endif

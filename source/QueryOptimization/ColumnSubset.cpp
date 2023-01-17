@@ -30,6 +30,35 @@ ColumnSubset::ColumnSubset(
     totalCost = subsetStats->getElementsNum();
 }
 
+/***************
+ * Constructor *
+ ***************/
+
+ColumnSubset::ColumnSubset(
+    ColumnSubset *existingSubset,
+    ColumnIdentity *nextColId,
+    PredicatesParser *predBetweenLastAndNext,
+    ColumnStatistics *newStats)
+{
+    /* We initialize the list of columns */
+    columnIdentities = new List();
+    columnIdentities->append(existingSubset->columnIdentities);
+    columnIdentities->insertLast(nextColId);
+
+    /* We initialize the list of predicates */
+    predicatesOrder = new List();
+    predicatesOrder->append(existingSubset->predicatesOrder);
+    predicatesOrder->insertLast(predBetweenLastAndNext);
+
+    /* We initialize the statistics of the subset */
+    this->subsetStats = newStats;
+
+    /* The cost of the new subset is the cost of the previously existing subset plus
+     * the cost of the intermediate result of join between the subset and 'nextColId'
+     */
+    totalCost = existingSubset->subsetStats->getElementsNum() + newStats->getElementsNum();
+}
+
 /**************
  * Destructor *
  **************/
@@ -114,6 +143,28 @@ ColumnIdentity *ColumnSubset::getColumnIdentityInPos(unsigned int pos) const
     return (ColumnIdentity *) columnIdentities->getItemInPos(pos);
 }
 
+/******************************************************************************
+ * Updates the given 'neighborsList' with all the available column identities *
+ *   that can be joined to the subset and the 'neighborPredsList' with the    *
+ *   corresponding join predicates that connect these columns with the set    *
+ ******************************************************************************/
+
+void ColumnSubset::getNeighbors(List **neighborsList, List **neighborPredsList) const
+{
+    (*neighborsList) = new List();
+    (*neighborPredsList) = new List();
+}
+
+/********************************************************************
+ * Frees the allocated memory for the lists built by 'getNeighbors' *
+ ********************************************************************/
+
+void ColumnSubset::freeNeighbors(List *neighborsList, List *neighborPredsList)
+{
+    delete neighborsList;
+    delete neighborPredsList;
+}
+
 /***********************************
  * Changes the stats of the subset *
  ***********************************/
@@ -129,6 +180,49 @@ void ColumnSubset::changeStats(
     subsetStats->setElementsNum(newElementsNum);
     subsetStats->setDistinctElementsNum(newDistinctElementsNum);
 }
+
+/********************************************************************
+ * Returns 'true' if the given column identity exists in the subset *
+ ********************************************************************/
+
+bool ColumnSubset::exists(ColumnIdentity *colId) const
+{
+    /* We retrieve the ID of the given column identity */
+    unsigned int idOfCol = colId->getId();
+
+    /* We will traverse the list of column identities of the set */
+    Listnode *currentNode = columnIdentities->getHead();
+
+    /* As long as we have not finished traversing the list */
+    while(currentNode != NULL)
+    {
+        /* We retrieve the column identity stored in the current node */
+        ColumnIdentity *nextColId = (ColumnIdentity *) currentNode->getItem();
+
+        /* If the ID of the current column matches the given one,
+         * the given column exists in the set, so we return 'true'
+         */
+        if(nextColId->getId() == idOfCol)
+            return true;
+
+        /* We proceed to the next node */
+        currentNode = currentNode->getNext();
+    }
+
+    /* If this part is reached, that means no column identity
+     * with the same ID as the given one was found in the subset.
+     * Consequently, the given column does not exist in the set.
+     * In this case, we return 'false'.
+     */
+    return false;
+}
+
+
+
+
+
+
+
 
 /*
 

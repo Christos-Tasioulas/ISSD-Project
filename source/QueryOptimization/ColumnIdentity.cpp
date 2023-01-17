@@ -241,3 +241,12 @@ int ColumnIdentity::compare(ColumnIdentity *other) const
     /* Case this table is greater than the other */
     return 1;
 }
+
+/********************************************
+ * Resets the counter of column IDs to zero *
+ ********************************************/
+
+void ColumnIdentity::resetIdCounter()
+{
+    idCounter = 0;
+}

@@ -9,6 +9,13 @@
 
 static List *colIdsForParsing;
 
+/******************************************************************
+ *  An auxiliary static list that stores the best column subsets  *
+ * of a specific group of Binary Heaps for building the rest tree *
+ ******************************************************************/
+
+static List *subsetsForParsing;
+
 /**********************************************************************
  * Given the list of relations taking part in the query and an alias, *
  *  we return the real name of the relation that has the given alias  *
@@ -39,6 +46,23 @@ void QueryOptimizer::placeColIdsInList(void *item, void *key)
 {
     ColumnIdentity *colId = (ColumnIdentity *) item;
     colIdsForParsing->insertLast(colId);
+}
+
+/**********************************************************************
+ * Used to traverse a group of Binary Heaps of subsets and places the *
+ *   subset in the root of each binary heap in a static helper list   *
+ **********************************************************************/
+
+void QueryOptimizer::placeSubsetsInList(void *item, void *key)
+{
+    /* First we cast the item to its original type */
+    BinaryHeap *subsetsHeap = (BinaryHeap *) item;
+
+    /* We retrieve the best order of all the orders in the heap */
+    ColumnSubset *bestOrder = (ColumnSubset *) subsetsHeap->getHighestPriorityItem();
+
+    /* We insert the above best order in the list of subsets */
+    subsetsForParsing->insertLast(bestOrder);
 }
 
 /************************************************************
@@ -830,6 +854,21 @@ void QueryOptimizer::updateStatsOfColumnsByJoin(
     (*resultStatsAfterJoin) = new ColumnStatistics(0, 0, 0, 0);
 }
 
+/*************************************************************************
+ * Estimates the new statistics after a join between the given join tree *
+ * and the given column identity. The indirectly-returned stats must be  *
+ *                    deleted with 'delete' after use                    *
+ *************************************************************************/
+
+void QueryOptimizer::updateStatsOfJoinTreeAndColumnByJoin(
+    ColumnSubset *joinTree,
+    ColumnIdentity *colId,
+    PredicatesParser *connectingPredicate,
+    ColumnStatistics **resultStatsAfterJoin)
+{
+    (*resultStatsAfterJoin) = new ColumnStatistics(0, 0, 0, 0);
+}
+
 /***************
  * Constructor *
  ***************/
@@ -1032,6 +1071,9 @@ QueryOptimizer::~QueryOptimizer()
     /* We free the allocated memory for the B-Tree */
     columnIdentitiesTree->traverse(Postorder, deleteColumnIdentity);
     delete columnIdentitiesTree;
+
+    /* We reset the counter of IDs for the next query */
+    ColumnIdentity::resetIdCounter();
 }
 
 /****************************************************************************
@@ -1159,9 +1201,9 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
         /* We will also traverse the list of neighbor preds from the head */
         Listnode *currentNeighborPredicateNode = neighborPreds->getHead();
 
-        /* As long as we have not finished traversing the list.
+        /* The two lists have the same number of nodes
          *
-         * The two lists have the same number of nodes.
+         * As long as we have not finished traversing the list
          */
         while(currentNeighborNode != NULL)
         {
@@ -1172,11 +1214,6 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
             /* We retrieve the neighbor pred stored in the current node */
             PredicatesParser *neighborPred = (PredicatesParser *)
                 currentNeighborPredicateNode->getItem();
-
-            printIdOfColumnIdentity(colId);
-            std::cout << " & ";
-            printIdOfColumnIdentity(neighborColId);
-            std::cout << std::endl;
 
             /* This variable will point to the result stats after join */
             ColumnStatistics *statsAfterJoin;
@@ -1204,7 +1241,6 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
              */
             if(group_2 == NULL)
             {
-                std::cout << "Created a new group" << std::endl;
                 /* We create the key for group 2 */
                 unsigned int *new_group_2_id = new unsigned int(2);
 
@@ -1245,7 +1281,6 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
                 /* If it does not exist, we create it */
                 if(combinationOfTheseTwoCols == NULL)
                 {
-                    std::cout << "Creating a new heap in existing group" << std::endl;
                     combinationOfTheseTwoCols = new BinaryHeap(MINHEAP);
 
                     /* We insert the heap in the group */
@@ -1257,9 +1292,6 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
                         compareSubsetsByCombination
                     );
                 }
-
-                else
-                    std::cout << "Entering an existing heap of the group" << std::endl;
 
                 /* We insert the new ordering of the two columns in the heap */
                 combinationOfTheseTwoCols->insert(newSubset,
@@ -1277,6 +1309,175 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
 
     /* We free the allocated memory for the list of column identities */
     delete colIdsForParsing;
+
+    /* Now we will start building the rest groups */
+    unsigned int nextGroupId = 2;
+
+    /* As long as a new group is created by the
+     * following actions, we keep repeating them
+     */
+    while(1)
+    {
+        /* We search for the next group */
+        RedBlackTree *nextGroup = subsetsTree->searchIndexKey(
+            &nextGroupId, compareUnsignedIntegers);
+
+        /* If no group was created in the previous loop, we exit */
+        if(nextGroup == NULL)
+            break;
+
+        /* We place the best ordering of each combination of the group in a list */
+        subsetsForParsing = new List();
+        nextGroup->traverse(Inorder, placeSubsetsInList);
+
+        /* We will traverse the list of subsets from the head */
+        Listnode *currentNode = subsetsForParsing->getHead();
+
+        /* As long as we have not finished traversing the list */
+        while(currentNode != NULL)
+        {
+            /* We retrieve the subset (best ordering) stored in the current node */
+            ColumnSubset *currentSubset = (ColumnSubset *)
+                currentNode->getItem();
+
+            /* We retrieve the last column that joined the set */
+            //ColumnIdentity *lastColumn = currentSubset->getLastColumn();
+
+            /* We retrieve the neighbors of the column */
+            //List *neighbors = lastColumn->getNeighbors();
+
+            /* We also retrieve the list of neighbor predicates */
+            //List *neighborPreds = lastColumn->getNeighborPredicates();
+
+            List *neighbors, *neighborPreds;
+            currentSubset->getNeighbors(&neighbors, &neighborPreds);
+
+            /* We will traverse the list of neighbors from the head */
+            Listnode *currentNeighborNode = neighbors->getHead();
+
+            /* We will also traverse the list of neighbor preds from the head */
+            Listnode *currentNeighborPredicateNode = neighborPreds->getHead();
+
+            /* The two lists have the same number of nodes
+             *
+             * As long as we have not finished traversing the list
+             */
+            while(currentNeighborNode != NULL)
+            {
+                /* We retrieve the neighbor stored in the current node */
+                ColumnIdentity *neighborColId = (ColumnIdentity *)
+                    currentNeighborNode->getItem();
+
+                /* We retrieve the neighbor pred stored in the current node */
+                PredicatesParser *neighborPred = (PredicatesParser *)
+                    currentNeighborPredicateNode->getItem();
+
+                /* This variable will point to the result stats after join */
+                ColumnStatistics *statsAfterJoin;
+
+                /* We find the new stats after join */
+                updateStatsOfJoinTreeAndColumnByJoin(currentSubset,
+                    neighborColId, neighborPred, &statsAfterJoin);
+
+                /* We create a new subset by placing the neighbor at the
+                 * end, while also passing the new stats to the contructor
+                 */
+                ColumnSubset *newSubset = new ColumnSubset(
+                    currentSubset, neighborColId, neighborPred, statsAfterJoin
+                );
+
+                /* We search for the next group in the tree */
+                unsigned int nextId = nextGroupId + 1;
+
+                RedBlackTree *group_i = subsetsTree->searchIndexKey(
+                    &nextId, compareUnsignedIntegers);
+
+                /* Case 1: Group #i does not exist.
+                 * ^^^^^^
+                 * We create the group and insert it in the tree.
+                 */
+                if(group_i == NULL)
+                {
+                    /* We create the key for group 2 */
+                    unsigned int *new_group_i_id = new unsigned int(nextId);
+
+                    /* We place our first heap in the group */
+                    BinaryHeap *new_i_combination = new BinaryHeap(MINHEAP);
+
+                    /* We insert the new subset in the heap */
+                    new_i_combination->insert(newSubset, newSubset,
+                        compareSubsetsByCost);
+
+                    /* We insert the heap in the group */
+                    subsetsTree->insert(
+                        new_i_combination,
+                        new_group_i_id,
+                        newSubset,
+                        compareUnsignedIntegers,
+                        compareSubsetsByCombination
+                    );
+                }
+
+                /* Case 2: Group #i exists. 
+                 * ^^^^^^
+                 * We search for the proper heap and place the new subset there.
+                 * If the heap with combinations of this subset does not exist,
+                 * we create a new heap and insert it in group #i.
+                 */
+                else
+                {
+                    /* We search for the heap of this combination */
+                    BinaryHeap *combinationOfTheseCols =
+                        (BinaryHeap *) subsetsTree->searchItemKey(
+                        &nextId,
+                        newSubset,
+                        compareUnsignedIntegers,
+                        compareSubsetsByCombination
+                    );
+
+                    /* If it does not exist, we create it */
+                    if(combinationOfTheseCols == NULL)
+                    {
+                        combinationOfTheseCols = new BinaryHeap(MINHEAP);
+
+                        /* We insert the heap in the group */
+                        subsetsTree->insert(
+                            combinationOfTheseCols,
+                            &nextId,
+                            newSubset,
+                            compareUnsignedIntegers,
+                            compareSubsetsByCombination
+                        );
+                    }
+
+                    /* We insert the new ordering of the two columns in the heap */
+                    combinationOfTheseCols->insert(newSubset,
+                        newSubset, compareSubsetsByCost);
+                }
+
+                /* We proceed to the next neighbor */
+                currentNeighborNode = currentNeighborNode->getNext();
+
+                /* We proceed to the next neighbor predicate */
+                currentNeighborPredicateNode =
+                    currentNeighborPredicateNode->getNext();
+            }
+
+            /* We free the allocated memory for the neighbors
+             * list and the neighbor predicates list
+             */
+            ColumnSubset::freeNeighbors(neighbors, neighborPreds);
+
+            /* We proceed to the next node */
+            currentNode = currentNode->getNext();
+        }
+
+        /* We free the allocated memory for the list of subsets */
+        delete subsetsForParsing;
+
+        /* We will traverse the next group in the next loop */
+        nextGroupId++;
+    }
 
     subsetsTree->print(printGroup, printBinaryHeapOfSubsets);
 
