@@ -1341,6 +1341,115 @@ void abTreeRemoveTest()
     delete[] testArray;
 }
 
+void bTreeInsertTest()
+{
+    B_Tree *testTree = new B_Tree(5);
+    int_data = new int[20]; 
+    int* testArray = new int[20];
+
+    for (int i = 0; i < 20; i++)
+    {
+        testArray[i] = i;
+    }
+
+    for (int i = 0; i < 20; i++)
+    {
+        bool *insertionWasSuccessful = new bool();
+        testTree->insert(&testArray[i], &testArray[i], compare_ints, insertionWasSuccessful);
+        TEST_ASSERT(*insertionWasSuccessful == true);
+        int_data[i] = i;
+        delete insertionWasSuccessful;
+    }
+
+    counter = 0;
+    modifier = 1;
+    testTree->traverse(Inorder, test_compare);
+
+    delete testTree;
+    delete[] int_data;
+    delete[] testArray;
+}
+
+void bTreeSearchTest()
+{
+    B_Tree * testTree = new B_Tree(5);
+    int* testArray = new int[20];
+
+    for (int i = 0; i < 20; i++)
+    {
+        testArray[i] = i;
+    }
+
+    for (int i = 0; i < 20; i++)
+    {
+        testTree->insert(&testArray[i], &testArray[i], compare_ints, NULL);
+    }
+
+    for(int i = 0; i < 20; i++)
+    {
+        TEST_ASSERT(testTree->search(&testArray[i], compare_ints) == true);
+    }
+
+    delete testTree;
+    delete[] testArray;
+}
+
+void bTreeSearchandReturnTest()
+{
+    B_Tree * testTree = new B_Tree(5);
+    int* testArray = new int[20];
+
+    for (int i = 0; i < 20; i++)
+    {
+        testArray[i] = i;
+    }
+
+    for (int i = 0; i < 20; i++)
+    {
+        testTree->insert(&testArray[i], &testArray[i], compare_ints, NULL);
+    }
+
+    for(int i = 0; i < 20; i++)
+    {
+        void *retrievedItem, *retrievedKey;
+        TEST_ASSERT(testTree->searchAndRetrieve(&testArray[i], compare_ints, &retrievedItem, &retrievedKey) == true);
+        int key = *(int*)retrievedKey;
+        int value = *(int*)retrievedItem;
+        TEST_ASSERT(key == testArray[i]);
+        TEST_ASSERT(value == testArray[i]);
+    }
+
+    delete testTree;
+    delete[] testArray;
+}
+
+void bTreeRemoveTest()
+{
+    B_Tree * testTree = new B_Tree(5);
+    int* testArray = new int[20];
+
+    for (int i = 0; i < 20; i++)
+    {
+        testArray[i] = i;
+    }
+
+    for (int i = 0; i < 20; i++)
+    {
+        testTree->insert(&testArray[i], &testArray[i], compare_ints, NULL);
+    }
+
+    bool *removalWasSuccessful = new bool;
+    int removed = 13;
+    testTree->remove(&removed, compare_ints, removalWasSuccessful);
+    TEST_ASSERT(*removalWasSuccessful == true);
+    TEST_ASSERT(testTree->search(&testArray[13], compare_ints) == false);
+    TEST_ASSERT(testTree->getCounter() == 19);
+
+    delete removalWasSuccessful;
+    delete testTree;
+    delete[] testArray;
+}
+
 void binaryTreeInsertTest()
 {
     BinaryTree *tree = new BinaryTree();
@@ -2079,6 +2188,10 @@ TEST_LIST = {
     { "AB_Tree Search Test", abTreeSearchTest},
     { "AB_Tree Search And Return Test", abTreeSearchandReturnTest},
     { "AB_Tree Remove Test", abTreeRemoveTest},
+    { "B_Tree Insert Test", bTreeInsertTest},
+    { "B_Tree Search Test", bTreeSearchTest},
+    { "B_Tree Search And Return Test", bTreeSearchandReturnTest},
+    { "B_Tree Remove Test", bTreeRemoveTest},
     { "Binary Tree Insert Test", binaryTreeInsertTest},
     { "Binary Tree Remove Test", binaryTreeRemoveTest},
     { "Complete Binary Tree Insert Test", completeBinaryTreeInsertTest},
