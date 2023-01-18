@@ -70,6 +70,9 @@ public:
 	/* Returns 'true' if the right part of the predicate is a constant */
 	bool hasConstant() const;
 
+	/* Returns 'true' if this predicate and 'other' have the same attributes */
+	bool equals(PredicatesParser *other) const;
+
 	/* Prints the predicate */
 	void print() const;
 

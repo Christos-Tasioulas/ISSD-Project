@@ -56,7 +56,7 @@ ColumnSubset::ColumnSubset(
     /* The cost of the new subset is the cost of the previously existing subset plus
      * the cost of the intermediate result of join between the subset and 'nextColId'
      */
-    totalCost = existingSubset->subsetStats->getElementsNum() + newStats->getElementsNum();
+    totalCost = existingSubset->totalCost + newStats->getElementsNum();
 }
 
 /**************

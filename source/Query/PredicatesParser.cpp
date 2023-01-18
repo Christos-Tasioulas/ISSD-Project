@@ -281,6 +281,37 @@ bool PredicatesParser::hasConstant() const
 	return rvalueIsConstant;
 }
 
+/*************************************************************************
+ * Returns 'true' if this predicate and 'other' have the same attributes *
+ *************************************************************************/
+
+bool PredicatesParser::equals(PredicatesParser *other) const
+{
+	/* A join predicate is never the same as a filter predicate */
+	if(rvalueIsConstant != other->rvalueIsConstant)
+		return false;
+
+	/* Case both predicates are join predicates */
+	if(!rvalueIsConstant)
+	{
+		return ((leftArray == other->rightArray)
+			&& (leftArrayColumn == other->rightArrayColumn)
+			&& (rightArray == other->leftArray)
+			&& (rightArrayColumn == other->leftArrayColumn))
+		||
+			((leftArray == other->leftArray)
+			&& (leftArrayColumn == other->leftArrayColumn)
+			&& (rightArray == other->rightArray)
+			&& (rightArrayColumn == other->rightArrayColumn));
+	}
+
+	/* Case both predicates are filter predicates */
+	return (leftArray == other->leftArray)
+		&& (leftArrayColumn == other->leftArrayColumn)
+		&& (filterValue == other->filterValue)
+		&& (filterOperator == other->filterOperator);
+}
+
 /************************
  * Prints the predicate *
  ************************/

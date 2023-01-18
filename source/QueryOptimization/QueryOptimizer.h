@@ -123,10 +123,10 @@ private:
         ColumnStatistics **resultStatsAfterJoin
     );
 
-    /* Appends to the 'result' all the join predicates in
-     * the 'joinPreds' list in the most optimal order
+    /* Appends to the 'result' all the join
+     * predicates in the most optimal order
      */
-    void getOptimalJoinsOrder(List *joinPreds, List *result);
+    void getOptimalJoinsOrder(List *result);
 
     /* Given the list of relations taking part in the query and an alias,
      * we return the real name of the relation that has the given alias
@@ -146,6 +146,17 @@ private:
      * subset in the root of each binary heap in a static helper list
      */
     static void placeSubsetsInList(void *item, void *key);
+
+    /* Compares two lists of predicates and returns 'true' if the two
+     * lists have no common predicate, else even if 1 predicate of one
+     * list belongs to the other list as well, 'false' is returned
+     */
+    static bool areForeignSets(List *predsList_1, List *predsList_2);
+
+    /* Places all the duplicate join predicates that exist in
+     * the 'joins' list at the end of the given 'result' list
+     */
+    static void placeDuplicatesAtEnd(List *result, List *joins);
 
     /* Compares two column identities
      *

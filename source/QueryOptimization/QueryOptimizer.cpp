@@ -16,6 +16,24 @@ static List *colIdsForParsing;
 
 static List *subsetsForParsing;
 
+/*****************************************************************
+ * Auxiliary function to identify the greater between two values *
+ *****************************************************************/
+
+static unsigned int max(unsigned int a, unsigned int b)
+{
+    return (a > b) ? a : b;
+}
+
+/*****************************************************************
+ * Auxiliary function to identify the smaller between two values *
+ *****************************************************************/
+
+static unsigned int min(unsigned int a, unsigned int b)
+{
+    return (a < b) ? a : b;
+}
+
 /**********************************************************************
  * Given the list of relations taking part in the query and an alias, *
  *  we return the real name of the relation that has the given alias  *
@@ -63,6 +81,128 @@ void QueryOptimizer::placeSubsetsInList(void *item, void *key)
 
     /* We insert the above best order in the list of subsets */
     subsetsForParsing->insertLast(bestOrder);
+}
+
+/*******************************************************************
+ * Compares two lists of predicates and returns 'true' if the two  *
+ * lists have no common predicate, else even if 1 predicate of one *
+ *  list belongs to the other list as well, 'false' is returned    *
+ *******************************************************************/
+
+bool QueryOptimizer::areForeignSets(List *predsList_1, List *predsList_2)
+{
+    /* First we consider the two sets are totally foreign to each other */
+    bool result = true;
+
+    /* We will traverse the 1st list from the head */
+    Listnode *current_1 = predsList_1->getHead();
+
+    /* As long as we have not finished traversing the list */
+    while(current_1 != NULL)
+    {
+        /* We retrieve the predicate stored in the current node */
+        PredicatesParser *currentPred_1 = (PredicatesParser *) current_1->getItem();
+
+        /* We will traverse the 2nd list from the head */
+        Listnode *current_2 = predsList_2->getHead();
+
+        /* As long as we have not finished traversing the list */
+        while(current_2 != NULL)
+        {
+            /* We retrieve the predicate stored in the current node */
+            PredicatesParser *currentPred_2 = (PredicatesParser *) current_2->getItem();
+
+            /* Even if a single pair of predicates is found to be the same predicate,
+             * the two lists of predicates are not totally foreign to each other
+             */
+            if(currentPred_1->equals(currentPred_2))
+            {
+                /* The final result changes to 'false' */
+                result = false;
+
+                /* Since we found at least one predicate the two lists have in common,
+                 * there is no need to continue examining the rest pairs of predicates
+                 */
+                break;
+            }
+
+            /* We proceed to the next node */
+            current_2 = current_2->getNext();
+        }
+
+        /* Since we found at least one predicate the two lists have in common,
+         * there is no need to continue examining the rest pairs of predicates
+         */
+        if(result == false)
+            break;
+
+        /* We proceed to the next node */
+        current_1 = current_1->getNext();
+    }
+
+    /* Finally, we return the result */
+    return result;
+}
+
+/**********************************************************
+ * Places all the duplicate join predicates that exist in *
+ * the 'joins' list at the end of the given 'result' list *
+ **********************************************************/
+
+void QueryOptimizer::placeDuplicatesAtEnd(List *result, List *joins)
+{
+    /* We will append the contents of this list to the result at the end */
+    List toBeAppended = List();
+
+    /* We will traverse the 'result' list from the head */
+    Listnode *current_1 = result->getHead();
+
+    /* As long as we have not finished traversing the list */
+    while(current_1 != NULL)
+    {
+        /* We retrieve the predicate stored in the current node */
+        PredicatesParser *currentPred_1 = (PredicatesParser *) current_1->getItem();
+
+        /* Determines whether or not we have found the
+         * current predicate in the 'joins' list once
+         */
+        bool exists = false;
+
+        /* We will traverse the 'joins' list from the head */
+        Listnode *current_2 = joins->getHead();
+
+        /* As long as we have not finished traversing the list */
+        while(current_2 != NULL)
+        {
+            /* We retrieve the predicate stored in the current node */
+            PredicatesParser *currentPred_2 = (PredicatesParser *) current_2->getItem();
+
+            /* Case the current predicate is duplicate in the 'joins' list */
+            if(currentPred_1->equals(currentPred_2))
+            {
+                /* The first time we find the pred in the 'joins' list,
+                 * we marke it as 'found' by setting 'exists' to 'true'
+                 */
+                if(!exists)
+                    exists = true;
+
+                /* The rest times we find the pred in the 'joins' list,
+                 * we append it to the 'toBeAppended' list
+                 */
+                else
+                    toBeAppended.insertLast(currentPred_2);
+            }
+
+            /* We proceed to the next node */
+            current_2 = current_2->getNext();
+        }
+
+        /* We proceed to the next node */
+        current_1 = current_1->getNext();
+    }
+
+    /* We append all the duplicates to the 'result' list */
+    result->append(&toBeAppended);
 }
 
 /************************************************************
@@ -851,7 +991,21 @@ void QueryOptimizer::updateStatsOfColumnsByJoin(
     PredicatesParser *connectingPredicate,
     ColumnStatistics **resultStatsAfterJoin)
 {
-    (*resultStatsAfterJoin) = new ColumnStatistics(0, 0, 0, 0);
+    /* We prepare the four variables that will
+     * be used for the creation of the stats
+     */
+    unsigned int l, u, d, f;
+
+    /* We store some of the current statistics
+     * that we will need for the update
+     */
+    ColumnStatistics *stats = colId->getColumnStats();
+    unsigned int prev_l = stats->getMinElement();
+    unsigned int prev_u = stats->getMaxElement();
+    unsigned int prev_f = stats->getElementsNum();
+    unsigned int prev_d = stats->getDistinctElementsNum();
+
+    (*resultStatsAfterJoin) = new ColumnStatistics(l, u, f, d);
 }
 
 /*************************************************************************
@@ -866,7 +1020,21 @@ void QueryOptimizer::updateStatsOfJoinTreeAndColumnByJoin(
     PredicatesParser *connectingPredicate,
     ColumnStatistics **resultStatsAfterJoin)
 {
-    (*resultStatsAfterJoin) = new ColumnStatistics(0, 0, 0, 0);
+    /* We prepare the four variables that will
+     * be used for the creation of the stats
+     */
+    unsigned int l, u, d, f;
+
+    /* We store some of the current statistics
+     * that we will need for the update
+     */
+    ColumnStatistics *stats = colId->getColumnStats();
+    unsigned int prev_l = stats->getMinElement();
+    unsigned int prev_u = stats->getMaxElement();
+    unsigned int prev_f = stats->getElementsNum();
+    unsigned int prev_d = stats->getDistinctElementsNum();
+
+    (*resultStatsAfterJoin) = new ColumnStatistics(l, u, f, d);
 }
 
 /***************
@@ -1154,18 +1322,18 @@ List *QueryOptimizer::getOptimalPredicatesOrder()
     /* Then we append to the result list all the join predicates in
      * the most optimal order with the 'getOptimalJoinsOrder' operation.
      */
-    getOptimalJoinsOrder(joinPreds, result);
+    getOptimalJoinsOrder(result);
 
     /* We return the final result */
     return result;
 }
 
-/******************************************************
- * Appends to the 'result' all the join predicates in *
- *   the 'joinPreds' list in the most optimal order   *
- ******************************************************/
+/****************************************
+ * Appends to the 'result' all the join *
+ * predicates in the most optimal order *
+ ****************************************/
 
-void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
+void QueryOptimizer::getOptimalJoinsOrder(List *result)
 {
     /* If there are no join predicates, we simply return */
     if(joinPreds->getCounter() == 0)
@@ -1340,15 +1508,7 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
             ColumnSubset *currentSubset = (ColumnSubset *)
                 currentNode->getItem();
 
-            /* We retrieve the last column that joined the set */
-            //ColumnIdentity *lastColumn = currentSubset->getLastColumn();
-
-            /* We retrieve the neighbors of the column */
-            //List *neighbors = lastColumn->getNeighbors();
-
-            /* We also retrieve the list of neighbor predicates */
-            //List *neighborPreds = lastColumn->getNeighborPredicates();
-
+            /* We retrieve the possible columns that can join the current subset */
             List *neighbors, *neighborPreds;
             currentSubset->getNeighbors(&neighbors, &neighborPreds);
 
@@ -1481,38 +1641,67 @@ void QueryOptimizer::getOptimalJoinsOrder(List *joinPreds, List *result)
 
     subsetsTree->print(printGroup, printBinaryHeapOfSubsets);
 
+    /* Now we will start placing the join preds in the 'result' list
+     *
+     * We will traverse every group from the largest to the smallest
+     * and append to the result every best ordering we find that
+     * contains columns which do not yet belong to the result. With
+     * the following subtraction the 'nextGroupId' variable is now
+     * storing the ID of the group with the largest combinations.
+     */
     nextGroupId--;
 
-    RedBlackTree *largestCombinationsGroup = subsetsTree->
-        searchIndexKey(&nextGroupId, compareUnsignedIntegers);
+    /* As long as we have not searched the best orderings of each group,
+     * we keep repeating the following actions inside the 'while' loop
+     */
+    while(nextGroupId >= 2)
+    {
+        /* We retrieve the next largest group of join trees */
+        RedBlackTree *nextLargestCombinationsGroup = subsetsTree->
+            searchIndexKey(&nextGroupId, compareUnsignedIntegers);
 
-    ComplexItem *rootItem = (ComplexItem *)
-        largestCombinationsGroup->getRoot()->getItem();
+        /* We place the best ordering of each combination of the group in a list */
+        subsetsForParsing = new List();
+        nextLargestCombinationsGroup->traverse(Preorder, placeSubsetsInList);
 
-    BinaryHeap *largestSubsetsHeap = (BinaryHeap *) rootItem->getItem();
+        /* We will traverse the list of best orders of this group */
+        Listnode *currentNode = subsetsForParsing->getHead();
 
-    ColumnSubset *bestOrder = (ColumnSubset *)
-        largestSubsetsHeap->getHighestPriorityItem();
+        /* As long as we have not finished traversing the list */
+        while(currentNode != NULL)
+        {
+            /* We retrieve the best order stored in the current node */
+            ColumnSubset *nextBestOrder = (ColumnSubset *) currentNode->getItem();
 
-    List *resultPredicatesOrder = bestOrder->getPredicatesOrder();
+            /* We retrieve the list of join predicates of this order */
+            List *nextPredsOrder = nextBestOrder->getPredicatesOrder();
+
+            /* If the set of predicates of the current best order is
+             * totally foreign to the set of predicates of the result
+             * we append the predicates of this order to the result.
+             */
+            if(areForeignSets(result, nextPredsOrder))
+                result->append(nextPredsOrder);
+
+            /* We proceed to the next node */
+            currentNode = currentNode->getNext();
+        }
+
+        /* We free the allocated memory for the list of subsets */
+        delete subsetsForParsing;
+
+        /* We proceed to the next largest group */
+        nextGroupId--;
+    }
+
+    /* We place the duplicate joins at the end
+     * to cut off as many results as possible
+     */
+    placeDuplicatesAtEnd(result, joinPreds);
 
     std::cout << "Best order: ";
-    resultPredicatesOrder->printFromHead(printPredicate);
+    result->printFromHead(printPredicate);
     std::cout << std::endl;
-
-    // List *remainingPreds = new List();
-
-    // searchRemainingPredsAndPlaceDuplicates(
-    //     resultPredicatesOrder, joinPreds, remainingPreds
-    // );
-
-    // result->append(resultPredicatesOrder);
-
-    // getOptimalPredicatesOrder(remainingPreds, result);
-
-    // delete remainingPreds;
-
-    result->append(joinPreds);
 
     /* We free the allocated memory for the inverted index */
     subsetsTree->traverse(Postorder, deleteInvertedIndexInformation);
