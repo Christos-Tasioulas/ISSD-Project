@@ -999,11 +999,48 @@ void QueryOptimizer::updateStatsOfColumnsByJoin(
     /* We store some of the current statistics
      * that we will need for the update
      */
-    ColumnStatistics *stats = colId->getColumnStats();
-    unsigned int prev_l = stats->getMinElement();
-    unsigned int prev_u = stats->getMaxElement();
-    unsigned int prev_f = stats->getElementsNum();
-    unsigned int prev_d = stats->getDistinctElementsNum();
+    ColumnStatistics *leftStats = leftColId->getColumnStats();
+    unsigned int left_l = leftStats->getMinElement();
+    unsigned int left_u = leftStats->getMaxElement();
+    unsigned int left_f = leftStats->getElementsNum();
+    unsigned int left_d = leftStats->getDistinctElementsNum();
+
+    ColumnStatistics *rightStats = rightColId->getColumnStats();
+    unsigned int right_l = rightStats->getMinElement();
+    unsigned int right_u = rightStats->getMaxElement();
+    unsigned int right_f = rightStats->getElementsNum();
+    unsigned int right_d = rightStats->getDistinctElementsNum();
+
+    /* Join between two columns of the same table */
+    if((leftColId->getTableName() == rightColId->getTableName())
+    && (leftColId->getTableColumn() != rightColId->getTableColumn()))
+    {
+        l = max(left_l, right_l);
+        u = min(left_u, right_u);
+        f = (u - l + 1 != 0) ? (left_f * right_f)/(u - l + 1) : left_f * right_f;
+        d = left_d * round(1 - pow(1 -
+            ((double) f)/((double) left_f),
+            ((double) left_f)/((double) left_d)));
+    }
+
+    /* Self-Join */
+    else if((leftColId->getTableName() == rightColId->getTableName())
+    && (leftColId->getTableColumn() == rightColId->getTableColumn()))
+    {
+        l = left_l;
+        u = left_u;
+        f = (u - l + 1 != 0) ? (left_f * left_f)/(u - l + 1) : (left_f * left_f);
+        d = left_d;
+    }
+
+    /* Join between two columns of different arrays */
+    else
+    {
+        l = max(left_l, right_l);
+        u = min(left_u, right_u);
+        f = (u - l + 1 != 0) ? (left_f * right_f)/(u - l + 1) : left_f * right_f;
+        d = (u - l + 1 != 0) ? (left_d * right_d)/(u - l + 1) : left_d * right_d;
+    }
 
     (*resultStatsAfterJoin) = new ColumnStatistics(l, u, f, d);
 }
@@ -1028,11 +1065,48 @@ void QueryOptimizer::updateStatsOfJoinTreeAndColumnByJoin(
     /* We store some of the current statistics
      * that we will need for the update
      */
-    ColumnStatistics *stats = colId->getColumnStats();
-    unsigned int prev_l = stats->getMinElement();
-    unsigned int prev_u = stats->getMaxElement();
-    unsigned int prev_f = stats->getElementsNum();
-    unsigned int prev_d = stats->getDistinctElementsNum();
+    ColumnStatistics *leftStats = joinTree->getSubsetStats();
+    unsigned int left_l = leftStats->getMinElement();
+    unsigned int left_u = leftStats->getMaxElement();
+    unsigned int left_f = leftStats->getElementsNum();
+    unsigned int left_d = leftStats->getDistinctElementsNum();
+
+    ColumnStatistics *rightStats = colId->getColumnStats();
+    unsigned int right_l = rightStats->getMinElement();
+    unsigned int right_u = rightStats->getMaxElement();
+    unsigned int right_f = rightStats->getElementsNum();
+    unsigned int right_d = rightStats->getDistinctElementsNum();
+
+    /* Join between two columns of the same table */
+    if((connectingPredicate->getLeftArray() == connectingPredicate->getRightArray())
+    && (connectingPredicate->getLeftArrayColumn() != connectingPredicate->getRightArrayColumn()))
+    {
+        l = max(left_l, right_l);
+        u = min(left_u, right_u);
+        f = (u - l + 1 != 0) ? (left_f * right_f)/(u - l + 1) : left_f * right_f;
+        d = left_d * round(1 - pow(1 -
+            ((double) f)/((double) left_f),
+            ((double) left_f)/((double) left_d)));
+    }
+
+    /* Self-Join */
+    else if((connectingPredicate->getLeftArray() == connectingPredicate->getRightArray())
+    && (connectingPredicate->getLeftArrayColumn() == connectingPredicate->getRightArrayColumn()))
+    {
+        l = left_l;
+        u = left_u;
+        f = (u - l + 1 != 0) ? (left_f * left_f)/(u - l + 1) : (left_f * left_f);
+        d = left_d;
+    }
+
+    /* Join between two columns of different arrays */
+    else
+    {
+        l = max(left_l, right_l);
+        u = min(left_u, right_u);
+        f = (u - l + 1 != 0) ? (left_f * right_f)/(u - l + 1) : left_f * right_f;
+        d = (u - l + 1 != 0) ? (left_d * right_d)/(u - l + 1) : left_d * right_d;
+    }
 
     (*resultStatsAfterJoin) = new ColumnStatistics(l, u, f, d);
 }
@@ -1638,9 +1712,9 @@ void QueryOptimizer::getOptimalJoinsOrder(List *result)
         /* We will traverse the next group in the next loop */
         nextGroupId++;
     }
-
+/*
     subsetsTree->print(printGroup, printBinaryHeapOfSubsets);
-
+*/
     /* Now we will start placing the join preds in the 'result' list
      *
      * We will traverse every group from the largest to the smallest
@@ -1698,11 +1772,11 @@ void QueryOptimizer::getOptimalJoinsOrder(List *result)
      * to cut off as many results as possible
      */
     placeDuplicatesAtEnd(result, joinPreds);
-
+/*
     std::cout << "Best order: ";
     result->printFromHead(printPredicate);
     std::cout << std::endl;
-
+*/
     /* We free the allocated memory for the inverted index */
     subsetsTree->traverse(Postorder, deleteInvertedIndexInformation);
     delete subsetsTree;
